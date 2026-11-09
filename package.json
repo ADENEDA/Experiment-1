@@ -1,0 +1,13 @@
+{
+  "name": "gridbook-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Print-ready puzzle books, built in your browser. Static site, no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tools/test/**/*.test.mjs\"",
+    "serve": "node tools/serve.mjs",
+    "fonts": "node tools/gen-font-metrics.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
