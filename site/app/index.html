@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gridbook Studio · Make print-ready puzzle books in your browser</title>
+  <meta name="description" content="Build KDP-ready puzzle book interiors in your browser: word search, sudoku, mazes and picture logic puzzles, with an answer key, front matter and a KDP print check. Free to use; Pro removes the proof footer.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0e7c66">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/app.css">
+  <link rel="stylesheet" href="../css/license.css">
+  <link rel="stylesheet" href="../css/preview.css">
+  <link rel="stylesheet" href="../css/inspector.css">
+  <link rel="stylesheet" href="../css/export.css">
+  <link rel="stylesheet" href="../css/templates.css">
+  <link rel="modulepreload" href="../js/ui/app.js">
+  <script type="module" src="../js/ui/app.js"></script>
+</head>
+<body class="studio">
+  <a class="skip-link" href="#preview">Skip to the preview</a>
+
+  <div class="app" id="app" data-gbs-studio data-mobile-tab="preview" aria-busy="true">
+    <header class="app-topbar" id="topbar">
+      <a class="tb-brand" href="../"><span class="tb-brand-name">Gridbook Studio</span></a>
+    </header>
+
+    <div class="app-banner" id="banner" role="region" aria-label="Free edition" hidden></div>
+
+    <div class="app-main">
+      <aside class="pane pane-outline" id="outline" aria-label="Book outline" tabindex="-1"></aside>
+      <main class="pane pane-preview" id="preview" aria-label="Preview" tabindex="-1">
+        <div class="pane-loading"><span class="gbs-spinner" aria-hidden="true"></span><span>Loading the Studio…</span></div>
+      </main>
+      <aside class="pane pane-inspector" id="inspector" aria-label="Settings" tabindex="-1"></aside>
+      <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    </div>
+
+    <footer class="app-status" id="statusbar" aria-label="Book status"></footer>
+    <nav class="app-tabs" id="mobile-tabs" aria-label="Studio panels"></nav>
+  </div>
+
+  <div class="toasts" id="toasts" role="region" aria-label="Notifications" aria-live="polite"></div>
+  <div class="visually-hidden" id="gbs-announcer" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript">
+      <h1>Gridbook Studio needs JavaScript</h1>
+      <p>The Studio builds your puzzle book right here in your browser, so it needs JavaScript turned on.
+        Nothing is uploaded: your books stay on your computer. Turn JavaScript on for this site and reload the page.</p>
+      <p><a href="../">Back to the Gridbook Studio home page</a></p>
+    </div>
+  </noscript>
+</body>
+</html>

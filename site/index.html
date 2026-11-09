@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gridbook Studio: print-ready puzzle books for KDP, in your browser</title>
+<meta name="description" content="Make word search, sudoku, maze and picture nonogram books with answer keys. KDP gutter, margins and spine width done for you. Runs in your browser. Free to try, $29 once.">
+<link rel="canonical" href="https://gridbookstudio.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="Print-ready puzzle books, built in your browser">
+<meta property="og:description" content="Picture nonograms, sudoku, word search and mazes. Every grid checked for one solution. No subscription.">
+<meta property="og:image" content="https://gridbookstudio.com/og/home.png">
+<meta property="og:url" content="https://gridbookstudio.com/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+<link rel="manifest" href="./site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/site.css">
+<link rel="preload" href="./fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="./fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<!-- Structured data. Prices are static: update "29" to "39" here when the launch price ends (config.js pricing.launchEnds). -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Gridbook Studio",
+"url":"https://gridbookstudio.com/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
+"description":"Make print-ready puzzle book interiors for KDP and home printing: word search, sudoku, mazes and picture nonograms with answer keys.",
+"offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free edition"},
+          {"@type":"Offer","price":"9","priceCurrency":"USD","name":"7-Day Sprint Pass"},
+          {"@type":"Offer","price":"29","priceCurrency":"USD","name":"Lifetime"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Will KDP accept the files?","acceptedAnswer":{"@type":"Answer","text":"Gridbook builds to KDP’s published paperback specs: trim sizes, the gutter for your page count, minimum margins, bleed, embedded fonts and grayscale ink. A preflight check runs before every export. Nobody but KDP can promise a review outcome, because KDP also reviews content and listing details. If KDP rejects a Pro interior for a technical-spec reason, email us within 30 days for a full refund. Free proof PDFs carry a watermark and are not meant for upload."}},{"@type":"Question","name":"Are the puzzles AI-generated?","acceptedAnswer":{"@type":"Answer","text":"No. Every puzzle is made by an algorithm running on your device: words are placed and checked by code, sudoku are built and solved by a solver that proves there is one answer, mazes are carved so there is one route, and nonograms are checked by a line solver. The same settings and seed always give the same puzzle. If you write your own word lists with an AI chatbot, check KDP’s content guidelines on AI disclosure."}},{"@type":"Question","name":"Can I sell what I make?","acceptedAnswer":{"@type":"Answer","text":"Yes, with Pro (Lifetime, or a 7-Day Pass while it runs). The commercial-use licence covers KDP paperbacks, printables sold on Etsy or Gumroad, and paid newsletters. Books you export with Pro stay yours to sell after a pass ends. You may not resell the built-in word lists as standalone lists. Free exports are for proofing and for personal or classroom use. The License page has the full terms."}},{"@type":"Question","name":"Can I sell printables on Etsy?","acceptedAnswer":{"@type":"Answer","text":"Yes, with Pro. Export clean printable PDFs in US Letter or A4, with as many puzzles as you like, and sell them as your own product. Free printables carry a “Free printable from gridbookstudio.com” footer, hold up to 10 puzzles per file and are for personal and classroom use."}},{"@type":"Question","name":"Does it work offline?","acceptedAnswer":{"@type":"Answer","text":"Once the Studio has loaded, yes: puzzles, previews and PDFs are all made in your browser, so you can keep building with the connection off. Keep the tab open, because reloading the page needs the network. Nothing you make is ever uploaded. The license check and Gumroad’s checkout are the only parts that go online."}},{"@type":"Question","name":"What does the license check send?","acceptedAnswer":{"@type":"Answer","text":"Only your license key, with the ID of the product it belongs to, sent to Gumroad’s license API. No puzzles, book content or files are sent anywhere. The check runs when you activate and then about once a week. If Gumroad can’t be reached, Pro keeps working for up to 30 days."}},{"@type":"Question","name":"What about refunds?","acceptedAnswer":{"@type":"Answer","text":"Try everything in the free edition first: it builds and previews the same books. If KDP rejects your interior for a technical-spec reason, email us within 30 days for a full refund. Refunds go back to your original payment method through Gumroad."}},{"@type":"Question","name":"How large is large print?","acceptedAnswer":{"@type":"Answer","text":"The Large Print theme keeps text at 16 pt or larger, word-search letters at 18 pt or larger and sudoku digits at 22 pt or larger, with heavier grid lines. Nonogram clue numbers inside a puzzle may go down to 14 pt. The Studio warns you if a layout would push anything below these sizes. KDP doesn’t define large print; these sizes follow common practice for large-print puzzle books."}}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="./nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="./large-print-word-search-maker/">Word search</a>
+      <a href="./kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="./kdp-margin-calculator/">Margin calculator</a>
+      <a href="./pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="./app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">For KDP publishers, teachers and puzzle makers</p>
+      <h1 id="hero-h">Make a <span class="nowrap">print-ready</span> <mark>puzzle book</mark> <span class="nowrap">in your browser.</span></h1>
+      <p class="hero-sub">Word search, sudoku, mazes and picture nonograms, with answer keys and the KDP gutter, spine and margins worked out for you. Nothing is uploaded. Free to try; <span data-cfg-price="lifetime">$29</span> once.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary btn-lg" href="app/">Open the Studio (free) <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn btn-lg" href="samples/picture-logic-32p.pdf"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Download a 32-page sample PDF</a>
+      </div>
+      <ul class="hero-notes">
+        <li><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> No account needed</li>
+        <li><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> Answer keys included</li>
+        <li><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> One-time price, no subscription</li>
+      </ul>
+    </div>
+
+    <div class="demo" data-demo>
+      <div class="demo-head">
+        <p class="demo-title">Live demo, made in your browser</p>
+        <div class="seg" role="group" aria-label="Puzzle type">
+          <button type="button" data-demo-mode="nonogram" aria-pressed="true">Picture puzzle</button>
+          <button type="button" data-demo-mode="wordsearch" aria-pressed="false">Word search</button>
+        </div>
+      </div>
+      <div class="demo-chips" data-demo-chips="nonogram" role="group" aria-label="Pick a picture">
+        <button type="button" class="chip" data-demo-choice="cat" aria-pressed="true"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M222.83,33.54a16,16,0,0,0-18.14,3.15c-.14.14-.26.27-.38.41L187.05,57A111.28,111.28,0,0,0,69,57L51.69,37.1c-.12-.14-.24-.27-.38-.41a16,16,0,0,0-18.14-3.15A16.4,16.4,0,0,0,24,48.46V136c0,49,40.06,89.63,91.56,95.32a4,4,0,0,0,4.44-4v-32l-13.42-13.43a8.22,8.22,0,0,1-.41-11.37,8,8,0,0,1,11.49-.18L128,180.68l10.34-10.35a8,8,0,0,1,11.49.18,8.22,8.22,0,0,1-.41,11.37L136,195.31v32a4,4,0,0,0,4.44,4C191.94,225.62,232,185,232,136V48.46A16.4,16.4,0,0,0,222.83,33.54ZM84,152a12,12,0,1,1,12-12A12,12,0,0,1,84,152Zm20-64a8,8,0,1,1-16,0V69a8,8,0,0,1,16,0Zm32,0a8,8,0,1,1-16,0V64a8,8,0,0,1,16,0Zm16,0V69a8,8,0,0,1,16,0V88a8,8,0,1,1-16,0Zm20,64a12,12,0,1,1,12-12A12,12,0,0,1,172,152Z"/></svg>Cat</button>
+        <button type="button" class="chip" data-demo-choice="heart" aria-pressed="false"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.07,62.07,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.07,62.07,0,0,1,240,102Z"/></svg>Heart</button>
+        <button type="button" class="chip" data-demo-choice="rabbit" aria-pressed="false"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M199.28,149.8A71.58,71.58,0,0,0,193,129c19-37.94,30.45-88.28,17.34-110A22,22,0,0,0,190.94,8c-14.12,0-26,11.89-36.44,36.36-6.22,14.62-10.85,31.32-14,44.74a71.8,71.8,0,0,0-25,0c-3.13-13.42-7.76-30.12-14-44.74C91.1,19.89,79.18,8,65.06,8A22,22,0,0,0,45.64,19.08C32.53,40.76,44,91.1,63,129a71.58,71.58,0,0,0-6.26,20.76A52,52,0,1,0,128,225.52l-21.12-19.37a8,8,0,1,1,10.24-12.3L128,202.9l10.88-9.05a8,8,0,0,1,10.24,12.3L128,225.52a52,52,0,1,0,71.28-75.72Zm-126-36.53A218.45,218.45,0,0,1,58.4,67.08c-3.49-18.13-3.15-33,.93-39.72A6,6,0,0,1,65.06,24c6.61,0,14.52,9.7,21.72,26.62,5.93,13.94,10.35,30.12,13.33,43a71.72,71.72,0,0,0-26.88,19.64ZM100,176a12,12,0,1,1,12-12A12,12,0,0,1,100,176Zm56,0a12,12,0,1,1,12-12A12,12,0,0,1,156,176Zm20.55-69.17a71.89,71.89,0,0,0-20.66-13.2c3-12.89,7.4-29.07,13.33-43C176.42,33.7,184.33,24,190.94,24a6,6,0,0,1,5.73,3.36c4.08,6.74,4.42,21.59.93,39.72a218.45,218.45,0,0,1-14.83,46.19A72.6,72.6,0,0,0,176.55,106.83Z"/></svg>Rabbit</button>
+        <button type="button" class="chip" data-demo-choice="rocket" aria-pressed="false"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M152,224a8,8,0,0,1-8,8H112a8,8,0,0,1,0-16h32A8,8,0,0,1,152,224Zm71.62-68.17-12.36,55.63a16,16,0,0,1-25.51,9.11L158.51,200h-61L70.25,220.57a16,16,0,0,1-25.51-9.11L32.38,155.83a16.09,16.09,0,0,1,3.32-13.71l28.56-34.26a123.07,123.07,0,0,1,8.57-36.67c12.9-32.34,36-52.63,45.37-59.85a16,16,0,0,1,19.6,0c9.34,7.22,32.47,27.51,45.37,59.85a123.07,123.07,0,0,1,8.57,36.67l28.56,34.26A16.09,16.09,0,0,1,223.62,155.83Zm-139.23,34Q68.28,160.5,64.83,132.16L48,152.36,60.36,208l.18-.13ZM140,100a12,12,0,1,0-12,12A12,12,0,0,0,140,100Zm68,52.36-16.83-20.2q-3.42,28.28-19.56,57.69l23.85,18,.18.13Z"/></svg>Rocket</button>
+        <button type="button" class="chip" data-demo-choice="ice-cream" aria-pressed="false"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M208,97.37V96A80,80,0,0,0,48,96v1.37A24,24,0,0,0,56,144h3.29l54.82,95.94a16,16,0,0,0,27.78,0L196.71,144H200a24,24,0,0,0,8-46.63ZM146.89,198.94,115.5,144h19.29l21.75,38.06ZM77.71,144H97.07l40.61,71.06L128,232Zm88,21.94L153.21,144h25.08Z"/></svg>Ice cream</button>
+        <button type="button" class="chip" data-demo-choice="house" aria-pressed="false"><svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/></svg>House</button>
+      </div>
+      <div class="demo-chips" data-demo-chips="wordsearch" role="group" aria-label="Pick a theme" hidden>
+        <button type="button" class="chip" data-demo-choice="pets" aria-pressed="true">Pets</button>
+        <button type="button" class="chip" data-demo-choice="ocean-life" aria-pressed="false">Ocean life</button>
+        <button type="button" class="chip" data-demo-choice="fruits" aria-pressed="false">Fruits</button>
+        <button type="button" class="chip" data-demo-choice="outer-space" aria-pressed="false">Outer space</button>
+        <button type="button" class="chip" data-demo-choice="garden" aria-pressed="false">In the garden</button>
+      </div>
+      <div class="demo-stage" data-demo-stage>
+        <img data-demo-fallback src="img/gallery/demo-cat.svg" width="360" height="360" fetchpriority="high"
+             alt="A 10 by 10 picture puzzle: number clues above each column and beside each row of an empty grid.">
+        <canvas data-demo-canvas role="img" width="360" height="360" hidden></canvas>
+      </div>
+      <p class="demo-status" data-demo-status aria-live="polite">Pick a picture: each one becomes a 10×10 puzzle you can solve without guessing.</p>
+      <div class="demo-actions">
+        <button type="button" class="btn" data-demo-answer>Show answer</button>
+        <button type="button" class="btn btn-ghost" data-demo-new hidden>New grid</button>
+        <a class="btn btn-primary" data-demo-book href="app/?template=picture-logic" data-href-nonogram="app/?template=picture-logic" data-href-wordsearch="app/?type=wordsearch">Make a whole book like this</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="proof" aria-labelledby="proof-h">
+  <div class="wrap">
+    <h2 id="proof-h" class="visually-hidden">Four things you can check in every book</h2>
+    <ul class="proof-grid">
+      <li class="proof-item">
+        <span class="proof-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.5 2.5 4.8-5.3"/></svg></span>
+        <div><h3>Exactly one solution, verified</h3><p>A solver re-checks every grid before it reaches a page: one answer per sudoku and maze, no guessing in nonograms, each word hidden once.</p></div>
+      </li>
+      <li class="proof-item">
+        <span class="proof-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5zM12 6.5v13"/></svg></span>
+        <div><h3>Gutter set from your final page count</h3><p>The inside margin follows KDP’s page-count tiers, plus 0.125 in to keep grids out of the fold. Add pages and it adjusts.</p></div>
+      </li>
+      <li class="proof-item">
+        <span class="proof-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c3 4 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.5-6 5.5-10z"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5"/></svg></span>
+        <div><h3>Fonts embedded, grayscale only</h3><p>Every PDF embeds its font. Black and gray ink only, lines at least 0.75 pt, text at least 7 pt.</p></div>
+      </li>
+      <li class="proof-item">
+        <span class="proof-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2.5 19h19M12 8.5v4M10.3 10.8l1.7 1.7 1.7-1.7"/></svg></span>
+        <div><h3>Zero uploads</h3><p>Puzzles, previews and PDFs are made on your device. No account, and no server keeping copies of your books.</p></div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="puzzles" aria-labelledby="puzzles-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Puzzle types</p>
+      <h2 id="puzzles-h">Four puzzle engines, each with a guarantee</h2>
+      <p class="lead">These pages were drawn by the same code that builds your book. They are real puzzles, not mock-ups, and each one passed its checker.</p>
+    </div>
+    <ul class="gallery-grid">
+      <li class="type-card">
+        <div class="paper"><img src="img/gallery/nonogram.svg" width="320" height="400" loading="lazy" alt="A book page with a 15 by 15 picture nonogram: number clues above and beside an empty grid."></div>
+        <div>
+          <h3>Picture nonograms</h3>
+          <p class="guarantee"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Solvable line by line, no guessing</p>
+          <p>195 library pictures, your own image, or a drawing. 10×10 for kids up to 30×30 for experts.</p>
+          <a class="text-link" href="nonogram-puzzle-book-maker/">Nonogram book maker <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+      </li>
+      <li class="type-card">
+        <div class="paper"><img src="img/gallery/wordsearch.svg" width="320" height="400" loading="lazy" alt="A book page with a 12 by 12 ocean-life word search and its list of 12 words."></div>
+        <div>
+          <h3>Word search</h3>
+          <p class="guarantee"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Every word appears exactly once</p>
+          <p>68 themed word lists or your own, shaped grids such as hearts and stars, and large print with 18 pt letters.</p>
+          <a class="text-link" href="large-print-word-search-maker/">Large print word search <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+      </li>
+      <li class="type-card">
+        <div class="paper"><img src="img/gallery/sudoku.svg" width="320" height="400" loading="lazy" alt="A book page with a 9 by 9 sudoku of medium difficulty."></div>
+        <div>
+          <h3>Sudoku</h3>
+          <p class="guarantee"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Exactly one solution, graded by logic</p>
+          <p>4×4, 6×6 and 9×9 from Easy to Expert. Grades come from the solving techniques a puzzle needs, not from counting givens.</p>
+          <a class="text-link" href="sudoku-book-generator/">Sudoku book generator <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+      </li>
+      <li class="type-card">
+        <div class="paper"><img src="img/gallery/maze.svg" width="320" height="400" loading="lazy" alt="A book page with a 14 by 15 maze marked START at the top left and FINISH at the bottom right."></div>
+        <div>
+          <h3>Mazes</h3>
+          <p class="guarantee"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Exactly one route, no loops</p>
+          <p>5×5 to 60×60 in three styles: winding, branchy or busy, with START and FINISH arrows.</p>
+          <a class="text-link" href="app/?type=maze">Make a maze book <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="section section-alt" id="pictures" aria-labelledby="pictures-h">
+  <div class="wrap">
+    <div class="picture-layout">
+      <div class="section-head">
+        <p class="eyebrow">Picture puzzles</p>
+        <h2 id="pictures-h">Turn any picture into a <span class="nowrap">no-guess</span> nonogram.</h2>
+        <p class="lead">Pick a library picture, upload an image you own, or draw one square by square. Gridbook turns it into a grid and proves it can be solved one line at a time.</p>
+      </div>
+      <div class="picture-points">
+        <ul class="check-list">
+          <li>If a picture would need guessing, Gridbook adjusts a few squares near the edges of the shape, or pre-fills a few, and tells you how many.</li>
+          <li>The answer key names each picture, so the reveal is the reward.</li>
+          <li>Simple, high-contrast images work best: silhouettes, logos you own, line art.</li>
+        </ul>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="app/?template=picture-logic">Make a picture-puzzle book</a>
+          <a class="btn" href="nonogram-puzzle-book-maker/">How nonograms work</a>
+        </div>
+      </div>
+    </div>
+    <div class="strip" role="group" aria-label="From picture to puzzle">
+      <figure class="strip-step">
+        <div class="paper"><img src="img/gallery/picture-source.svg" width="300" height="300" loading="lazy" alt="A sailboat silhouette."></div>
+        <figcaption><strong>1. A picture</strong>From the library, your own image, or a drawing</figcaption>
+      </figure>
+      <span class="strip-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <figure class="strip-step">
+        <div class="paper"><img src="img/gallery/picture-puzzle.svg" width="300" height="300" loading="lazy" alt="The sailboat as a 15 by 15 nonogram: an empty grid with number clues."></div>
+        <figcaption><strong>2. The puzzle</strong>Clues worked out and checked for one solution</figcaption>
+      </figure>
+      <span class="strip-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <figure class="strip-step">
+        <div class="paper"><img src="img/gallery/picture-solved.svg" width="300" height="300" loading="lazy" alt="The solved nonogram: shaded squares form the sailboat."></div>
+        <figcaption><strong>3. Solved</strong>The reveal, as printed in the answer key</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="section-head center">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-h">From idea to KDP upload in three steps</h2>
+    </div>
+    <ol class="steps">
+      <li class="step">
+        <h3>Pick a template</h3>
+        <p>Large print word search, sudoku from easy to expert, picture logic, a brain-games mix, a kids’ activity book, or a blank book. Choose the trim size and paper.</p>
+      </li>
+      <li class="step">
+        <h3>Generate and tweak</h3>
+        <p>Puzzles appear as you go. Change grid sizes, themes and difficulty, regenerate a single puzzle or lock the ones you like. The preview shows every page as it will print.</p>
+      </li>
+      <li class="step">
+        <h3>Export the interior and cover template</h3>
+        <p>Preflight checks the book against KDP’s specs, then you download the interior PDF with its answer key and a cover template with bleed, spine and barcode area.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="section section-alt" id="kdp-specs" aria-labelledby="specs-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">KDP specs</p>
+      <h2 id="specs-h">The KDP specs we build to</h2>
+      <p class="lead">Numbers from KDP’s own help pages, checked on November 9, 2026. Gridbook applies them for you and checks every page before export.</p>
+    </div>
+    <div class="spec-layout">
+      <div class="spec-table-block">
+        <h3>Inside margin (gutter) by page count</h3>
+        <div class="table-wrap">
+          <table class="data-table" id="gutter-table">
+            <caption>Gridbook adds 0.125 in to KDP’s minimum so grids stay clear of the fold. <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6" rel="noopener">KDP Help: trim size, bleed and margins <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></caption>
+            <thead><tr><th scope="col">Page count</th><th scope="col">KDP minimum</th><th scope="col">Gridbook default</th></tr></thead>
+            <tbody>
+              <tr><th scope="row" class="num">24 to 150</th><td class="num" data-gutter="24-150">0.375 in</td><td class="num">0.5 in</td></tr>
+              <tr><th scope="row" class="num">151 to 300</th><td class="num" data-gutter="151-300">0.5 in</td><td class="num">0.625 in</td></tr>
+              <tr><th scope="row" class="num">301 to 500</th><td class="num" data-gutter="301-500">0.625 in</td><td class="num">0.75 in</td></tr>
+              <tr><th scope="row" class="num">501 to 700</th><td class="num" data-gutter="501-700">0.75 in</td><td class="num">0.875 in</td></tr>
+              <tr><th scope="row" class="num">701 to 828</th><td class="num" data-gutter="701-828">0.875 in</td><td class="num">1 in</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <dl class="spec-cards">
+          <div class="spec-card">
+            <dt>Outside, top and bottom margins</dt>
+            <dd>At least <span data-spec="outside-nobleed">0.25 in</span> without bleed, <span data-spec="outside-bleed">0.375 in</span> with bleed.<br>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6" rel="noopener">KDP Help: trim size, bleed and margins <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></dd>
+          </div>
+          <div class="spec-card">
+            <dt>Interior bleed</dt>
+            <dd>The PDF page is the trim size plus <span data-spec="bleed-w">0.125 in</span> wide and <span data-spec="bleed-h">0.25 in</span> tall: 8.625 × 11.25 in for an 8.5 × 11 in book.<br>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6" rel="noopener">KDP Help: trim size, bleed and margins <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="spec-table-block">
+        <h3>Spine, cover and print rules</h3>
+        <dl class="spec-cards">
+          <div class="spec-card">
+            <dt>Spine width</dt>
+            <dd><span class="formula">pages × <span data-spec="spine-white">0.002252</span> in (white paper)</span><span class="formula">pages × <span data-spec="spine-cream">0.0025</span> in (cream paper)</span>Spine text only on books with more than 79 pages.<br>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/G201953020" rel="noopener">KDP Help: cover and spine <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></dd>
+          </div>
+          <div class="spec-card">
+            <dt>Full cover size</dt>
+            <dd><span class="formula">width = 0.125 + trim width + spine + trim width + 0.125 in</span><span class="formula">height = 0.125 + trim height + 0.125 in</span>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/G201953020" rel="noopener">KDP Help: cover and spine <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></dd>
+          </div>
+          <div class="spec-card">
+            <dt>Fonts, lines and pages</dt>
+            <dd>Fonts embedded, text 7 pt or larger, lines 0.75 pt or heavier, at least 24 pages, and no watermarks on the interior.<br>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/G201857950" rel="noopener">KDP Help: paperback submission guidelines <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="compare" aria-labelledby="compare-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Honest comparison</p>
+      <h2 id="compare-h">How Gridbook compares</h2>
+      <p class="lead">Prices and features as each product lists them, checked on November 9, 2026. Some rivals do things Gridbook doesn’t, and the table says so. If something here is out of date, email <a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a> and we’ll fix it.</p>
+    </div>
+    <div class="table-wrap" role="region" aria-labelledby="compare-cap" tabindex="0">
+      <table class="data-table compare-table">
+        <caption id="compare-cap">Puzzle-book tools compared, checked 2026-11-09. “Not verified” means we could not confirm it from the product’s public pages.</caption>
+        <thead>
+          <tr><th scope="col"><span class="visually-hidden">Feature</span></th><th scope="col" class="is-us">Gridbook Studio</th><th scope="col">Book Bolt</th><th scope="col">PuzzleBindery</th><th scope="col">KDP Builder</th><th scope="col">Sudoku Maker</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Price</th><td class="is-us">Free; <span data-cfg-price="pass">$9</span> 7-day pass; <span data-cfg-price="lifetime">$29</span> lifetime<span data-cfg-launch> at launch, then <span data-cfg-price="lifetimeRegular">$39</span></span></td><td>$9.97–19.97 a month; puzzles only on the higher tier</td><td>$49 once at launch, then $79</td><td>About $10.99 per book in credits; 75 free credits</td><td>“$197 regular, 71% off” (about $57)</td></tr>
+          <tr><th scope="row">Runs</th><td class="is-us">In your browser; nothing uploaded</td><td>Web app (server)</td><td>Browser</td><td>Web app</td><td>Windows and Mac app</td></tr>
+          <tr><th scope="row">Picture nonograms</th><td class="is-us"><span class="yes">Yes: library, upload or draw; no-guess</span></td><td><span class="nv">Not verified</span></td><td><span class="no">Not among its 9 listed types</span></td><td><span class="nv">Not verified</span></td><td><span class="no">No</span></td></tr>
+          <tr><th scope="row">Word search, sudoku, maze</th><td class="is-us"><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Sudoku only</span></td></tr>
+          <tr><th scope="row">Crossword, cryptogram and other word puzzles</th><td class="is-us"><span class="no">Not yet</span></td><td><span class="nv">Not verified</span></td><td><span class="yes">Yes: crossword, fill-in, codeword, cryptogram, word scramble, number search</span></td><td><span class="nv">Not verified</span></td><td><span class="no">No</span></td></tr>
+          <tr><th scope="row">Kakuro, calcudoku, futoshiki</th><td class="is-us"><span class="no">Not yet</span></td><td><span class="nv">Not verified</span></td><td><span class="no">Not listed</span></td><td><span class="nv">Not verified</span></td><td><span class="no">No</span></td></tr>
+          <tr><th scope="row">KDP gutter by page count, preflight</th><td class="is-us"><span class="yes">Yes</span></td><td><span class="nv">Not verified</span></td><td><span class="yes">Yes</span></td><td><span class="nv">Not verified</span></td><td>Claims “KDP-ready”</td></tr>
+          <tr><th scope="row">Cover</th><td class="is-us">Template with bleed, spine and barcode area; you add the artwork</td><td><span class="nv">Not verified</span></td><td><span class="yes">Makes a full-wrap cover</span></td><td><span class="nv">Not verified</span></td><td><span class="nv">Not verified</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">Gridbook Studio is not affiliated with any product named here. Names are used only to compare.</p>
+  </div>
+</section>
+
+<section class="section section-alt" id="pricing" aria-labelledby="pricing-h">
+  <div class="wrap">
+    <div class="section-head center">
+      <p class="eyebrow">Pricing</p>
+      <h2 id="pricing-h">Free to build. Pay once to publish.</h2>
+      <p class="lead">Make and preview whole books for free. Pro removes the proof header and footer and adds the commercial licence.</p>
+    </div>
+    <div class="pricing-grid">
+      <article class="plan" aria-labelledby="plan-free">
+        <div class="plan-head"><h3 class="plan-name" id="plan-free">Free</h3></div>
+        <p class="plan-price"><span class="amount">$0</span><span class="unit">forever</span></p>
+        <p class="plan-note">No account and no time limit.</p>
+        <ul class="check-list">
+          <li>Every puzzle type, unlimited puzzles and previews</li>
+          <li>The whole book builder: every trim size, large print, preflight</li>
+          <li>Proof PDFs with a “Free proof” header and footer</li>
+          <li>Printables of up to 10 puzzles for personal and classroom use</li>
+          <li>Cover template, spine and margin calculators</li>
+        </ul>
+        <a class="btn plan-cta" href="app/">Open the Studio</a>
+      </article>
+      <article class="plan" aria-labelledby="plan-pass">
+        <div class="plan-head"><h3 class="plan-name" id="plan-pass">7-Day Pass</h3></div>
+        <p class="plan-price"><span class="amount" data-cfg-price="pass">$9</span><span class="unit">one-time</span></p>
+        <p class="plan-note">Pro for 7 days from purchase. Nothing renews.</p>
+        <ul class="check-list">
+          <li>Clean interior PDFs for KDP, with no proof header or footer</li>
+          <li>Unlimited clean printables (US Letter and A4)</li>
+          <li>Commercial-use licence for what you make</li>
+          <li>Made for one seasonal book or a deadline</li>
+        </ul>
+        <a class="btn plan-cta" data-cfg-link="pass" href="https://YOURNAME.gumroad.com/l/gridbook-sprint" target="_blank" rel="noopener">Get the 7-Day Pass</a>
+      </article>
+      <article class="plan plan-featured" aria-labelledby="plan-lifetime">
+        <div class="plan-head"><h3 class="plan-name" id="plan-lifetime">Lifetime</h3><span class="badge badge-pro">Best value</span></div>
+        <p class="plan-price"><span class="amount" data-cfg-price="lifetime">$29</span><span class="was" data-cfg-launch><span class="visually-hidden">Regular price </span><s data-cfg-price="lifetimeRegular">$39</s></span><span class="unit">once</span></p>
+        <p class="plan-note" data-cfg-launch><span class="launch-note">Launch price</span> until <span data-cfg="launchEnds">Jan 31, 2027</span> or the first 100 buyers, then <span data-cfg-price="lifetimeRegular">$39</span>.</p>
+        <ul class="check-list">
+          <li>Clean interior PDFs for KDP, with no proof header or footer</li>
+          <li>Unlimited clean printables (US Letter and A4)</li>
+          <li>Commercial-use licence: KDP, Etsy, Gumroad, newsletters</li>
+          <li>Every future update included</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn btn-highlight plan-cta" data-cfg-link="lifetime" href="https://YOURNAME.gumroad.com/l/gridbook-lifetime" target="_blank" rel="noopener">Get Lifetime</a>
+      </article>
+    </div>
+    <div class="promise">
+      <span class="promise-icon"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8.3-7.5 9.5-4.3-1.2-7.5-5-7.5-9.5V6L12 3z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg></span>
+      <div>
+        <h3>The KDP promise</h3>
+        <p>If KDP rejects your interior for a technical-spec reason, email us within 30 days for a full refund. <a href="legal/refunds.html">Refund policy</a></p>
+      </div>
+    </div>
+    <p class="pricing-foot"><span>Secure checkout by Gumroad. Your license key arrives by email.</span> <a href="pricing/">Compare plans in detail</a></p>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="section-head center">
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-h">Questions, answered plainly</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Will KDP accept the files?</summary>
+        <div class="faq-a">
+          <p>Gridbook builds to KDP’s published paperback specs: trim sizes, the gutter for your page count, minimum margins, bleed, embedded fonts and grayscale ink. A preflight check runs before every export. Nobody but KDP can promise a review outcome, because KDP also reviews content and listing details. If KDP rejects a Pro interior for a technical-spec reason, email us within 30 days for a full refund. Free proof PDFs carry a watermark and are not meant for upload.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Are the puzzles AI-generated?</summary>
+        <div class="faq-a">
+          <p>No. Every puzzle is made by an algorithm running on your device: words are placed and checked by code, sudoku are built and solved by a solver that proves there is one answer, mazes are carved so there is one route, and nonograms are checked by a line solver. The same settings and seed always give the same puzzle. If you write your own word lists with an AI chatbot, check KDP’s content guidelines on AI disclosure.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Can I sell what I make?</summary>
+        <div class="faq-a">
+          <p>Yes, with Pro (Lifetime, or a 7-Day Pass while it runs). The commercial-use licence covers KDP paperbacks, printables sold on Etsy or Gumroad, and paid newsletters. Books you export with Pro stay yours to sell after a pass ends. You may not resell the built-in word lists as standalone lists. Free exports are for proofing and for personal or classroom use. The License page has the full terms.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Can I sell printables on Etsy?</summary>
+        <div class="faq-a">
+          <p>Yes, with Pro. Export clean printable PDFs in US Letter or A4, with as many puzzles as you like, and sell them as your own product. Free printables carry a “Free printable from gridbookstudio.com” footer, hold up to 10 puzzles per file and are for personal and classroom use.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does it work offline?</summary>
+        <div class="faq-a">
+          <p>Once the Studio has loaded, yes: puzzles, previews and PDFs are all made in your browser, so you can keep building with the connection off. Keep the tab open, because reloading the page needs the network. Nothing you make is ever uploaded. The license check and Gumroad’s checkout are the only parts that go online.</p>
+        </div>
+      </details>
+      <details>
+        <summary>What does the license check send?</summary>
+        <div class="faq-a">
+          <p>Only your license key, with the ID of the product it belongs to, sent to Gumroad’s license API. No puzzles, book content or files are sent anywhere. The check runs when you activate and then about once a week. If Gumroad can’t be reached, Pro keeps working for up to 30 days.</p>
+        </div>
+      </details>
+      <details>
+        <summary>What about refunds?</summary>
+        <div class="faq-a">
+          <p>Try everything in the free edition first: it builds and previews the same books. If KDP rejects your interior for a technical-spec reason, email us within 30 days for a full refund. Refunds go back to your original payment method through Gumroad.</p>
+        </div>
+      </details>
+      <details>
+        <summary>How large is large print?</summary>
+        <div class="faq-a">
+          <p>The Large Print theme keeps text at 16 pt or larger, word-search letters at 18 pt or larger and sudoku digits at 22 pt or larger, with heavier grid lines. Nonogram clue numbers inside a puzzle may go down to 14 pt. The Studio warns you if a layout would push anything below these sizes. KDP doesn’t define large print; these sizes follow common practice for large-print puzzle books.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tight section-flush-top" aria-labelledby="cta-h">
+  <div class="wrap">
+    <div class="cta-band">
+      <div>
+        <h2 id="cta-h">Your first book is free to build.</h2>
+        <p>Open the Studio, pick a template and watch the pages fill. Upgrade only when you’re ready to publish.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-highlight btn-lg" href="app/">Open the Studio <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn btn-lg" href="pricing/">See pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="./app/">The Studio</a></li>
+        <li><a href="./nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="./large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="./sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="./kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="./kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="./book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="./pricing/">Pricing</a></li>
+        <li><a href="./samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="./legal/terms.html">Terms</a></li>
+        <li><a href="./legal/privacy.html">Privacy</a></li>
+        <li><a href="./legal/refunds.html">Refunds</a></li>
+        <li><a href="./legal/license.html">License</a></li>
+        <li><a href="./legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="./js/site/site.js"></script>
+<script type="module" src="js/site/demo.js"></script>
+</body>
+</html>
