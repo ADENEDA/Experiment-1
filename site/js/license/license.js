@@ -8,6 +8,9 @@
 // - Gumroad's "uses" counter is a soft device limit: only the first activation of a key in this browser increments it;
 //   re-checks (and re-activating a key this browser already counted) send increment_uses_count=false.
 // - Every storage access is wrapped in try/catch. Without storage, state lives in memory for the session.
+// - The cached record is never its own proof: a re-check asks only about our own Gumroad products (never a product ID
+//   read from storage alone) and takes the tier from config.js's product (a stored tier counts only for a legacy
+//   product), and an offline code unlocks only while its signature verifies against config.js.
 //
 // Honest limit (SPEC §3): this is client-side gating. It deters casual key sharing; it is not DRM.
 //
@@ -189,6 +192,11 @@ function settings() {
 const activeProvider = () => (env.config && env.config.provider === 'polar' ? 'polar' : 'gumroad');
 const providerLabel = (p) => (p === 'polar' ? 'Polar' : 'Gumroad');
 const passDays = () => fin(env.config?.gumroad?.pass?.days) ?? 7;
+/** verifyOfflineCode options from config: the public key and the names of withdrawn codes (offlineCodes.revoked). */
+const offlineOpts = () => {
+  const o = env.config?.offlineCodes || {};
+  return { publicKey: o.publicKey, revoked: Array.isArray(o.revoked) ? o.revoked : [], now: env.now(), subtle: env.subtle() };
+};
 const supportEmail = () => env.config?.supportEmail || '';
 
 /** A product ID is configured once it is non-empty and no longer the 'PASTE_…' placeholder. */
@@ -214,8 +222,11 @@ function testKeyRetired(r) {
 }
 
 /** Gumroad products to try, in order. Activation: lifetime then pass (SPEC). Re-check: the product that
- *  validated before first, keeping the tier it was bought as, then the configured ones (so a product-ID change
- *  in config.js neither strands nor re-tiers existing buyers). */
+ *  validated before first, then the configured ones (so a product-ID change in config.js neither strands nor
+ *  re-tiers existing buyers). The stored product only goes first while it is one of ours (the lifetime or pass
+ *  product, or one listed in gumroad.legacyProductIds): the record lives in localStorage, so a key for some unrelated
+ *  Gumroad product must not be able to vouch for itself. For the same reason the lifetime and pass products set their
+ *  own tier; only a legacy product keeps the tier it was stored with. Test keys only ever use the test product. */
 function gumroadCandidates({ test = null, prefer = 'lifetime', productId = null } = {}) {
   const g = env.config?.gumroad || {};
   const list = [];
@@ -224,8 +235,14 @@ function gumroadCandidates({ test = null, prefer = 'lifetime', productId = null 
     const clean = id.trim();
     if (!list.some((c) => c.id === clean)) list.push({ id: clean, tier });
   };
-  if (test) { if (productId) add(productId, test); add(g.test?.productId, test); return list; }
-  if (productId) add(productId, prefer);
+  if (test) { add(g.test?.productId, test); return list; }
+  const ours = [g.lifetime?.productId, g.pass?.productId, ...(Array.isArray(g.legacyProductIds) ? g.legacyProductIds : [])]
+    .filter(isConfiguredId).map((id) => id.trim());
+  if (typeof productId === 'string' && ours.includes(productId.trim())) {
+    const id = productId.trim();
+    const tierOf = ['lifetime', 'pass'].find((t) => isConfiguredId(g[t]?.productId) && g[t].productId.trim() === id);
+    add(id, tierOf || prefer);
+  }
   for (const tier of prefer === 'pass' ? ['pass', 'lifetime'] : ['lifetime', 'pass']) add(g[tier]?.productId, tier);
   return list;
 }
@@ -288,7 +305,10 @@ function recordStatus(r, t) {
   if (testKeyRetired(r)) return { status: 'invalid', reason: 'test-ended' };
   if (r.expiresAt !== null && t >= r.expiresAt) return { status: 'pass-expired', reason: null };
   if (r.provider === 'offline') return { status: r.tier === 'pass' ? 'pro-pass' : 'pro-lifetime', reason: null };
-  const graceEndsAt = r.validatedAt + settings().graceMs;
+  const { graceMs } = settings();
+  // validatedAt is only as trustworthy as localStorage. A clock set back a little is fine, but one further in the
+  // future than the grace period itself would make the offline grace endless, so it earns no grace at all.
+  const graceEndsAt = r.validatedAt > t + graceMs ? t : r.validatedAt + graceMs;
   if (t >= graceEndsAt) return { status: 'free', reason: 'reconnect', graceEndsAt };
   if (r.status === 'unreachable') return { status: 'pro-offline-grace', reason: null, graceEndsAt };
   return { status: r.tier === 'pass' ? 'pro-pass' : 'pro-lifetime', reason: null, graceEndsAt };
@@ -318,13 +338,19 @@ const REVOKED_TEXT = {
   disputed: 'This purchase is disputed, so the key no longer unlocks Pro.',
   disabled: 'This license key has been disabled by the seller.',
   revoked: 'This license key has been revoked.',
+  'offline-revoked': 'The seller has withdrawn this offline code, so it no longer unlocks Pro.',
 };
 
 function invalidText(reason, provider) {
   if (reason === 'offline-format' || reason === 'offline-payload' || reason === 'offline-signature') {
     return 'That offline code isn\'t valid. Check that you copied all of it, including the GBS1. at the start.';
   }
-  if (reason === 'offline-rotated') return 'This offline code is no longer accepted. Use online activation instead.';
+  if (reason === 'offline-rotated' || reason === 'offline-disabled') {
+    return 'This offline code is no longer accepted. Use online activation instead.';
+  }
+  if (reason === 'offline-unsupported') {
+    return 'This browser can\'t check offline codes, so this one doesn\'t unlock Pro here. Use online activation instead.';
+  }
   if (reason === 'other-product') return 'That key belongs to a different product, not Gridbook Studio.';
   if (reason === 'test-ended') {
     return 'This was a test key (?licensetest). Test keys stop working once gumroad.test.productId is removed from config.js.';
@@ -349,11 +375,11 @@ function describe(v, r, t) {
       if (offline && v.expiresAt) return `Pro is active until ${fmtEnd(v.expiresAt)} (offline code for ${r.name}).`;
       return offline ? `Pro Lifetime is active (offline code for ${r.name}).` : 'Pro Lifetime is active on this device.';
     case 'pro-pass':
-      return `${offline ? 'Pro pass (offline code)' : 'Sprint Pass'} active: ${timeLeft(v.expiresAt - t)} (ends ${fmtEnd(v.expiresAt)}).`;
+      return `${offline ? 'Pro pass (offline code)' : `${passDays()}-Day Pass`} active: ${timeLeft(v.expiresAt - t)} (ends ${fmtEnd(v.expiresAt)}).`;
     case 'pass-expired':
       return offline
         ? `This offline code expired on ${fmtEnd(v.expiresAt)}.`
-        : `Your Sprint Pass ended on ${fmtEnd(v.expiresAt)}. Get Lifetime to keep making clean exports.`;
+        : `Your ${passDays()}-Day Pass ended on ${fmtEnd(v.expiresAt)}. Get Lifetime to keep making clean exports.`;
     case 'pro-offline-grace':
       return `Couldn't reach ${P} to re-check your license. Pro keeps working offline until ${fmtEnd(v.graceEndsAt)}.`;
     case 'invalid':
@@ -364,7 +390,7 @@ function describe(v, r, t) {
       return withSupport('This key is active on many devices. Email us and we\'ll reset it.');
     case 'free':
       if (v.reason === 'reconnect') return 'Reconnect once to re-verify your license. Clean exports are paused until then.';
-      return 'Free edition. Everything works; exports carry a small proof footer.';
+      return 'Free edition. Build and preview everything; book exports carry a proof header and footer.';
     default:
       return '';
   }
@@ -463,7 +489,7 @@ export function onLicenseChange(cb) {
 
 function needsRecheck(r, t) {
   if (!r) return false;
-  if (r.provider === 'offline') return true; // local signature re-check (catches a rotated public key)
+  if (r.provider === 'offline') return true; // local signature re-check (rotated or removed key, revoked code)
   if (r.expiresAt !== null && t >= r.expiresAt) return false; // an ended pass stays ended
   if (testKeyRetired(r)) return false; // nothing to ask Gumroad: the owner retired the test product
   if (r.status === 'unreachable') return true;
@@ -518,7 +544,7 @@ export function recheckLicense() {
     let r;
     try {
       r = offline
-        ? await verifyOfflineCode(r0.key, { publicKey: env.config?.offlineCodes?.publicKey, now: env.now(), subtle: env.subtle() })
+        ? await verifyOfflineCode(r0.key, offlineOpts())
         : await verifyOnline(r0.provider, r0.key, { increment: false, test: r0.test ? r0.tier : null, prefer: r0.tier,
           productId: r0.productId, startFallback: r0.activatedAt });
     } catch {
@@ -534,9 +560,14 @@ export function recheckLicense() {
     if (offline) {
       if (r.status === 'valid' || r.status === 'expired') {
         rec = { ...r0, tier: r.tier, expiresAt: r.expiresAt, name: r.name, status: 'ok', reason: null, checkedAt: t };
-      } else if (r.status === 'invalid') {
-        rec = { ...r0, status: 'invalid', reason: 'offline-rotated', checkedAt: t };
-      } // unsupported / not-configured: leave the code as it was
+      } else {
+        // Only the signature vouches for an offline record, so a code this site or browser can't check (no or bad
+        // public key, no Ed25519) unlocks nothing, just like a rotated key or a withdrawn code. Offline records are
+        // checked on every load, so putting the key back or taking a name off the revoked list restores the code.
+        const reason = r.status === 'revoked' ? 'offline-revoked' : r.status === 'invalid' ? 'offline-rotated'
+          : r.status === 'not-configured' ? 'offline-disabled' : 'offline-unsupported';
+        rec = { ...r0, status: r.status === 'revoked' ? 'revoked' : 'invalid', reason, checkedAt: t };
+      }
     } else if (r.status === 'valid') {
       rec = { ...r0, tier: r.tier, expiresAt: r.expiresAt, uses: r.uses ?? r0.uses, productId: r.productId ?? r0.productId,
         status: 'ok', reason: null, validatedAt: t, checkedAt: t };
@@ -642,12 +673,12 @@ export async function activate(key) {
       const dead = !rec || ['invalid', 'revoked', 'pass-expired'].includes(recordStatus(rec, t).status);
       if (!wasPro && dead) { rec = next; saveRecord(); }
       return finish(result(false, 'pass-expired',
-        `This Sprint Pass ended on ${fmtEnd(next.expiresAt)}. Get Lifetime to keep making clean exports.`), 'activate');
+        `This ${passDays()}-Day Pass ended on ${fmtEnd(next.expiresAt)}. Get Lifetime to keep making clean exports.`), 'activate');
     }
     if (wasPro && entitlementEnd(rec) > entitlementEnd(next)) return keepCurrent('activate', t);
     rec = next; saveRecord();
     const message = next.tier === 'pass'
-      ? `Activated! Your Sprint Pass runs until ${fmtEnd(next.expiresAt)} (${timeLeft(next.expiresAt - t)}).`
+      ? `Activated! Your ${passDays()}-Day Pass runs until ${fmtEnd(next.expiresAt)} (${timeLeft(next.expiresAt - t)}).`
       : 'Activated! Pro Lifetime is unlocked on this device.';
     return finish(result(true, nextStatus, message), 'activate');
   }
@@ -666,8 +697,9 @@ export async function activateOfflineCode(code) {
   ensureLoaded();
   const c = String(code ?? '').replace(/\s+/g, '');
   if (!c) return result(false, 'empty', 'Paste your offline code first.');
-  const publicKey = env.config?.offlineCodes?.publicKey;
-  if (!publicKey) return result(false, 'not-configured', 'Offline codes aren\'t enabled on this site. Use online activation instead.');
+  if (!env.config?.offlineCodes?.publicKey) {
+    return result(false, 'not-configured', 'Offline codes aren\'t enabled on this site. Use online activation instead.');
+  }
 
   const gen = ++opGen;
   inflight = null;
@@ -675,7 +707,7 @@ export async function activateOfflineCode(code) {
   transient = null;
   emit('offline-code');
   let r;
-  try { r = await verifyOfflineCode(c, { publicKey, now: env.now(), subtle: env.subtle() }); } catch { r = { status: 'unsupported' }; }
+  try { r = await verifyOfflineCode(c, offlineOpts()); } catch { r = { status: 'unsupported' }; }
   if (gen !== opGen) return result(false, 'cancelled', 'Activation was cancelled.');
   busy = null;
   const t = env.now();
@@ -701,6 +733,11 @@ export async function activateOfflineCode(code) {
     const message = invalidText(`offline-${r.reason}`, 'offline');
     if (!wasPro) transient = { status: 'invalid', reason: `offline-${r.reason}`, message };
     return finish(result(false, 'invalid', message, `offline-${r.reason}`), 'offline-code');
+  }
+  if (r.status === 'revoked') {
+    const message = withSupport(REVOKED_TEXT['offline-revoked']);
+    if (!wasPro) transient = { status: 'revoked', reason: 'offline-revoked', message };
+    return finish(result(false, 'revoked', message, 'offline-revoked'), 'offline-code');
   }
   if (r.status === 'not-configured') {
     return finish(result(false, 'not-configured', 'Offline codes aren\'t set up correctly on this site (bad public key in config.js).'), 'offline-code');

@@ -8,6 +8,7 @@ import { createBus } from '../../site/js/core/bus.js';
 import { newProject, newSection } from '../../site/js/core/project.js';
 import { createPipeline } from '../../site/js/ui/pipeline.js';
 import { clearCache } from '../../site/js/puzzles/generate.js';
+import { budget } from './timing.mjs';
 
 function setup({ sections, pro = false } = {}) {
   const project = newProject({ title: 'Pipeline', sections: sections || [newSection('maze', 'standard', { count: 6 })] });
@@ -138,24 +139,33 @@ describe('pipeline', () => {
   });
 
   test('continuous edits still relay out (debounce has a max wait)', async () => {
-    clearCache();
-    const ctx = setup();
-    ctx.pipeline.start();
-    await until(done(ctx));
-    ctx.pipeline.stop();
-    // An edit every 5 ms for 250 ms. A plain 60 ms debounce would never fire during the burst; with maxWaitMs 80
-    // the book must still be laid out several times.
-    const fast = createPipeline({ store: ctx.store, ui: ctx.ui, bus: ctx.bus, isPro: () => false, debounceMs: 60, maxWaitMs: 80, toast() {} });
+    // A book without sections lays out in a millisecond or two, so the pipeline's adaptive waits (which grow with the
+    // last layout's cost) stay at debounceMs 60 / maxWaitMs 80 even on a loaded machine.
+    const store = createStore(newProject({ title: 'Burst', sections: [] }));
+    const ui = createStore({ generating: { active: false, done: 0, total: 0 } }, { history: 0 });
+    const bus = createBus();
+    const books = [];
+    bus.on('book', (b) => books.push(b.project.title));
+    const fast = createPipeline({ store, ui, bus, isPro: () => false, debounceMs: 60, maxWaitMs: 80, toast() {} });
     fast.start();
-    const before = ctx.books.length;
-    const t0 = Date.now();
-    let i = 0;
-    while (Date.now() - t0 < 250) {
-      ctx.store.update((d) => { d.title = `T${i++}`; }, { coalesce: 'title' });
+    await until(() => books.length > 0);
+    // An edit every 5 ms until two books have been laid out mid-burst. A book made from edit k proves the max wait
+    // only if edit k+1 followed within 60 ms: a plain 60 ms debounce can't fire between two such edits. Rather than
+    // count books in a fixed window (CPU load stretches it), the burst runs until that proof, within a budget.
+    const edits = [];
+    const proofs = () => books.filter((t) => /^T\d+$/.test(t)).filter((t) => {
+      const k = Number(t.slice(1));
+      return edits[k + 1] !== undefined && edits[k + 1] - edits[k] < 60;
+    }).length;
+    const deadline = performance.now() + budget(4000);
+    for (let i = 0; proofs() < 2 && performance.now() < deadline; i++) {
+      store.update((d) => { d.title = `T${i}`; }, { coalesce: 'title' });
+      edits.push(performance.now());
       await new Promise((r) => setTimeout(r, 5));
     }
-    assert.ok(ctx.books.length - before >= 2, `books during the burst: ${ctx.books.length - before}`);
-    await until(() => fast.current().project.title === ctx.store.get().title);
+    const gaps = edits.slice(1).map((t, i) => t - edits[i]);
+    assert.ok(proofs() >= 2, `books laid out mid-burst: ${proofs()} of ${books.length - 1} in ${edits.length} edits (longest gap ${Math.round(Math.max(0, ...gaps))} ms)`);
+    await until(() => fast.current().project.title === store.get().title);
     fast.stop();
   });
 

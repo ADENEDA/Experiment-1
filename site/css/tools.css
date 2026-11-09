@@ -60,6 +60,11 @@
 .mg-seg > button { flex: 1 1 auto; min-height: 36px; font-size: var(--fs-sm); }
 .mg-seg > button[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .mg-seg > button:focus-visible { box-shadow: var(--focus); }
+/* Phones: a choice row spans the box and its buttons share it, so five grid sizes fit on one line. */
+@media (max-width: 479.98px) {
+  .mg-seg { width: 100%; }
+  .mg-seg > button { padding-inline: 6px; }
+}
 
 /* Picture chips (site.css .chip). Small phones: one row that scrolls sideways inside its own box. */
 .mg-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -119,11 +124,12 @@
 
 .mg-status { display: grid; gap: 4px; min-height: 4.6em; align-content: start; font-size: var(--fs-sm); line-height: 1.45; }
 .mg-line { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
-.mg-line.mg-ok, .mg-line.mg-warn, .mg-line.mg-err { color: var(--text); }
+/* Badge lines: flex centres the pill on the text beside it (an inline-flex pill takes its baseline from the icon). */
+.mg-line.mg-ok, .mg-line.mg-warn, .mg-line.mg-err { color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
 .mg-line.mg-reveal { color: var(--text); font-weight: 700; }
 .mg-line.mg-note { font-size: var(--fs-xs); }
 .mg-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 7px; border-radius: var(--r-pill); font-weight: 700;
-  font-size: var(--fs-sm); vertical-align: 1px; }
+  font-size: var(--fs-sm); }
 .mg-badge svg { flex: none; }
 .mg-badge-ok { background: var(--ok-soft); color: var(--ok); }
 .mg-badge-warn { background: var(--warn-soft); color: var(--warn); }
@@ -138,7 +144,7 @@
   border: 1px solid var(--border); }
 .mg-h { margin: 0; font-size: var(--fs-lg); letter-spacing: 0; }
 .mg-print .select:disabled { opacity: .6; cursor: not-allowed; }
-.mg-download { width: 100%; white-space: normal; text-align: center; line-height: 1.25; padding-block: 10px; }
+.mg-download { width: 100%; text-align: center; line-height: 1.25; padding-block: 10px; }
 .mg-download[aria-busy="true"] { cursor: progress; }
 .mg-dl-status { margin: -4px 0 0; min-height: 1.45em; font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
 .mg-dl-status:empty { display: none; }
@@ -151,6 +157,7 @@
 
 @media (pointer: coarse) {
   .mg-seg > button, .mg-chips .chip, .mg .select, .mg .input { min-height: 44px; }
+  .mg-seg > button { min-width: 44px; }
   .mg input[type="range"] { min-height: 44px; }
   .mg-check { min-height: 44px; }
   .mg-range-head .btn { min-height: 44px; }
@@ -227,7 +234,9 @@
      .calc-cta             aside card with the puzzle-type select and the Studio link
      dg-*                  SVG classes from calc-core.js coverDiagramSvg / spreadDiagramSvg (ink on white paper)
      .cmp-*                comparison page: .cmp-meta (dated note), .cmp-cost (12-month table), .cmp-choices (cards),
-                           .cmp-sources (source list), .cmp-src (small source links inside table cells)
+                           .cmp-sources (source list, in a plain .wrap so it lines up with the page; .cmp-own = a link
+                           that stands alone in its item, so it gets a 44px touch target), .cmp-src (small source links
+                           inside table cells)
    ===================================================================================================================== */
 
 .calc-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: var(--s-6) clamp(24px, 3.5vw, 48px); align-items: start; }
@@ -363,6 +372,7 @@
 .calc .data-table td.num, .calc-tiers td.num { white-space: nowrap; }
 .calc-mm { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--text-2); }
 .calc-tiers tbody tr.is-current > * { background: color-mix(in srgb, var(--highlight) 30%, var(--surface)); }
+.calc-tiers tbody tr.is-current .calc-mm { color: var(--text); } /* text-2 is under 4.5:1 on the dark highlight */
 .calc-tiers .calc-you { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: var(--r-pill); background: var(--highlight);
   color: var(--highlight-ink); font-size: var(--fs-xs); font-weight: 700; vertical-align: 1px; }
 .calc-tiers .calc-you[hidden] { display: none; }
@@ -389,14 +399,15 @@
 .cmp-choice ul strong { color: var(--text); }
 .cmp-choice .cmp-src { margin-top: auto; padding-top: var(--s-2); }
 .cmp-us { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.cmp-sources { margin: 0; padding-left: 1.4em; display: grid; gap: var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
+.cmp-sources { margin: 0; padding-left: 1.4em; max-width: 90ch; display: grid; gap: var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
 .cmp-sources a { font-weight: 700; overflow-wrap: anywhere; }
-.cmp-sources .nv { font-style: normal; }
+.cmp-sources .nv { display: inline; font-style: normal; } /* runs on after the link instead of wrapping as a block */
 
 @media (pointer: coarse) {
   .calc-opt span { min-height: 44px; }
   .calc .input, .calc .select, .calc-cta .select { min-height: 44px; }
-  .cmp-src { min-height: 44px; }
+  .cmp-src { min-height: 44px; min-width: 44px; }
+  .cmp-sources .cmp-own { display: inline-flex; align-items: center; min-height: 44px; }
 }
 @media print {
   .calc-download, .calc-cta { display: none !important; }

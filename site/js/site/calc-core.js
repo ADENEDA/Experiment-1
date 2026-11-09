@@ -485,7 +485,9 @@ export function cheapestCredits(need, data = KDP_BUILDER) {
 /** Competitor prices quoted on the comparison page (SPEC §1, re-checked where possible on 2026-11-09). */
 export const PRICES = {
   gridbook: { pass: 9, lifetime: 29, lifetimeRegular: 39 },
-  bookbolt: { low: 9.97, high: 19.97 },              // per month; puzzle generators on the higher tier (not verified)
+  // Book Bolt: no price is quoted. Its pricing page blocked the 2026-11-09 check and reviews disagree, so the
+  // comparison page says "not verified" instead of guessing (yearCosts().bookbolt is null).
+  bookbolt: null,
   puzzlebindery: { launch: 49, regular: 79 },         // once
   sudokumaker: { regular: 197, discountPct: 71 },     // one-time, desktop
 };
@@ -497,7 +499,7 @@ export function yearCosts(books) {
   return {
     gridbook: p.gridbook.lifetime,
     gridbookRegular: p.gridbook.lifetimeRegular,
-    bookbolt: Math.round(12 * p.bookbolt.high * 100) / 100,
+    bookbolt: p.bookbolt ? Math.round(12 * p.bookbolt.high * 100) / 100 : null,
     puzzlebindery: p.puzzlebindery.launch,
     puzzlebinderyRegular: p.puzzlebindery.regular,
     kdpbuilder: { low: cheapestCredits(books * lo).price, high: cheapestCredits(books * hi).price },

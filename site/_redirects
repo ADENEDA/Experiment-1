@@ -1,6 +1,11 @@
 # Cloudflare Pages redirects (SPEC 5.9): <from> <to> <status>. Lines starting with # are comments.
-# Each short link is listed with and without the trailing slash.
+# /studio and /buy are listed with and without the trailing slash.
 /studio   /app/      301
 /studio/  /app/      301
 /buy      /pricing/  302
 /buy/     /pricing/  302
+# The buy buttons link here until js/site/site.js puts in the checkout links from config.js (and when JavaScript is
+# off). Replace /pricing/ on these two lines with your two product links (SETUP.md 2.4), for example
+# "/buy/lifetime  https://<your shop>.gumroad.com/l/gridbook-lifetime  302".
+/buy/lifetime  /pricing/  302
+/buy/pass      /pricing/  302

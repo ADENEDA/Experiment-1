@@ -1,46 +1,39 @@
 // Browser checks for the render module (Playwright + Chromium): canvas preview, PDF export through the worker,
 // the forced and automatic main-thread fallbacks, cancellation, PNG export and the generator worker pool.
-// Serves the REPO ROOT on port 8106 (tools/dev/render-check.html imports ../../site/js/...).
-// Skipped when Playwright or its Chromium is not available.
+// Serves the REPO ROOT (tools/dev/render-check.html imports ../../site/js/...) in-process on a free loopback port
+// (or RENDER_TEST_PORT, which fails loudly if taken). Skipped when Playwright or its Chromium is not available.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional, popplerSkip } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { startServer } from '../serve.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const PORT = Number(process.env.RENDER_TEST_PORT) || 8106; // override when 8106 is taken
-const URL_PAGE = `http://localhost:${PORT}/tools/dev/render-check.html`;
+const PORT = Number(process.env.RENDER_TEST_PORT) || 0; // 0 = any free port
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
 
 let server, browser, page;
 const consoleErrors = [];
-let skip = chromium ? false : 'playwright not installed';
-
-async function waitForServer(url, ms = 10000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try { if ((await fetch(url)).ok) return; } catch { /* not up yet */ }
-    if (Date.now() > end) throw new Error(`server did not start at ${url}`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
-}
+let skip = chromium ? false : optional('playwright not installed');
 
 before(async () => {
   if (skip) return;
   try {
     browser = await chromium.launch();
   } catch (e) {
-    skip = `chromium unavailable: ${e.message.split('\n')[0]}`;
+    skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`);
     return;
   }
-  server = spawn(process.execPath, [fileURLToPath(new URL('../serve.mjs', import.meta.url)), String(PORT), ROOT], { stdio: 'ignore' });
-  await waitForServer(URL_PAGE);
+  let origin;
+  ({ server, origin } = await startServer(ROOT, { port: PORT }));
+  const URL_PAGE = `${origin}/tools/dev/render-check.html`;
   page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
@@ -52,7 +45,7 @@ before(async () => {
 
 after(async () => {
   await browser?.close();
-  server?.kill();
+  server?.close();
 });
 
 const run = (expr, arg) => page.evaluate(({ expr, arg }) => window.renderCheck[expr](arg), { expr, arg });
@@ -157,8 +150,7 @@ test('generation uses the module-worker pool; failures are entries, not rejectio
 
 const TMP = mkdtempSync(join(tmpdir(), 'gbs-browser-'));
 process.on('exit', () => { try { rmSync(TMP, { recursive: true, force: true }); } catch { /* ignore */ } });
-let PDFTOPPM = true;
-try { execFileSync('pdftoppm', ['-v'], { stdio: 'ignore' }); } catch (e) { PDFTOPPM = e.code !== 'ENOENT'; }
+const PDFTOPPM_SKIP = popplerSkip('pdftoppm');
 
 /** Rasterize every page of a PDF (base64) with poppler at `dpi`, 8-bit gray: [{ w, h, data }]. */
 function rasterizeAll(pdfB64, dpi) {
@@ -240,7 +232,7 @@ function trapPage() {
 
 test('preview == print: a graphics-state trap page renders the same on canvas and in the PDF', async (t) => {
   if (skip) return t.skip(skip);
-  if (!PDFTOPPM) return t.skip('pdftoppm missing');
+  if (PDFTOPPM_SKIP) return t.skip(PDFTOPPM_SKIP);
   const r = await run('parity', { pages: [trapPage(), { ...trapPage(), w: 792, h: 612 }], scale: 2 });
   const rasters = rasterizeAll(r.pdf, 144);
   assert.equal(rasters.length, 2);
@@ -253,11 +245,11 @@ test('preview == print: a graphics-state trap page renders the same on canvas an
 
 test('preview == print: every page of a real book (layout + all engines) matches the PDF', async (t) => {
   if (skip) return t.skip(skip);
-  if (!PDFTOPPM) return t.skip('pdftoppm missing');
+  if (PDFTOPPM_SKIP) return t.skip(PDFTOPPM_SKIP);
   let worst = 0;
   for (const [theme, trim] of [['standard', '8.5x11'], ['large', '6x9']]) {
     const book = await run('realBookPages', { theme, trim });
-    if (book.error) return t.skip(`layout/engines unavailable: ${book.error.split('\n')[0]}`);
+    if (book.error) assert.fail(`${theme} ${trim}: laying out a real book failed: ${book.error}`); // a failure, not a skip
     assert.ok(book.pages.length >= 24, `${theme}: ${book.pages.length} pages`);
     const r = await run('parity', { pages: book.pages, scale: 1 });
     const rasters = rasterizeAll(r.pdf, 72);

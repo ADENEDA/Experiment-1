@@ -110,6 +110,9 @@ export function mountPreview(el, app) {
   const pool = [];
   let rafId = 0, idleId = 0, scrollRaf = 0;
   let ignoreScrollUntil = 0;
+  // Zooming with keys or the toolbar from a view where the current page fitted keeps that page's centre still, step
+  // after step (an intermediate zoom may not be able to scroll that far), until the user scrolls or changes page.
+  let zoomIntent = null;       // { pageIndex, anchor }
   let selfPage = null;         // a ui.page change this module made itself (do not scroll for it)
   let pendingAnchor = null;    // where to keep the content still on the next zoom relayout (pinch)
   let flashReq = null;
@@ -174,8 +177,13 @@ export function mountPreview(el, app) {
   /** Spacing in CSS px. The top band keeps the floating chips (overlay legend, generating) off the paper. */
   function metrics() {
     const narrow = viewW < 560;
+    const pad = narrow ? 12 : 28;
+    // The floating page navigator (narrow panes) sits over the bottom of the stage: keep the fitted page and the last
+    // row's caption clear of it.
+    const nav = toolbar.nav.parentNode === stage ? toolbar.nav : null;
+    const padBottom = nav ? Math.max(pad, stage.clientHeight - nav.offsetTop + 16) : pad;
     // gap >= padTop: when a row is scrolled to the top, the previous row's caption stays out of the band.
-    return { pad: narrow ? 12 : 28, padTop: narrow ? 36 : 40, gap: narrow ? 36 : 40, captionH: CAPTION_H };
+    return { pad, padTop: narrow ? 36 : 40, padBottom, gap: narrow ? 36 : 40, captionH: CAPTION_H };
   }
 
   function measure() {
@@ -826,7 +834,7 @@ export function mountPreview(el, app) {
       scrollRaf = 0;
       if (destroyed) return;
       updateWindow();
-      if (tnow() >= ignoreScrollUntil) syncPageFromScroll();
+      if (tnow() >= ignoreScrollUntil) { zoomIntent = null; syncPageFromScroll(); }
       reportVisible();
     });
   }, { passive: true });
@@ -955,7 +963,13 @@ export function mountPreview(el, app) {
     } else if (nz !== zoom) {
       zoom = nz;
       const nextEff = G.effectiveZoom(zoom, fit);
-      const anchor = pendingAnchor || (layout ? G.anchorAt(layout, scroller.scrollLeft, scroller.scrollTop, viewW / 2, viewH / 2) : null);
+      let anchor = pendingAnchor;
+      if (pendingAnchor || !layout || zoomIntent?.pageIndex !== (s.page | 0)) zoomIntent = null;
+      if (!anchor && layout) {
+        anchor = zoomIntent ? { ...zoomIntent.anchor, ax: viewW / 2, ay: viewH / 2 }
+          : G.zoomAnchor(layout, s.page | 0, scroller.scrollLeft, scroller.scrollTop, viewW, viewH);
+        if (anchor.centred) zoomIntent = { pageIndex: s.page | 0, anchor };
+      }
       pendingAnchor = null;
       if (Math.abs(nextEff - eff) > 1e-6 || !layout) relayout({ anchor });
       else if (anchor) { const pos = G.scrollForAnchor(layout, anchor, view); setScroll(pos.left, pos.top); updateWindow(); }

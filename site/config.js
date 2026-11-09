@@ -16,6 +16,7 @@ export const CONFIG = {
     pass: { productId: 'PASTE_PASS_PRODUCT_ID', url: 'https://YOURNAME.gumroad.com/l/gridbook-sprint', days: 7 },
     test: { productId: '' }, // optional hidden $0 product, only used when the URL has ?licensetest=1
     maxActivations: 5,       // soft limit on devices per key (uses Gumroad's "uses" counter)
+    legacyProductIds: [],    // if you ever replace a product, put its old product_id here so its buyers stay verified
   },
 
   polar: {
@@ -27,6 +28,7 @@ export const CONFIG = {
   },
 
   // Optional offline unlock codes you can hand to reviewers. Run `node tools/keygen.mjs` and paste the public key here.
+  // To withdraw one code, list the --name it was signed with after the key, e.g. revoked: ['reviewer-jane'] (SETUP.md step 3).
   offlineCodes: { publicKey: '' },
 
   pricing: { lifetime: 29, lifetimeRegular: 39, pass: 9, launchEnds: '2027-01-31', currency: 'USD' },

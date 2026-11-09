@@ -1,7 +1,7 @@
 // Mini puzzle generator for the SEO tool pages (SPEC §6.3, §7; CONTRACTS §13). A real, working tool: puzzles are made
 // in the browser by the same engines as the Studio (via puzzles/generate.js: worker pool, main-thread fallback,
 // cache), the printable page is previewed on a canvas exactly as it prints (layout/book.js target 'printable' +
-// render/canvas-backend.js), and "Download free printable (PDF)" builds a small project, lays it out with
+// render/canvas-backend.js), and "Download free PDF" (the free printable) builds a small project, lays it out with
 // layoutBook(project, puzzles, { target: 'printable', printableSize, pro: false }) and exports it with
 // render/export-pdf.js. Because pro is always false, every page carries the free-printable footer
 // ("Free printable from <printDomain> · make your own puzzle book") and at most CONFIG.free.printableMaxPuzzles
@@ -775,7 +775,7 @@ export function mount(root, config = {}) {
   const countHint = h('p', { class: 'hint mg-hint' }, '');
   countSel.el.append(countHint);
   const dlBtn = h('button', { type: 'button', class: 'btn btn-primary btn-lg mg-download', onclick: () => download() },
-    icon('download'), h('span', {}, 'Download free printable (PDF)'));
+    icon('download'), h('span', {}, 'Download free PDF'));   // short enough for one line on a phone
   const dlStatus = h('p', { class: 'mg-dl-status', 'aria-live': 'polite' });
   const cta = h('a', { class: 'btn mg-cta', href: ctaHref() }, icon('book'), h('span', {}, (config.cta && config.cta.label) || 'Make a whole book'), icon('arrow'));
   const pricing = config.pricing || '../pricing/';
@@ -784,7 +784,7 @@ export function mount(root, config = {}) {
     h('div', { class: 'mg-row' }, paperSeg.el, countSel.el),
     dlBtn, dlStatus,
     h('p', { class: 'mg-fine' }, `Up to ${MAX_FREE} puzzles plus answers per file, for personal and classroom use. Each page has a small “Free printable from ${CONFIG.printDomain}” footer; `,
-      h('a', { href: pricing }, 'Pro'), ' removes it and adds a commercial licence.'),
+      h('a', { href: pricing }, 'Pro'), ' removes it and adds a commercial license.'),
     cta);
   const controls = h('div', { class: 'mg-controls' }, presetSeg ? presetSeg.el : null, adapter.controls);
   const shell = h('div', { class: 'mg', 'data-type': type }, controls, view, print);
@@ -872,7 +872,7 @@ export function mount(root, config = {}) {
       canvas.hidden = false;
     }
     canvas.setAttribute('aria-label', adapter.aria(p, state.answer));
-    const warnings = (book.meta.warnings || []).filter((w) => w.code === 'draw' || w.code === 'draw-overflow').map((w) => w.msg);
+    const warnings = (book.meta.warnings || []).filter((w) => w.code === 'draw' || w.code === 'draw-illegible' || w.code === 'draw-overflow').map((w) => w.msg);
     let ok = false;
     try { ok = !!engine.verify(p).ok; } catch { ok = false; }
     const items = adapter.status(p, ok, page, warnings);

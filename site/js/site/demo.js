@@ -4,7 +4,7 @@
 //
 // Loading: this file has no static imports, so it costs one small request. The engines, fonts and canvas backend are
 // imported only once the demo is on screen and the page has finished loading (or at the first click on a demo
-// control). Until then the static miniature img/gallery/demo-cat.svg (written by tools/make-gallery.mjs from the same
+// control). Until then the static miniature img/gallery/demo-house.svg (written by tools/make-gallery.mjs from the same
 // demoPage() below) holds the exact space, so swapping in the canvas causes no layout shift.
 //
 // Markup contract (site/index.html):
@@ -21,8 +21,11 @@
 /** Demo page in points: square, white, the puzzle centred in an inset box. */
 export const DEMO_PAGE = { w: 360, h: 360, pad: 14 };
 
-/** Picture chips: library ids that exist at 10×10 or scale down cleanly (data/pictures.js). */
-export const DEMO_PICTURES = ['cat', 'heart', 'rabbit', 'rocket', 'ice-cream', 'house'];
+/**
+ * Picture chips: library ids (data/pictures.js) whose solved 10×10 grid still reads as the picture. The first one is
+ * the default, so it leads with the clearest reveal; the cat is left out because at 10×10 it solves to a near-solid block.
+ */
+export const DEMO_PICTURES = ['house', 'heart', 'rabbit', 'rocket', 'ice-cream'];
 /** Word-search theme chips (data/wordlists.js). */
 export const DEMO_THEMES = ['pets', 'ocean-life', 'fruits', 'outer-space', 'garden'];
 
@@ -42,6 +45,12 @@ export function wordsearchOpts(themeId) {
 }
 
 export const demoSeed = (mode, choice, n = 0) => `gridbook-demo:${mode}:${choice}:${n}`;
+
+/** "a house", "an ice cream": a picture name in lower case with its indefinite article. */
+export function withArticle(name) {
+  const s = String(name || 'puzzle').toLowerCase();
+  return `${/^[aeiou]/.test(s) ? 'an' : 'a'} ${s}`;
+}
 
 /** Draw a demo puzzle onto the demo page. engine = puzzle module, style = layout theme. → { w, h, ops, warnings } */
 export function demoPage(engine, puzzle, style, answer = false) {
@@ -125,7 +134,7 @@ function boot(root) {
     }
     if (p.type === 'nonogram') {
       const { w, h } = p.data;
-      canvas.setAttribute('aria-label', state.answer ? `Solved ${w} by ${h} picture puzzle: a ${subject(p).toLowerCase()}.`
+      canvas.setAttribute('aria-label', state.answer ? `Solved ${w} by ${h} picture puzzle: ${withArticle(subject(p))}.`
         : `${w} by ${h} picture puzzle with number clues above each column and beside each row.`);
     } else {
       const n = p.data.n;
@@ -140,7 +149,7 @@ function boot(root) {
     const ok = lib.engines[state.engineId].verify(p).ok;
     const grade = p.stats && p.stats.grade ? p.stats.grade : '';
     const check = p.type === 'nonogram' ? 'Verified: one solution, no guessing' : 'Verified: every word appears once';
-    const reveal = p.type === 'nonogram' && state.answer ? `It’s a ${subject(p).toLowerCase()}. ` : '';
+    const reveal = p.type === 'nonogram' && state.answer ? `It’s ${withArticle(subject(p))}. ` : '';
     status.innerHTML = '';
     const a = document.createElement('span');
     a.className = ok ? 'demo-ok' : 'demo-warn';

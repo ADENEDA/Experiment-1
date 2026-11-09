@@ -9,6 +9,7 @@ import {
 import { GenTimeout, deadlineChecker, now } from '../../site/js/puzzles/common.js';
 import { puzzleSeed, makeRng } from '../../site/js/core/rng.js';
 import { getType as realGetType, TYPE_ORDER } from '../../site/js/puzzles/registry.js';
+import { budget } from './timing.mjs';
 
 // ---- stub engines
 
@@ -163,7 +164,7 @@ test('deadline: an engine past its deadline becomes a timeout entry quickly', as
     assert.equal(e.timeout, true);
     assert.match(e.error, /Timed out after 0\.1 s/);
   }
-  assert.ok(ms < 1000, `two 60 ms deadlines took ${Math.round(ms)} ms`);
+  assert.ok(ms < budget(1000), `two 60 ms deadlines took ${Math.round(ms)} ms`);
 
   // A timeout is not cached: the next attempt can succeed.
   const first = await generateSection(project(), section({ type: 'flaky', count: 1 }));
@@ -387,13 +388,25 @@ test('worker pool: jobs run in module workers, spread across the pool', async ()
   });
 });
 
+test('worker pool: a main-thread loop still yielding when workers are switched on leaves the new jobs to the pool', async () => {
+  // One job longer than a time slice: the main loop finishes it, resolves the batch and then yields before it
+  // looks at the queue again. The test continues within microtasks, while that loop is still suspended.
+  const slow = await generateSection(project(), section({ type: 'slow', count: 1, opts: { ms: 20 }, salt: 41 }));
+  assert.equal(slow[0].type, 'slow');
+  await withFakeWorkers('ok', async () => {
+    const out = await generateSection(project(), section({ count: 6, salt: 42 }));
+    assert.equal(generationInfo().mode, 'worker');
+    assert.deepEqual(out.map((p) => p.error ?? p.type), Array(6).fill('dice'), 'the stale main loop did not take the jobs');
+  });
+});
+
 test('worker pool: a worker that ignores its deadline is killed by the watchdog and replaced', async () => {
   await withFakeWorkers('ok', async () => {
     const t0 = now();
     const out = await generateSection(project(), section({ type: 'hang', count: 1 }), { deadlineMs: 20 });
     assert.equal(out[0].timeout, true);
     assert.match(out[0].error, /Timed out/);
-    assert.ok(now() - t0 < 3000, 'watchdog fired at ~2x deadline + 1 s');
+    assert.ok(now() - t0 < budget(3000), 'watchdog fired at ~2x deadline + 1 s');
     assert.ok(FakeWorker.instances.some((w) => w.terminated), 'stuck worker terminated');
     const after = await generateSection(project(), section({ count: 3, salt: 7 }));
     assert.ok(after.every((p) => p.type === 'dice'), 'replacement worker serves the next jobs');
@@ -497,7 +510,7 @@ test('a batch larger than the cache still returns every puzzle in order and keep
   assert.equal(out.length, 1000);
   assert.ok(out.every((p, i) => p.data.index === i));
   assert.equal(generationInfo().cached, 300);
-  assert.ok(now() - t0 < 5000, `${Math.round(now() - t0)} ms`);
+  assert.ok(now() - t0 < budget(5000), `${Math.round(now() - t0)} ms`);
 });
 
 test('re-entrancy: onProgress may start another generation; generateOne joins an in-flight job', async () => {

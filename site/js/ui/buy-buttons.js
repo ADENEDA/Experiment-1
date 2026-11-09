@@ -181,11 +181,12 @@ export function renderBuyButtons(container, { compact = false } = {}) {
   const links = checkoutLinks(CONFIG);
   const f = (n) => formatPrice(n, price.currency);
   const lifetimeLabel = `Get Lifetime, ${f(price.lifetime)}`;
-  const passLabel = `${price.passDays}-Day Pass, ${f(price.pass)}`;
+  const passName = `${price.passDays}-Day Pass`;
+  const passLabel = `Get the ${passName}, ${f(price.pass)}`;
   const lifetimeBtn = buyButton('lifetime', lifetimeLabel, links.lifetime, links.provider, 'primary');
   const passBtn = buyButton('pass', passLabel, links.pass, links.provider, 'secondary');
   const launchNote = price.launch
-    ? `Launch price${price.launchEndsLabel ? ` until ${price.launchEndsLabel} or the first 100 buyers` : ''}, then ${f(price.lifetimeRegular)}.`
+    ? `Launch price${price.launchEndsLabel ? ` until ${price.launchEndsLabel}` : ''}, then ${f(price.lifetimeRegular)}.`
     : '';
   const anyConfigured = links.lifetime.configured || links.pass.configured;
   const setupNote = anyConfigured ? null
@@ -203,33 +204,37 @@ export function renderBuyButtons(container, { compact = false } = {}) {
       setupNote);
   } else {
     const list = (items) => h('ul', { class: 'gbs-plan-list' }, items.map((t) => h('li', {}, checkIcon(), h('span', { text: t }))));
-    const priceLine = (amount, was, unit) => h('p', { class: 'gbs-plan-price' },
+    // No struck-through "was" price: Lifetime has never sold at its later price, so the launch note says what it
+    // will cost instead.
+    const priceLine = (amount, unit) => h('p', { class: 'gbs-plan-price' },
       h('span', { class: 'gbs-price', text: f(amount) }),
-      was ? h('span', { class: 'gbs-price-was' }, h('span', { class: 'visually-hidden', text: 'Regular price ' }), h('s', { text: f(was) })) : null,
       h('span', { class: 'gbs-price-unit', text: unit }));
     const n = ++uid;
     const lifetime = h('article', { class: 'gbs-plan gbs-plan--lifetime', 'aria-labelledby': `gbs-plan-lifetime-${n}` },
       h('div', { class: 'gbs-plan-head' },
         h('h3', { class: 'gbs-plan-name', id: `gbs-plan-lifetime-${n}`, text: 'Lifetime' }),
         h('span', { class: 'badge badge-pro', text: 'Best value' })),
-      priceLine(price.lifetime, price.launch ? price.lifetimeRegular : null, 'once'),
+      priceLine(price.lifetime, 'once'),
       launchNote ? h('p', { class: 'gbs-plan-note', text: launchNote }) : null,
-      list(['Clean interior PDFs for KDP: no proof footer or header',
+      list(['Clean interior PDFs for KDP: no proof header or footer',
         'Unlimited clean printables (US Letter and A4)',
-        'Commercial-use licence: KDP, Etsy, Gumroad, newsletters',
+        'PNG pages at 300 DPI and a ZIP bundle for KDP',
+        'Commercial-use license: KDP, Etsy, Gumroad, newsletters',
         'Every future update included',
         'Priority email support']),
       lifetimeBtn);
     const pass = h('article', { class: 'gbs-plan gbs-plan--pass', 'aria-labelledby': `gbs-plan-pass-${n}` },
-      h('div', { class: 'gbs-plan-head' }, h('h3', { class: 'gbs-plan-name', id: `gbs-plan-pass-${n}`, text: `${price.passDays}-Day Sprint Pass` })),
-      priceLine(price.pass, null, 'one-time'),
+      h('div', { class: 'gbs-plan-head' }, h('h3', { class: 'gbs-plan-name', id: `gbs-plan-pass-${n}`, text: passName })),
+      priceLine(price.pass, 'one-time'),
       h('p', { class: 'gbs-plan-note', text: `Pro for ${price.passDays} days from purchase. Nothing renews.` }),
       list(['Every Pro feature while the pass runs',
-        'Clean exports and the commercial-use licence',
+        'Clean exports and the commercial-use license',
         'Made for one seasonal book or a deadline']),
       passBtn);
+    // Same order as every plan list on the site: Free (pricing page only), the pass, then Lifetime, the recommended
+    // plan, last.
     root = h('div', { class: 'gbs-buy gbs-buy--plans' },
-      h('div', { class: 'gbs-plans' }, lifetime, pass),
+      h('div', { class: 'gbs-plans' }, pass, lifetime),
       setupNote,
       h('p', { class: 'gbs-buy-note', text: `Secure checkout by ${via}. Your key arrives by email right after purchase.` }));
   }

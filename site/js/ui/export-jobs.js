@@ -1,4 +1,4 @@
-// Export jobs for the export dialog (SPEC 4.7). Browser-only. Each job lays the book out again with the licence
+// Export jobs for the export dialog (SPEC 4.7). Browser-only. Each job lays the book out again with the license
 // state at that moment (CONTRACTS §9: gating happens once, at export time), builds its file(s) and resolves
 // { blob, name, detail }. The dialog downloads the blob; nothing leaves this computer.
 //
@@ -9,13 +9,13 @@
 import { layoutBook } from '../layout/book.js';
 import { coverTemplate } from '../kdp/cover.js';
 import { preflight } from '../kdp/preflight.js';
-import { exportPdf, exportPng } from '../render/export-pdf.js';
+import { exportPdf, exportPng, warmPdfExport } from '../render/export-pdf.js';
 import { serializeProject, stampProject } from '../core/project.js';
 import { TYPES } from '../puzzles/registry.js';
 import { CONFIG } from '../../config.js';
 import { fileNames, BUNDLE_FILES, readmeText, fitDpi, isAppleMobile, IOS_CANVAS_PIXELS } from './export-plan.js';
 
-const FFLATE_URL = new URL('../../vendor/fflate-0.8.2.browser.js', import.meta.url);
+const FFLATE_URL = new URL('../../vendor/fflate-0.8.3.browser.js', import.meta.url);
 export const PNG_DPI = 300;
 
 function abortError() {
@@ -37,7 +37,7 @@ function pdfMeta(project, subject) {
   };
 }
 
-/** layoutBook with the export-time licence; throws a readable error when there is nothing to export. */
+/** layoutBook with the export-time license; throws a readable error when there is nothing to export. */
 function layout(project, puzzles, pro, opts = {}) {
   const book = layoutBook(project, puzzles, { pro, ...opts });
   if (!book.pages.length) {
@@ -77,8 +77,26 @@ async function u8(blob) {
  * A ZIP built with fflate's streaming Zip: stored entries pass through without a copy, text is deflated.
  * add(name, bytes, { compress }) then finish() -> Blob.
  */
+// A failed import() stays failed for the life of the page in Chromium, so a retry asks under a fresh URL.
+let fflateRetry = 0;
+
+function loadFflate() {
+  return import(fflateRetry ? `${FFLATE_URL.href}?retry=${fflateRetry}` : FFLATE_URL.href).catch(() => {
+    fflateRetry++;
+    throw new Error('Could not load the ZIP tools. Check your connection and try again.');
+  });
+}
+
+/**
+ * Load the PDF tools and the ZIP library ahead of the first export (same-origin files, kept in memory), so exports
+ * keep working if the connection drops later. Rejects if something couldn't load; exports then load it on use.
+ */
+export function warmExportTools() {
+  return Promise.all([warmPdfExport(), loadFflate()]).then(() => true);
+}
+
 async function zipWriter() {
-  const { Zip, ZipPassThrough, ZipDeflate } = await import(FFLATE_URL.href);
+  const { Zip, ZipPassThrough, ZipDeflate } = await loadFflate();
   const chunks = [];
   let failure = null;
   let finished = false;

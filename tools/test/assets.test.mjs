@@ -5,12 +5,16 @@
 // not installed. Nothing here needs a browser.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional } from './optional-tools.mjs';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { SAMPLES, buildSample, popplerCheck, stabilizePdf } from '../make-samples.mjs';
 import { brandMark, manifest, ACCENT } from '../make-icons.mjs';
+import { IMAGES, COPY_KEY, copyDigest, pngText } from '../make-og.mjs';
+import { CONFIG } from '../../site/config.js';
+import { pricingInfo } from '../../site/js/ui/buy-buttons.js';
 import { watermarkText } from '../../site/js/layout/book.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -83,7 +87,7 @@ test('sample PDFs pass pdfinfo, pdffonts and pdftotext checks', (t) => {
     const file = join(SITE, 'samples', s.file);
     const geo = s.file.startsWith('sudoku') ? { pageW: 432, pageH: 648 } : { pageW: 612, pageH: 792 };
     const problems = popplerCheck(file, { pages: s.pages, ...geo });
-    if (problems === null) { t.skip('poppler-utils not installed'); return; }
+    if (problems === null) { t.skip(optional('poppler-utils not installed')); return; }
     assert.deepEqual(problems, [], `${s.file}: ${problems.join('; ')}`);
   }
 });
@@ -110,6 +114,18 @@ test('Open Graph images are 1200 x 630 PNGs under 1 MB', () => {
     assert.deepEqual([w, h], [1200, 630], `og/${name}.png size`);
     assert.ok(buf.length < 1024 * 1024, `og/${name}.png is ${(buf.length / 1024).toFixed(0)} KB`);
   }
+});
+
+test('Open Graph images were made from today\'s words (prices included): node tools/make-og.mjs re-makes them', () => {
+  assert.deepEqual(IMAGES.map((i) => i.name), OG);
+  for (const img of IMAGES) {
+    const made = pngText(read(`og/${img.name}.png`))[COPY_KEY];
+    // From the day after pricing.launchEnds, og/pricing.png fails here until it is re-made without the launch price.
+    assert.equal(made, copyDigest(img), `og/${img.name}.png was made from other words (${img.facts.join(' / ')}): run node tools/make-og.mjs`);
+  }
+  // The pricing image names the launch price only while it applies (the check above then catches a stale file).
+  const facts = IMAGES.find((i) => i.name === 'pricing').facts.join(' ');
+  assert.equal(facts.includes(`$${CONFIG.pricing.lifetime} until`), pricingInfo(CONFIG, Date.now()).launch, facts);
 });
 
 test('every og:image a page names exists in site/og', () => {

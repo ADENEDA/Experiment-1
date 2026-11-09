@@ -54,9 +54,9 @@ export const CHECKS = [
   { id: 'safe', title: 'Everything inside the safe area', codes: ['out-of-bounds', 'bad-op'] },
   { id: 'ink', title: 'Text, lines and ink', codes: ['font-size', 'line-width', 'light-fill', 'light-ink', 'large-print-size',
     'large-print-answers', 'glyph', 'color', 'glyph-replaced', 'title-overflow', 'copyright-overflow', 'thanks-overflow',
-    'draw', 'draw-overflow', 'draw-failed'] },
+    'draw', 'draw-illegible', 'draw-overflow', 'draw-failed'] },
   { id: 'puzzles', title: 'Puzzles and answers', codes: ['not-generated', 'gen-error', 'verify', 'no-answer', 'word-list',
-    'answers-off', 'per-page-adjusted', 'answers-per-page-adjusted', 'unknown-type'] },
+    'nonogram-trivial', 'answers-off', 'per-page-adjusted', 'answers-per-page-adjusted', 'answers-per-page-legible', 'unknown-type'] },
   { id: 'clean', title: 'No proof marks', codes: ['watermark', 'free-printable'] },
 ];
 const OTHER = { id: 'other', title: 'Other notes', codes: [] };

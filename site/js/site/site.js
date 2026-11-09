@@ -135,7 +135,7 @@ function setupNav() {
   header?.addEventListener('focusout', (ev) => {
     if (isOpen() && ev.relatedTarget instanceof Node && !header.contains(ev.relatedTarget)) setOpen(false);
   });
-  const wide = matchMedia('(min-width: 720px)');
+  const wide = matchMedia('(min-width: 800px)'); // site.css: the menu button shows under 800px
   const onWide = () => { if (wide.matches && isOpen()) setOpen(false); };
   if (wide.addEventListener) wide.addEventListener('change', onWide);
 }

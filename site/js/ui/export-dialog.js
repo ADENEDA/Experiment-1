@@ -10,18 +10,43 @@
 import { getLicense, isPro } from '../license/license.js';
 import { openUnlockDialog } from './unlock-dialog.js';
 import { downloadBlob } from '../render/export-pdf.js';
-import { trimById, coverSize } from '../kdp/specs.js';
+import { trimById, coverSize, MIN_PAGES } from '../kdp/specs.js';
 import { CONFIG } from '../../config.js';
 import { h, icon, openDialog, isPhone, srOnly } from './dom.js';
 import { preflightSummary } from './topbar.js';
 import { loadPrefs, updatePrefs } from './persist.js';
 import { checklist, kdpSettings, isAppleMobile, LARGE_IOS_PAGES, fmtBytes, fmtInches } from './export-plan.js';
 import { runExport, PNG_DPI } from './export-jobs.js';
+import { layoutBook } from '../layout/book.js';
 
-const FREE_NOTICE = 'Free proof: every page carries a footer, so KDP will reject it. Unlock Pro for a clean file.';
+// app.js loads this module once the Studio is idle and calls this, so exporting works if the connection drops later.
+export { warmExportTools } from './export-jobs.js';
+
+const FREE_NOTICE = 'Free proof: every page carries a proof header and footer, so KDP will reject it. Unlock Pro for a clean file.';
 const LEVEL_ICON = { ok: 'check', info: 'info', warn: 'warn', err: 'error' };
 const LEVEL_WORD = { ok: 'Passed', info: 'Note', warn: 'Warning', err: 'Error' };
 const LETTER_REGIONS = new Set(['US', 'CA', 'MX', 'PH', 'CL', 'CO', 'VE', 'CR', 'GT', 'PA', 'PR', 'DO', 'SV', 'NI', 'BO']);
+// Formats with nothing in them until the book has puzzles: offered disabled, with this reason, instead of failing.
+const NEEDS_PUZZLES = {
+  printable: 'Add a section with puzzles first: this book has no puzzles to print yet.',
+  answers: 'Add a section with puzzles first: this book has no answers yet.',
+  png: 'Add a section with puzzles first: this book has no puzzle or answer pages yet.',
+};
+
+/**
+ * Page count of a book's answers-only PDF, from its own layout (once per laid-out book): it is not the book's own
+ * answer-page count, because the file's key flows from one section to the next even when the book puts answers
+ * after each section, and its gutter is the one for its own page count.
+ */
+const answersOnlyPages = new WeakMap();
+function answersOnlyCount(b, pro) {
+  if (!answersOnlyPages.has(b)) {
+    let n = null;
+    try { n = layoutBook(b.project, b.puzzles || {}, { pro, answersOnly: true }).pages.length; } catch { n = null; }
+    answersOnlyPages.set(b, n);
+  }
+  return answersOnlyPages.get(b);
+}
 
 let current = null; // { promise, focus() }
 
@@ -323,6 +348,9 @@ function build(app) {
     const answerPages = (b?.pages || []).filter((pg) => pg.kind === 'answers').length;
     const puzzlePages = (b?.pages || []).filter((pg) => pg.kind === 'puzzle').length;
     const errors = r.ready ? (b.preflight.errors || []).filter((e) => e.code !== 'watermark').length : 0;
+    const noPuzzles = !total;
+    const keyPages = r.ready && !noPuzzles ? answersOnlyCount(b, pro) : null;   // counted once the puzzles are final
+    const keyCount = keyPages == null ? '' : ` (${keyPages} page${keyPages === 1 ? '' : 's'})`;
 
     const set = (kind, text, badge) => {
       const row = rows.get(kind);
@@ -342,12 +370,13 @@ function build(app) {
       + (pro ? `All ${total} puzzles, no footer.` : `Free: the first ${Math.min(freeCap, total)} of ${total} puzzles with a small footer, for personal and classroom use.`),
     pro ? { cls: 'badge-ok', text: 'Clean' } : { cls: 'badge-accent', text: `Free: ${freeCap} puzzles` });
     set('answers', ((p.answers?.position ?? 'end') === 'none'
-      ? `The answer key is off in the book, but this file still has every answer, at ${trimText}.`
-      : `Just the answer key (${answerPages} page${answerPages === 1 ? '' : 's'}) at ${trimText}, e.g. to sell or share separately.`)
-      + (pro ? '' : ' Free: with the proof footer.'),
+      ? `The answer key is off in the book, but this file${keyCount} still has every answer, at ${trimText}.`
+      : `Just the answer key${keyCount} at ${trimText}, as a PDF download to share or sell alongside the book. It is not a paperback interior: no title page, and no padding to KDP’s ${MIN_PAGES}-page minimum.`)
+      + (pro ? '' : ' Free: with the proof header and footer.'),
     pro ? { cls: 'badge-ok', text: 'Clean' } : { cls: 'badge-warn', text: 'Free proof' });
     set('png', `Every puzzle page and answer page (${puzzlePages + answerPages} images) as a ${PNG_DPI} DPI PNG, in one ZIP. For shop listings, newsletters and classroom screens.`,
       pro ? null : { cls: 'badge-pro', text: 'Pro' });
+    if (noPuzzles) for (const [kind, why] of Object.entries(NEEDS_PUZZLES)) rows.get(kind).desc.textContent = why;
     set('bundle', 'Interior, answers, cover template (PDF and PNG), project file and a README with the exact KDP settings, in one ZIP.',
       pro ? null : { cls: 'badge-pro', text: 'Pro' });
     set('project', 'Your book as a .gridbook.json file: keep it as a backup or open it on another computer. The same puzzles are rebuilt from it.', null);
@@ -355,7 +384,7 @@ function build(app) {
     for (const row of rows.values()) {
       const needsBook = row.kind !== 'project';
       for (const b2 of row.btns) {
-        b2.el.disabled = !!job || (needsBook && !r.ready);
+        b2.el.disabled = !!job || (needsBook && !r.ready) || (noPuzzles && row.kind in NEEDS_PUZZLES);
         // Pro-only formats say so to screen readers too (the badge is beside the heading, not in the button).
         b2.el.title = row.pro && !pro ? 'Part of Pro: opens the unlock dialog' : '';
       }
@@ -444,7 +473,7 @@ function build(app) {
       downloadBlob(res.blob, res.name);
       const freeNote = pro ? ''
         : kind === 'printable' ? ' Free printable: a small footer on every page, for personal and classroom use.'
-          : kind === 'interior' || kind === 'answers' ? ' This is a free proof with a footer on every page.' : '';
+          : kind === 'interior' || kind === 'answers' ? ' This is a free proof with a proof header and footer on every page.' : '';
       setStatus(row, 'ok', [
         h('span', { class: 'ex-status-icon', 'aria-hidden': 'true' }, icon('check', { size: 16 })),
         h('span', { class: 'ex-status-text' },

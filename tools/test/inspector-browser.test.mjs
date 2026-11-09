@@ -3,20 +3,22 @@
 // laid-out book follows, undo/redo restores it, word-list paste (a JSON array), picture upload (a PNG made in the
 // page), drawing with mouse and touch, the Puzzle tab (lock, regenerate, answer view) and the Book tab.
 // The preview, template and export modules are replaced with tiny stubs so only the inspector and shell run.
-// Serves site/ on port 8203 (override with INSPECTOR_TEST_PORT). Skipped when Playwright or Chromium is missing.
+// Serves site/ in-process on a free loopback port (or INSPECTOR_TEST_PORT, which fails loudly if taken).
+// Skipped when Playwright or Chromium is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { startServer } from '../serve.mjs';
 
 const SITE = fileURLToPath(new URL('../../site/', import.meta.url));
-const PORT = Number(process.env.INSPECTOR_TEST_PORT) || 8203;
-const BASE = `http://localhost:${PORT}/app/`;
+const PORT = Number(process.env.INSPECTOR_TEST_PORT) || 0; // 0 = any free port
+let BASE; // set once the server listens
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser;
 
 const STUBS = {
@@ -53,25 +55,17 @@ const sectionInk = (page, sid) => page.evaluate((id) => {
   return `${s.length}:${x}`;
 }, sid);
 
-async function waitForServer(url, ms = 10000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try { if ((await fetch(url)).ok) return; } catch { /* not up yet */ }
-    if (Date.now() > end) throw new Error(`server did not start at ${url}`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
-}
-
 before(async () => {
   if (skip) return;
-  try { browser = await chromium.launch(); } catch (e) { skip = `chromium unavailable: ${e.message.split('\n')[0]}`; return; }
-  server = spawn(process.execPath, [fileURLToPath(new URL('../serve.mjs', import.meta.url)), String(PORT), SITE], { stdio: 'ignore' });
-  await waitForServer(BASE);
+  try { browser = await chromium.launch(); } catch (e) { skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`); return; }
+  let origin;
+  ({ server, origin } = await startServer(SITE, { port: PORT }));
+  BASE = `${origin}/app/`;
 });
 
 after(async () => {
   await browser?.close();
-  server?.kill();
+  server?.close();
 });
 
 /**
@@ -132,7 +126,10 @@ test('every engine control changes the book, with undo/redo, for all four types'
   const { ctx, page } = await newPage();
   try {
     let sid = await openType(page, 'wordsearch');
-    for (const key of ['size', 'shape', 'difficulty', 'wordCount', 'listPosition', 'listSort', 'letterCase']) await exercise(page, sid, 'wordsearch', key);
+    // listPosition: 'auto' (the default) prints like 'below' on a portrait page, so switch to the last option, 'right'.
+    for (const key of ['size', 'shape', 'difficulty', 'wordCount', 'listPosition', 'listSort', 'letterCase']) {
+      await exercise(page, sid, 'wordsearch', key, key === 'listPosition' ? { pick: 'last' } : {});
+    }
     // Basics: count stepper, per page, divider, title (typing is one undo step).
     await page.click(`[data-fk="sec:${sid}:count:inc"]`);
     assert.equal(await page.evaluate(() => gbsApp.store.get().sections[0].count), 3);
@@ -190,7 +187,8 @@ test('word lists: themes, pasted JSON, validation, AI prompt', { timeout: 40000 
     await page.click(`[data-fk="ws:${sid}:mode:custom"]`);
     assert.match(await page.textContent('.ws-custom'), /Pick a theme, paste words \(one per line\), or copy the AI prompt\./);
     assert.equal((await sectionOpts(page)).wordSource.mode, 'themes', 'nothing is stored until there are words');
-    const json = 'Here you go:\n["OWL","ROBIN","SPARROW","EAGLE","HERON","MAGPIE","PUFFIN","CHAFFINCH","ass","ROBIN","CORMORANTSANDGULLS"]';
+    assert.equal(await page.$eval('.ws-ai', (d) => d.open), true, 'the AI helper is open while there are no words');
+    const json ='Here you go:\n["OWL","ROBIN","SPARROW","EAGLE","HERON","MAGPIE","PUFFIN","CHAFFINCH","ass","ROBIN","CORMORANTSANDGULLS"]';
     await page.evaluate(({ sel, text }) => {
       const ta = document.querySelector(sel);
       ta.focus();
@@ -220,7 +218,13 @@ test('word lists: themes, pasted JSON, validation, AI prompt', { timeout: 40000 
     await page.click('.tb-undo');
     assert.equal((await sectionOpts(page)).wordSource.words.at(-1), 'CORMORANTSANDGULLS', 'the paste and the edit are separate steps');
 
-    // AI prompt helper.
+    // AI prompt helper: folded away once there are words (its own programmatic open/close never counts as the
+    // user's choice, whatever the timing); once the user opens it, it stays open through later edits.
+    assert.equal(await page.$eval('.ws-ai', (d) => d.open), false, 'the AI helper folds away once there are words');
+    await page.click('.ws-ai-sum');
+    await page.fill(ta, `${await page.inputValue(ta)}\nWREN`);
+    await settled(page, '(a) => a.store.get().sections[0].opts.wordSource.words.at(-1) === "WREN"');
+    assert.equal(await page.$eval('.ws-ai', (d) => d.open), true, 'the user opened it: it stays open');
     await page.fill(`[data-fk="ws:${sid}:ai-theme"]`, 'garden birds');
     const prompt = await page.inputValue(`[data-fk="ws:${sid}:prompt"]`);
     assert.match(prompt, /themed 'garden birds'\. Rules: 3 to 15 letters/);

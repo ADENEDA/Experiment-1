@@ -5,6 +5,7 @@
 // 44px touch targets at 360px. Serves site/ from an in-process static server. Skipped without Playwright/Chromium.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional, popplerSkip } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -19,14 +20,13 @@ const FOOTER = 'Free printable from gridbookstudio.com · make your own puzzle b
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser, origin;
-let pdftotext = false;
-try { execFileSync('pdftotext', ['-v'], { stdio: 'ignore' }); pdftotext = true; } catch { /* optional */ }
+const pdftotext = !popplerSkip('pdftotext'); // text checks need poppler (required with GBS_REQUIRE_TOOLS=1)
 
 before(async () => {
   if (skip) return;
-  try { browser = await chromium.launch(); } catch (e) { skip = `chromium unavailable: ${e.message.split('\n')[0]}`; return; }
+  try { browser = await chromium.launch(); } catch (e) { skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`); return; }
   server = createServer(async (req, res) => {
     try {
       const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
@@ -84,6 +84,15 @@ for (const p of PAGES) {
     try {
       await idle(page);
       assert.match(await statusText(page), p.badge);
+      // The verification pill sits on the same line as the text beside it (glyph centres within 1px).
+      const skew = await page.evaluate(() => {
+        const line = document.querySelector('.mg-line.mg-ok');
+        const mid = (node) => { const r = document.createRange(); r.selectNodeContents(node); const b = r.getClientRects()[0]; return (b.top + b.bottom) / 2; };
+        const badgeText = [...line.querySelector('.mg-badge').childNodes].find((n) => n.nodeType === 3);
+        const side = line.querySelector(':scope > span:not(.mg-badge)');
+        return side ? Math.abs(mid(side.firstChild) - mid(badgeText)) : 0;
+      });
+      assert.ok(skew <= 1, `${p.path}: badge and its text are ${skew.toFixed(1)}px apart vertically`);
       const label = await page.getAttribute('.mg-stage canvas', 'aria-label');
       assert.match(label, /^Printable page with a/);
       const before = await page.evaluate(() => document.querySelector('.mg-stage canvas').toDataURL());
@@ -215,10 +224,17 @@ test('all three pages at 360px: no horizontal scroll, 44px touch targets in the 
           const b = el.getBoundingClientRect();
           if (b.width && b.height < 43.5) small.push(`${el.tagName} "${el.textContent.trim().slice(0, 20)}" ${Math.round(b.height)}px`);
         }
-        return { sw: document.documentElement.scrollWidth, small };
+        // Each choice row stays on one line (the nonogram's five grid sizes included), and so does the download label.
+        const wrapped = [...document.querySelectorAll('.mg .mg-seg')].filter((s) => s.offsetParent)
+          .filter((s) => new Set([...s.children].map((c) => Math.round(c.getBoundingClientRect().top))).size > 1)
+          .map((s) => [...s.children].map((c) => c.textContent.trim()).join('/'));
+        const dl = document.querySelector('.mg-download').getBoundingClientRect().height;
+        return { sw: document.documentElement.scrollWidth, small, wrapped, dl };
       });
       assert.ok(r.sw <= 360, `${p.path}: page is ${r.sw}px wide at 360px`);
       assert.deepEqual(r.small, [], `${p.path}: small touch targets`);
+      assert.deepEqual(r.wrapped, [], `${p.path}: choice rows that wrap`);
+      assert.ok(r.dl < 50, `${p.path}: the download button is one line (${r.dl}px tall)`);
       assert.deepEqual(errors, []);
     } finally { await ctx.close(); }
   }

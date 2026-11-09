@@ -70,6 +70,15 @@ export function defaults(themeId = 'standard') {
   };
 }
 
+/**
+ * "How to solve" text for a book whose nonogram sections use these opts (CONTRACTS §11): random shapes have no
+ * picture names, so a book of only those doesn't say the answer key names each picture. → string[]
+ */
+export function howToFor(optsList = []) {
+  const named = !optsList.length || optsList.some((o) => (o?.source ?? 'library') !== 'random');
+  return named ? [...meta.howTo] : [...meta.howTo.slice(0, -1), meta.howTo[meta.howTo.length - 1].replace(/ The answer key names each picture\.$/, '')];
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Picture sources
 // ---------------------------------------------------------------------------------------------------------------
@@ -338,14 +347,16 @@ export function generate(opts = {}, rng, ctx = {}) {
   if (filled === 0) notes.push('The picture is blank');
   else if (filled === w * h) notes.push('The picture is solid black');
 
+  const grade = gradeFor(w, h, waves, rep.givens.length);
   return {
     type: 'nonogram', v: 1,
-    title: '',                         // never spoil the picture on the puzzle page
+    // Size and grade, like the other types' subtitles; never the picture's name, which would spoil it.
+    title: `${w}×${h} · ${grade}`,
     answerTitle: pic.name || '',
     data: { w, h, rows, cols, givens: rep.givens },
     solution: { grid: Array.from(rep.bits) },
     stats: {
-      grade: gradeFor(w, h, waves, rep.givens.length),
+      grade,
       ms: Math.round(now() - t0),
       notes,
       adjusted: rep.adjusted,
@@ -408,6 +419,7 @@ const CLUE_GROW = 1.4;    // ...up to this multiple of the theme's preferred clu
 const GAP = 0.45;         // space between row-clue numbers (em)
 const COL_GAP = 0.25;     // least clear space between clue numbers in neighbouring columns (em), so 12 13 never reads 1213
 const ROW_GAP = 0.25;     // least clear space between the digits of neighbouring row clues (em)
+const CLASH_GAP = 0.2;    // below this clear space (em, 1.4pt at 7pt) neighbouring clues read as one number: an error
 const STEP = 1.12;        // baseline step between stacked column-clue numbers (em)
 const PAD = 0.45;         // space between the clues and the grid (em)
 const SMALL_CELL = 9;     // below this (pt, about 3 mm) squares get fiddly to shade with a pencil
@@ -431,6 +443,18 @@ function columnUnits(colStr) {
     const b = colStr[c + 1];
     for (let k = 1; k <= Math.min(a.length, b.length); k++) {
       need = Math.max(need, (measure(a[a.length - k], 1) + measure(b[b.length - k], 1)) / 2 + COL_GAP);
+    }
+  }
+  return need;
+}
+
+/** Widest pair of numbers side by side in neighbouring columns (em, half of each): the cell must exceed this. */
+function columnPairUnits(colStr) {
+  let need = 0;
+  for (let c = 0; c + 1 < colStr.length; c++) {
+    const a = colStr[c], b = colStr[c + 1];
+    for (let k = 1; k <= Math.min(a.length, b.length); k++) {
+      need = Math.max(need, (measure(a[a.length - k], 1) + measure(b[b.length - k], 1)) / 2);
     }
   }
   return need;
@@ -627,18 +651,25 @@ export function draw(puzzle, box, style, mode = 'puzzle') {
 
   const { s, cell } = res;
   const theme = st.label || 'this theme';
+  const errors = [];
   if (s < st.min.clue) {
     warnings.push(`Nonogram clues are ${s}pt; ${theme} needs at least ${st.min.clue}pt. ` +
       'Use fewer puzzles per page or a smaller grid.');
   }
-  if (s * fitUnits > cell + 1e-6) {
+  // Clear space left between neighbouring clue numbers: across columns, and between the digits of stacked rows.
+  const clear = Math.min(cell - s * columnPairUnits(colStr), cell - s * VM.capHeight);
+  if (clear < CLASH_GAP * s - 1e-6) {
+    // Solvers can't tell 12 13 from 1213 (or read one row's clue as another's): the puzzle can't be solved as printed.
+    errors.push(`Nonogram squares are ${cell.toFixed(1)}pt, too small for ${s}pt clues: neighbouring clue numbers ` +
+      'run together, so the puzzle can’t be solved as printed. Use fewer puzzles per page or a smaller grid.');
+  } else if (s * fitUnits > cell + 1e-6) {
     // At the 7pt floor numbers in neighbouring columns (or rows) crowd each other: 12 13 starts to read as 1213.
     warnings.push(`Nonogram squares are ${cell.toFixed(1)}pt, too small for ${s}pt clues. Use fewer puzzles per page or a smaller grid.`);
   } else if (cell < SMALL_CELL) {
     warnings.push(`Nonogram squares are ${cell.toFixed(1)}pt (${(cell / 72 * 25.4).toFixed(1)} mm), fiddly to shade by hand. ` +
       'Use fewer puzzles per page or a smaller grid.');
   }
-  return { ops: res.ops, warnings };
+  return { ops: res.ops, warnings, errors };
 }
 
 export { EMPTY, FILLED };

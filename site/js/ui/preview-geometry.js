@@ -94,7 +94,7 @@ export function pageExtent(pages) {
  * Spread rows are always two page-widths wide with the spine in the middle, so a lone first or last page sits on
  * its own side of the spine. Content narrower than the viewport is centred.
  */
-export function layoutRows(pages, view, scale, { viewportW = 0, pad = 24, padTop = pad, gap = 24, captionH = 24 } = {}) {
+export function layoutRows(pages, view, scale, { viewportW = 0, pad = 24, padTop = pad, padBottom = pad, gap = 24, captionH = 24 } = {}) {
   const ext = pageExtent(pages);
   const idxRows = buildRows(pages.length, view);
   const spread = view !== 'single';
@@ -120,8 +120,8 @@ export function layoutRows(pages, view, scale, { viewportW = 0, pad = 24, padTop
     rows[r] = { pages: ids, top: y, height: hMax, width: rowW, left, spine, slots };
     y += hMax + captionH + gap;
   }
-  const contentH = Math.ceil(idxRows.length ? y - gap + pad : padTop + pad);
-  return { rows, contentW, contentH, rowW, slotW, scale, view, pad, padTop, gap, captionH };
+  const contentH = Math.ceil(idxRows.length ? y - gap + padBottom : padTop + padBottom);
+  return { rows, contentW, contentH, rowW, slotW, scale, view, pad, padTop, padBottom, gap, captionH };
 }
 
 /** Index of the last row whose top is <= y (binary search). -1 if none. */
@@ -162,11 +162,11 @@ export function focusRow(layout, scrollTop, viewH) {
  * Zoom that fits one row (a whole spread, or one page) inside the viewport, page and caption included.
  * Not clamped to ZOOM_MIN: a small pane may need less than 50% to show a whole spread.
  */
-export function fitZoom(pages, view, viewportW, viewportH, { pad = 24, padTop = pad, captionH = 24, min = 0.1, max = ZOOM_MAX } = {}) {
+export function fitZoom(pages, view, viewportW, viewportH, { pad = 24, padTop = pad, padBottom = pad, captionH = 24, min = 0.1, max = ZOOM_MAX } = {}) {
   const ext = pageExtent(pages);
   const wPt = view === 'single' ? ext.w : 2 * ext.w;
   const availW = Math.max(40, viewportW - 2 * pad);
-  const availH = Math.max(40, viewportH - padTop - pad - captionH);
+  const availH = Math.max(40, viewportH - padTop - padBottom - captionH);
   const scale = Math.min(availW / wPt, availH / ext.h);
   const z = scale / PX_PER_PT;
   return Math.min(max, Math.max(min, Math.round(z * 1000) / 1000));
@@ -186,6 +186,24 @@ export function anchorAt(layout, scrollLeft, scrollTop, ax, ay) {
   const offPt = row ? (y - row.top) / scale : 0;
   const xPt = (scrollLeft + ax - layout.contentW / 2) / scale;
   return { page, offPt, xPt, ax, ay };
+}
+
+/**
+ * The point to keep still when the zoom changes from a key or the toolbar (a pinch keeps the point under the
+ * fingers instead): the centre of the viewport, except that while page `page` fits the viewport across (or down),
+ * its centre across (or down). So zooming in from Fit shows the page, not the gutter between a lone first page and
+ * its empty facing slot. Same shape as anchorAt(), plus `centred: true` when it used the page centre.
+ */
+export function zoomAnchor(layout, page, scrollLeft, scrollTop, viewW, viewH) {
+  const a = anchorAt(layout, scrollLeft, scrollTop, viewW / 2, viewH / 2);
+  const { rows, scale } = layout;
+  if (!rows.length || !(scale > 0)) return a;
+  const row = rows[Math.min(rows.length - 1, rowOfPage(page, layout.view))];
+  const slot = row.slots?.find((x) => x.index === page) || row.slots?.[0];
+  if (!slot || row.top >= scrollTop + viewH || row.top + row.height <= scrollTop) return a; // not on screen
+  if (layout.contentW <= viewW + 1) { a.xPt = (slot.x + slot.w / 2 - layout.contentW / 2) / scale; a.centred = true; }
+  if (slot.h <= viewH) { a.page = row.pages[0]; a.offPt = (slot.y + slot.h / 2) / scale; a.centred = true; }
+  return a;
 }
 
 export function scrollForAnchor(layout, anchor, view) {

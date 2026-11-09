@@ -18,7 +18,14 @@ If you need to change a contract, keep it backward compatible and update this fi
   ellipsis `…`, middle dot `·`, `×`. **There are no arrows, check marks, stars or hearts in the font** — draw those as shapes.
 - **Ink:** grayscale only (gray 0 = black, 1 = white). No RGB in any display list. Minimum stroke 0.75pt.
   Non-white fills must be ≤ 0.9 gray (≥ 10% ink). Minimum text size 7pt anywhere in print output.
-- **Tests:** `npm test` (= `node --test "tools/test/**/*.test.mjs"`) must pass. Name files `tools/test/<area>.test.mjs`.
+- **Tests:** `npm test` (= `node --test "tools/test/**/*.test.mjs"`) must pass. Name files `tools/test/<area>.test.mjs`;
+  shared helpers live beside them without `.test` (`timing.mjs`, `optional-tools.mjs`). Browser suites serve `site/`
+  in-process with `startServer(root, { port })` from `tools/serve.mjs` on a free loopback port (`*_TEST_PORT` pins one;
+  a taken port fails the suite instead of testing whatever answers there). Optional tools (Playwright + Chromium,
+  poppler-utils) skip only the checks that need them, each listed as SKIP; `GBS_REQUIRE_TOOLS=1` makes a missing one a
+  failure (for CI). Wall-clock limits go through `timing.mjs`: a slow sample is timed again (a slow seed stays slow) and
+  every limit scales by `GBS_PERF_SLACK` (default 1). A test may skip only for a missing optional tool, never because
+  the code under test throws.
 - **No external network at runtime** except: Gumroad overlay script + `api.gumroad.com` license verify, Polar validate.
 - Wrap every `localStorage` access in try/catch; the app must work without it.
 
@@ -174,6 +181,11 @@ Text helpers in `layout/text.js`: `wrap(text, width, size, weight)` → lines, `
 - `render/export-pdf.js` — `exportPdf(pages, { title, author, onProgress, signal }) → Promise<Blob>` (worker
   `workers/pdf.worker.js` with main-thread fallback that loads `vendor/jspdf-4.2.1.umd.min.js` via a script tag);
   `exportPng(page, { dpi = 300 }) → Promise<Blob>`; `downloadBlob(blob, filename)`; `safeFilename(...)` (ASCII only).
+  The export code loads on first use and needs the network then (there is no service worker). A failed `import()` stays
+  failed for the life of the page in Chromium, so every lazy load on the export path (`ui/export-dialog.js` from
+  `app.js`, `pdf-backend.js`, the fflate ZIP module) retries under a fresh `?retry=N` URL, a worker that failed while
+  `navigator.onLine === false` is tried again, and the error says "Check your connection and try again": after a
+  reconnect, "Try again" works without a reload.
 - `site/vendor/package.json` is `{"type":"commonjs"}` so Node tests can `createRequire` the UMD jsPDF.
 
 ## 9. License (`site/js/license/license.js`)
@@ -198,15 +210,32 @@ Gating happens **once, at export time** (`isPro()` passed to `layoutBook({ pro }
 `.badge-pro`, `.pill-ok/warn/err`, `kbd`, `dialog.gbs-dialog` with `.dialog-head/body/foot`, `.toasts/.toast`).
 Light + dark themes via `prefers-color-scheme` and `:root[data-theme]`. Page previews are always white paper.
 Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `currentColor`, 1.75px, 24 viewBox).
+Contrast (checked by `contrast.test.mjs`): `--text-2`, `--text-3` and `--accent-text` reach 4.5:1 on `--bg`, `--surface`,
+`--surface-2`, `--surface-3` and `--accent-soft` in both themes, so they may carry 11–12 px text. `--accent` is the brand
+fill (buttons, icons, focus ring); text and links use `--accent-text` (also on `--accent-soft`, never `--accent`).
+Focus: `box-shadow: var(--focus)` (2px gap + 2px solid `--accent` ring, ≥ 3:1) or `var(--focus-inset)` where an outer
+ring would be clipped; never a see-through glow on its own.
 
 ## 11. Phase-1 amendments (as built; these override the sections above where they differ)
 
 **§3 engines**
 - Word search `wordSource` (control kind `words`): `{mode:'themes', themes:'all'|string[]}` or `{mode:'custom', words:string[]|string, title?}`. Older forms (plain `string[]`, `{themeId}`) are still accepted. Word data is `site/data/wordlists.js` (`THEMES`, `CATEGORIES`, `THEME_BY_ID`) and `site/data/blocklist.js`; shapes are `MASK_LIST` in `puzzles/masks.js`. The word-list panel uses `validateWords`, `parseWordList`, `aiPrompt` from `puzzles/wordsearch.js`; issues carry `{word, problem, code, severity}` (codes include `blocked`, shown as info). Theme preview for puzzle *i* must call `themeForIndex(wordSource, i, section.opts)`.
-- Nonogram opts: `{size, source:'library'|'random'|'custom', library:{pictures:string[]|'all', category}, custom:{pictures:[{id,name,w,h,bits}]}, density, showGivens}`. The real grid is `data.w × data.h`. `title` is `''`, `answerTitle` is the picture name. Picture data: `site/data/pictures.js` (`PICTURES`, `PICTURE_CATEGORIES`, `PICTURE_SIZES`). Picture panel: `listPictures(opts)`, `CUSTOM_MAX` (40), `pictureName()`, and from `picture-raster.js` `imageToBits / thresholdCells / loadImage / pathToBits / bitsToDataURL`. Badge text comes from `puzzle.stats.notes`.
+- Nonogram opts: `{size, source:'library'|'random'|'custom', library:{pictures:string[]|'all', category}, custom:{pictures:[{id,name,w,h,bits}]}, density, showGivens}`. The real grid is `data.w × data.h`. `title` is `` `${w}×${h} · ${grade}` `` (never the picture name, which would spoil it), `answerTitle` is the picture name. Picture data: `site/data/pictures.js` (`PICTURES`, `PICTURE_CATEGORIES`, `PICTURE_SIZES`). Picture panel: `listPictures(opts)`, `CUSTOM_MAX` (40), `pictureName()`, and from `picture-raster.js` `imageToBits / thresholdCells / loadImage / pathToBits / bitsToDataURL`. Badge text comes from `puzzle.stats.notes`.
   A seed ending in `#pic=<picture id>` makes a library or custom puzzle show that picture (when it is in the section's list) instead of picture *i*; other seeds keep the list order. Helpers: `seedPick(seed)`, `pictureChoices(opts)` (ids in order, `[]` for random shapes), `pictureIdAt(opts, seed, index)`.
 - Sudoku `size` values are numbers (9/6/4). The inspector must keep option values in their declared type, or cache keys will differ. Mazes: `fitPreset(presetId, boxW, boxH)`. Suggest `corners-sides` openings for 2 per page.
 - Engines may throw a plain `Error` with a readable message (for example, a custom word list where no word fits). generate.js passes it on as `{error}`.
+- `draw()` may also return `errors: string[]` (optional): problems that make the printed puzzle unusable, as opposed to
+  `warnings` (worse than ideal). Nonogram: neighbouring clue numbers with under 0.2em of clear space (12 13 reads as
+  1213). Word search: a `'mini'` too small for 7pt letters (it would show only answer bars). A drawing with no ops at all
+  counts the same way. Layout reports these as `draw-illegible`, preflight as errors.
+- Optional engine export `miniFits(opts, box, style) → boolean` (word search): whether a `'mini'` answer for puzzles made
+  with these opts stays readable in `box`. When it says no at the book's answers per page, layout uses the next smaller
+  allowed value (then 2, then 1) for that section and adds the info note `answers-per-page-legible`.
+- Optional engine export `howToFor(optsList) → string[]` (sudoku, word search, nonogram): the "How to solve" paragraphs
+  for a book whose sections of that type use these opts, keeping only what the book contains (grid sizes, grades,
+  word directions). Layout uses it instead of `meta.howTo` when present; `meta.howTo` stays the full text.
+- Word search `listPosition`: `'auto'` (default) | `'below'` | `'right'`. `'auto'` puts the list right of the grid when
+  the puzzle box is at least 1.1× wider than tall (8.25×6 pages, 2 per page), otherwise below. Unknown values mean `'below'`.
 
 **§5 generate.js**
 - The cache key is type + sorted-key JSON opts + seed + index (ctx.count is excluded). Each job gets its own copy of opts.
@@ -219,13 +248,28 @@ Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `c
 - `meta.warnings` entries are objects `{code, msg, page?, pages?, sectionId?}`. pageW and pageH are in pt; margins are in inches from the page edge and include the bleed.
 - Extra meta fields: `trimLabel, pageSizeIn, bleed, safe, theme, paper, answersOnly, paddedPages, puzzleCount, totalPuzzles, sections[]`.
 - Extra page fields: `safeBox, trimBox, sectionId`. Each `refs[]` entry has `num`, the book-wide puzzle number. Answer refs use mode `'mini'`.
+- Answer keys at the end (and answers-only files and printables) flow from one section to the next: a section that
+  starts part-way down an answer page continues there under a sub-heading with its name, if that and one row fit.
+  Such a page has the `sectionId` of its first section and refs from both. A row with fewer minis than columns is
+  centred. After-section keys still start each section on a new page. A section whose last answer page would hold
+  only one short row and nothing else splits its last two pages evenly (6 + 1 becomes 4 + 3; same page count). A
+  one-row grid (2 per page side by side) can't, so an odd count leaves one answer alone there, as on its puzzle
+  pages. A printable section of 1 or 2 puzzles gets 1 or 2 answers per page (as big as the puzzles).
+- How-to pages: several puzzle types share one page ("How to solve the puzzles", a sub-heading per type) while their
+  text fits; a type on its own keeps "How to solve <plural>" and may flow onto continuation pages.
 - Project fields read: `pageNumbers` (true|'outside'|'center'|false|'none'), `back.notes` (true or a page count), `thanksText`, `spineText`. `year` falls back to `createdAt`.
 - Other exports: `watermarkText()` and `isWatermarkOp()`; from text.js, `normalizeText()` and `unprintableChars()`.
 - Paper is `white` or `cream` only: the UI must not offer groundwood.
+- Warning codes include `contents-no-numbers` (contents page on, page numbers off), `title-overflow`,
+  `copyright-overflow`, `thanks-overflow` (text cut off; the thank-you page first moves up, tightens and shrinks its
+  heading, so the built-in text always fits), `draw`, `draw-illegible`, `draw-overflow`, `draw-failed`.
 
 **§7 preflight / cover**
 - preflight takes extra options `types` and `fileName`, and returns extra fields `info` and `stats`. `safeArea()` is exported.
 - Large Print: text inside a puzzle box may go down to `themes.large.min.clue` (14pt). Text elsewhere needs 16pt. Answer pages get a single info note.
+- Layout codes `title-overflow`, `copyright-overflow`, `thanks-overflow` and `draw-illegible` are errors (text cut off
+  mid-sentence or a puzzle that can't be read is not sellable); `padded`, `printable-limit` and `answers-per-page-legible`
+  are info; every other layout code is a warning.
 
 **§8 render**
 - `fontBase64()` is async. Other exports: `fontBytes()`, `fontsReady()`, `FONT_FAMILY`. Await `ensureFonts()` before the first canvas render.
@@ -238,6 +282,16 @@ Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `c
 - `activate()` and `activateOfflineCode()` resolve `{ok, status, reason, message, license}`. `reason:'kept-current'` means a longer Pro license is already active.
 - `onLicenseChange(cb)` calls `cb(license, {cause, prev, notice})`. Show `notice` as a toast when it is set.
 - Possible reasons include `reconnect` (offline grace ended; show `getLicense().message` in the export dialog) and `test-ended`.
+  Offline codes add `offline-rotated`, `offline-disabled` (no valid `offlineCodes.publicKey`), `offline-unsupported`
+  (no Ed25519 in this browser) with status `invalid`, and `offline-revoked` with status `revoked`.
+- The cached record is never its own proof. A Gumroad re-check asks first about the stored product only while it is
+  `gumroad.lifetime/pass.productId` or listed in the optional `gumroad.legacyProductIds: string[]`, and the tier is the
+  one config.js gives that product (the stored tier is kept only for a legacy product, whose tier config.js no longer
+  names; so swapping the two IDs re-tiers existing buyers until it is undone); an offline record is
+  Pro only while its code verifies on this load. A `validatedAt` further ahead than the grace period earns no grace.
+- `offline-code.js`: `verifyOfflineCode(code, {publicKey, now, subtle, revoked})` may also resolve
+  `{status:'revoked', …payload}` when the code's name is in `revoked` (config `offlineCodes.revoked: string[]`, names
+  compared trimmed and case-insensitively). Also exported: `publicKeyBytes(key)` (32 bytes or null), `isRevokedName()`.
 - `openUnlockDialog({reason})` returns `Promise<{pro, license}>`, with reason `'badge'|'export'|'printable'|'png'|'zip'|'credit'`. `renderBuyButtons(el, {compact})`. `closeUnlockDialog()`.
 - Extra localStorage key: `gbs.license.counted`. If a CSP is ever added, it must allow `https://assets.gumroad.com` (script and style).
 
@@ -344,6 +398,10 @@ complete: run `preflight()` and emit the final `'book'`. Preview never generates
 ### 12.7 Persistence (`js/ui/persist.js`, shell) — SPEC 5.8
 Keys `gbs.projects.index`, `gbs.project.<id>`, `gbs.prefs`; autosave 800 ms after the last change; everything in try/catch;
 `storageAvailable()` false → toast "Autosave is off in this browser. Use Save project (Ctrl+S) to keep your work."
+The project key is the truth and the index a cache that `listProjects()` repairs (lost entries come back from the keys,
+dangling ones go, unreadable books are not listed). So `saveProject()` / `restoreProject()` return `ok: true` once the
+project itself is stored, even if a full storage refused the index write (`indexError: 'quota'`; the stale entry is
+dropped so the list rebuilds it): "storage is full" is only reported when the book really wasn't saved.
 
 ### 12.8 Deep links into the Studio (used by landing/tool-page CTAs)
 `app/?template=<id>[&sample=1]` → new project from a template (template ids: `large-print-wordsearch`, `sudoku-easy-expert`,
@@ -353,13 +411,47 @@ overwrites an existing one (it is added to the local project list). After handli
 `history.replaceState`. Unknown values are ignored.
 
 ### 12.9 Studio as built (additions to §12.2–12.8; all backward compatible)
-- **store/bus:** `store.breakCoalesce()`, exported `deepEqual`; `bus.once()`, `bus.count()`.
+- **store/bus:** `store.breakCoalesce()`, exported `deepEqual`; `bus.once()`, `bus.count()`. `createStore(…, { keepBase })`:
+  with `keepBase: true` (the Studio's project store) a full history merges its two oldest steps into one labelled
+  `EARLIER_CHANGES` ("Earlier changes") instead of dropping the oldest, so undoing every step always reaches the book as
+  opened; `store.historyTrimmed()` says the limit was reached.
 - **project.js** also exports `stampProject`, `normalizeSection`, `sectionName`, `isLocked`, `regeneratePuzzle`,
   `regenerateSectionSeeds`, `toggleLock`, `duplicateSectionData`, `moveSectionIn`, `projectSummary` and constants. It never
   reads the clock: `newProject()` leaves `createdAt/updatedAt/year` null and app.js stamps them when it loads a book.
 - **app.actions extras:** `undo()`, `redo()`, `pageOfItem(selection)`, `openMyBooks()`, `switchProject(id)`,
   `deleteProject(id)`, `toggleOutline(open?)`, `closeOutline()`, `announce(msg)`. `newProject(templateId?, {sample})`;
   `openProjectFile()` without a file opens a file picker. `window.gbsApp = app` (debugging and browser tests).
+  `switchProject(id)` → Promise<project | null>. Before the open book is replaced (`switchProject`, `newProject`,
+  `openTemplates`, `openProjectFile`), unsaved work (its last autosave failed, e.g. storage full; or storage is blocked
+  and it changed since the last project file) opens a "Save your changes first?" dialog: Save project file, Discard
+  changes or Cancel (the action then resolves `null` and nothing changes); a `beforeunload` prompt guards the same state.
+  `deleteProject(id)` → `{ title, undo: () → Promise<boolean> | null }` (or null if nothing was stored); deleting another book
+  retries a failed save of the open one.
+- **app extras:** `app.autosave` (`{ status(), isDirty(), flush(), … }` from `createAutosave`) and `app.exportReady()`
+  (true once export's code is loaded ahead of time, see Export below).
+- **My books** (`persist.openMyBooks`): the open book shows its live title and saving state ("Not saved: storage
+  full"). Deleting another book is immediate, with an Undo row in its place; deleting the open book asks first (focus on
+  "Keep it"). Focus never moves to a Delete button by itself. The "changed in another tab" toast (one per book) loads
+  the version stored when **Load it** is pressed, as one undo step (`store.set`).
+- **Toasts** never run out while a modal dialog is open (they can't be clicked then): they get their full time after.
+- **Dialogs:** `openDialog({ …, returnFocus })`: on close focus returns to the opener; if that was the page body or is
+  gone, to `returnFocus`, else `#preview`.
+- **Export:** about 1.5 s after boot (when idle, online, no Data Saver) app.js loads `export-dialog.js` and calls its
+  `warmExportTools()` (`export-jobs.js`: `warmPdfExport()` from `render/export-pdf.js` starts the PDF worker, or loads
+  jsPDF + backend for the main-thread path, and the ZIP library is imported). Same-origin files only; exports then work
+  if the connection drops later, and the offline toast says so. The Answers-only row gives the page count of the
+  answers-only layout itself (`layoutBook(…, { answersOnly: true })`, once per laid-out book), not the book's own
+  answer pages. A book with no puzzles shows Printable, Answers-only and PNG disabled, with the reason as the row text.
+- **Preview zoom:** keys and toolbar zoom around `preview-geometry.js` `zoomAnchor(layout, page, scrollLeft, scrollTop,
+  viewW, viewH)`: the current page's centre while it fits the viewport (kept across steps until the user scrolls),
+  otherwise the viewport centre.
+- **Word lists:** `wordsearch.js` exports `MAX_CUSTOM_WORDS` (2000): custom lists keep that many entries
+  (`normalizeOpts`, generation, the paste box); `validateWords(list, gridSize, { perPuzzle })` adds a `'too-many'` error,
+  checks hidden words via substring lookups (fast for long lists) and names the word puzzles leave out ("…, so CAT is
+  left out of every puzzle" when the list fits one puzzle). Generation notes words without A–Z letters as "has no
+  letters A-Z". The word panel re-validates only when the list or grid changes.
+- **Pictures:** `picture-panel.js` `trivialPicture(bits)` → `'blank' | 'solid' | null`; such uploads (and an all-black
+  drawing) can't be added. `preflight()` warns `'nonogram-trivial'` for blank or solid nonogram solutions.
 - **app.ui extras:** `outlineOpen` (tablet drawer); `fitZoom` (number, set by the preview; +/− step from it, and − from a
   fit below 50% keeps `'fit'`).
 - **Bus event** `'autosave'`: `{state:'saved'|'pending'|'unsaved'|'off'|'error', at, error?}`.
@@ -369,7 +461,14 @@ overwrites an existing one (it is added to the local project list). After handli
   templateById, templateFacts`; `export-plan.js` (pure: checklist, kdpSettings, fileNames, readmeText, …);
   `export-jobs.js` `runExport(kind, {project, puzzles, pro, printableSize, onProgress, signal})`.
 - **Shortcuts:** Delete/Backspace remove the selected section only when focus is not in the settings pane, top bar,
-  status bar, tab bar or a toast (a stray Backspace on a settings switch must not delete a section).
+  status bar, tab bar or a toast (a stray Backspace on a settings switch must not delete a section), and not on any
+  other control (inputs, switches, buttons, links) except the section's own outline row or grip, a puzzle in the
+  preview or a page thumbnail (`shortcuts.js` `deleteKeyTarget(target)`).
+- **Boot watchdog:** `app/index.html` carries one small inline classic script (no requests). If a module of the static
+  graph fails to download or link, `app.js` never runs, so the watchdog replaces `#preview .pane-loading` with a
+  `role="alert"` message and a Reload button and clears `aria-busy`; after 15 s without a start it shows a softer
+  "taking longer" status. `app.js` sets `#app[data-boot="started"]` as soon as it evaluates, which turns it off. Its
+  sha256 is listed in the commented CSP in `site/_headers` (checked by `legal.test.mjs`).
 
 ## 13. Marketing pages (`site/index.html`, tool pages, `pricing/`, `legal/`, `404.html`)
 
@@ -377,8 +476,28 @@ overwrites an existing one (it is added to the local project list). After handli
 - Shared chrome (head links, header, footer, site.js script) is static HTML, copied **verbatim** from
   `docs/site-chrome.html` into every page, with `{R}` replaced by the relative path to the site root (`./` for
   `index.html`, `../` for `pricing/`, tool pages and `legal/*.html`). `404.html` is served at arbitrary paths, so it
-  uses `<base href="/">` with `{R}` = `` (the one page that assumes root hosting).
+  uses `{R}` = `/` (root-absolute URLs; the one page that assumes root hosting). No page uses `<base>`: it would also
+  resolve the `#main` skip link against the root.
 - `js/site/site.js` (owner: landing) fills `[data-cfg="supportEmail"]` (text + mailto), `[data-cfg-price="lifetime|lifetimeRegular|pass"]`,
   `[data-cfg-link="lifetime|pass"]` (Gumroad URLs) from `config.js`, and marks the current nav link. Static HTML carries
-  the default values so pages read correctly without JS.
-- Canonical/OG URLs use `https://gridbookstudio.com/…` (SETUP.md explains the one-line domain replace).
+  the default values so pages read correctly without JS, except checkout links: their static href is `{R}buy/<plan>`,
+  a `site/_redirects` short link that opens `/pricing/` until the owner points it at the product (never a placeholder
+  store URL such as `YOURNAME.gumroad.com`, which is a real stranger's shop). The static prices are today's:
+  `tools/sync-prices.mjs` (`syncHtml`, `syncPrices({ now, write })`) writes `pricingInfo()` into every
+  `data-cfg-price` text, a `hidden` attribute on `data-cfg-launch` notes once the launch has ended (the reverse on
+  `data-cfg-after-launch`) and the JSON-LD Pass/Lifetime offers; tests fail while any page disagrees. Each
+  `og/*.png` carries a tEXt chunk `gbs-copy` (SHA-256 of its kicker, headline and facts, `make-og.mjs`
+  `copyDigest`), so a preview image made from other words fails `assets.test.mjs`.
+- Canonical/OG URLs use `https://gridbookstudio.com/…` (SETUP.md explains the one-line domain replace). Legal pages
+  are linked extensionless (`{R}legal/terms`), their canonical URL: Cloudflare Pages serves `terms.html` there and
+  308-redirects `*.html`; `tools/serve.mjs` does the same locally, and follows `_redirects`.
+- Head metadata (checked by `landing.test.mjs`): titles ≤ 60 characters, meta descriptions ≤ 160; every `og:image` is
+  followed by `og:image:width` 1200, `og:image:height` 630 and an `og:image:alt`; every page preloads both
+  Atkinson Hyperlegible `.ttf` files (no layout shift on the font swap). The Studio has one visually hidden `<h1>` and
+  modulepreloads the whole static import graph of `js/ui/app.js` (`studio-head.test.mjs` keeps the list in sync).
+- Copy rules (checked by `landing.test.mjs` and `calculators.test.mjs`): the Lifetime launch price ends by date only
+  (`pricing.launchEnds`; never a buyer limit); no struck-through "was" price; titles and meta/OG descriptions don't name
+  the launch price, and the static WebApplication offer carries `priceValidUntil` (SETUP.md 2.2 lists the February 1
+  steps); refund answers state both the 30-day any-reason refund and the KDP promise; offline copy promises editing
+  only. Competitor figures come from `book-bolt-alternative/` (dated, sourced); the home and pricing tables quote the
+  same figures. Book Bolt has no quoted price (`calc-core.js` `PRICES.bookbolt` and `yearCosts().bookbolt` are `null`).

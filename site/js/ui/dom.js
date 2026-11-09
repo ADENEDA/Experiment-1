@@ -371,13 +371,17 @@ export function closeMenus() {
 let dialogSeq = 0;
 
 /**
- * openDialog({ title, body, foot, className, describedBy }) -> { el, close(value), result: Promise<value> }
- * body/foot: Node or array of Nodes. The title is the accessible name.
+ * openDialog({ title, body, foot, className, initialFocus, returnFocus }) -> { el, close(value), result: Promise<value> }
+ * body/foot: Node or array of Nodes. The title is the accessible name. On close, focus goes back to the element
+ * that had it on open; if that was nothing (the page body, e.g. a dialog opened at start-up or by a shortcut) or it
+ * has gone, to `returnFocus` (element or function), else the Studio's preview (#preview), so keyboard users don't
+ * have to start again from the top of the page.
  */
-export function openDialog({ title, body, foot, className = '', initialFocus } = {}) {
+export function openDialog({ title, body, foot, className = '', initialFocus, returnFocus } = {}) {
   closeMenus();
   const id = `gbs-dlg-${++dialogSeq}`;
-  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const active = document.activeElement;
+  const opener = active instanceof HTMLElement && active !== document.body ? active : null;
   const closeBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-icon dialog-close', 'aria-label': 'Close' }, icon('close'));
   const el = h('dialog', { class: `gbs-dialog${className ? ` ${className}` : ''}`, 'aria-labelledby': `${id}-title` },
     h('div', { class: 'dialog-head' }, h('h2', { id: `${id}-title`, text: title }), closeBtn),
@@ -398,6 +402,10 @@ export function openDialog({ title, body, foot, className = '', initialFocus } =
   el.addEventListener('close', () => {
     el.remove();
     if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+    else if (!document.querySelector('dialog[open]')) {
+      const fallback = (typeof returnFocus === 'function' ? returnFocus() : returnFocus) || document.getElementById('preview');
+      if (fallback?.isConnected) fallback.focus({ preventScroll: true });
+    }
     resolve(value);
   });
   document.body.appendChild(el);

@@ -46,7 +46,8 @@
    Pricing
      .pricing-grid > .plan (+ .plan-featured), .plan-head, .plan-name, .plan-price (.amount, .was, .unit),
      .plan-note, .plan-cta. js/site/site.js fills prices and checkout links (see its header comment).
-     .plans-layout = Free .plan beside a .plans-paid[data-buy-buttons] box that js/ui/buy-buttons.js fills.
+     .plans-layout = Free .plan beside a .plans-paid[data-buy-buttons] box that js/ui/buy-buttons.js fills; the box is
+     display:contents, so its two plan cards sit in the same three-column row as the Free card.
 
    Landing only: .hero*, .demo* (js/site/demo.js), .chip, .proof*, .gallery-grid/.type-card/.guarantee, .strip*, .steps,
      .spec-*; 404 only: .nf*.
@@ -54,7 +55,7 @@
    Utilities: .muted, .small, .center, .nowrap, .icon (inline SVG sized to text), .visually-hidden (tokens.css).
 
    Chrome (docs/site-chrome.html): .skip, .site-header, .brand, .brand-mark, .nav-toggle, .site-nav, .site-footer,
-   .footer-grid, .footer-h, .fineprint. Under 720px the nav collapses behind .nav-toggle (site.js toggles .is-open);
+   .footer-grid, .footer-h, .fineprint. Under 800px the nav collapses behind .nav-toggle (site.js toggles .is-open);
    without JavaScript the links stay visible and wrap.
 */
 
@@ -103,22 +104,22 @@ main:focus { outline: none; }
   border-radius: 2px; background: var(--highlight); }
 .site-nav .btn { margin-left: var(--s-2); min-height: 38px; padding: 0 14px; font-size: var(--fs-sm); }
 .site-header .nav-toggle { display: none; }
-/* Medium screens: the full nav stays visible (the menu button only appears under 720px), so it tightens up and,
-   below 900px, the wordmark gives way to the logo mark (the link keeps its aria-label). */
-@media (min-width: 720px) and (max-width: 1099.98px) {
+/* Medium screens: the full nav stays visible (the menu button only appears under 800px), so it tightens up and,
+   below 960px, the wordmark gives way to the logo mark (the link keeps its aria-label). */
+@media (min-width: 800px) and (max-width: 1099.98px) {
   .site-header > .wrap { gap: var(--s-3); }
   .site-nav a:not(.btn) { padding: 0 8px; font-size: var(--fs-sm); }
   .site-nav .btn { margin-left: var(--s-1); padding: 0 12px; }
 }
-@media (min-width: 720px) and (max-width: 899.98px) {
+@media (min-width: 800px) and (max-width: 959.98px) {
   .brand > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
-@media (max-width: 719.98px) {
+@media (max-width: 799.98px) {
   .site-nav a:not(.btn) { font-size: var(--fs-md); }
 }
 /* Collapsible menu (JavaScript available). */
-@media (max-width: 719.98px) and (scripting: enabled) {
+@media (max-width: 799.98px) and (scripting: enabled) {
   .site-header .nav-toggle { display: inline-flex; width: 44px; min-height: 44px; margin-right: -8px; color: var(--text); }
   .site-nav { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch;
     gap: 2px; padding: var(--s-2) var(--gutter) var(--s-4); background: var(--surface); border-bottom: 1px solid var(--border);
@@ -130,7 +131,7 @@ main:focus { outline: none; }
   .nav-toggle[aria-expanded="true"] { background: var(--surface-2); }
 }
 /* No JavaScript: keep every link visible; the nav wraps onto its own row. */
-@media (max-width: 719.98px) and (scripting: none) {
+@media (max-width: 799.98px) and (scripting: none) {
   .site-header { position: static; }
   .site-header > .wrap { flex-wrap: wrap; padding-block: var(--s-2); }
   .site-nav { flex-wrap: wrap; width: 100%; margin-inline: -12px; }
@@ -153,7 +154,7 @@ main:focus { outline: none; }
 }
 
 /* ---------- Type helpers ---------- */
-.eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); color: var(--accent);
+.eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); color: var(--accent-text);
   font-size: var(--fs-xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.55; color: var(--text-2); max-width: 62ch; }
 .muted { color: var(--text-2); }
@@ -179,6 +180,8 @@ h3 { font-size: var(--fs-xl); }
 .stack > * + * { margin-top: var(--s-4); }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
 .center .btn-row, .btn-row.center { justify-content: center; }
+/* Phones: buttons in a row stack at full width, so the primary and secondary actions are the same width. */
+@media (max-width: 479.98px) { .btn-row > .btn { flex: 1 1 100%; justify-content: center; } }
 .grid-2, .grid-3, .grid-4 { display: grid; gap: var(--s-5); }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
 .grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
@@ -359,7 +362,9 @@ h3 { font-size: var(--fs-xl); }
 .pricing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); align-items: stretch; }
 .plan { position: relative; display: flex; flex-direction: column; gap: var(--s-3); padding: clamp(22px, 2.4vw, 32px);
   border-radius: var(--r-xl); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-1); }
-.plan-featured { border: 2px solid color-mix(in srgb, var(--highlight) 75%, var(--border-strong)); box-shadow: var(--shadow-2); }
+/* The 2px border takes 1px off the padding, so the featured card's heading and button line up with its neighbours'. */
+.plan-featured { border: 2px solid color-mix(in srgb, var(--highlight) 75%, var(--border-strong)); box-shadow: var(--shadow-2);
+  padding: calc(clamp(22px, 2.4vw, 32px) - 1px); }
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
 .plan-name { margin: 0; font-size: var(--fs-xl); }
 .plan-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px var(--s-2); margin: 0; }
@@ -377,14 +382,14 @@ h3 { font-size: var(--fs-xl); }
 @media (max-width: 899.98px) {
   .pricing-grid { grid-template-columns: minmax(0, 1fr); max-width: 520px; margin-inline: auto; }
 }
-/* Pricing page: the Free card beside the two paid plans rendered by js/ui/buy-buttons.js (or their static fallback). */
-.plans-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--s-5); align-items: stretch; }
-.plans-layout > .plan { height: 100%; }
-.plans-paid { display: grid; }
-.plans-paid .gbs-buy { height: 100%; align-content: start; gap: var(--s-4); }
-.plans-paid .gbs-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); align-items: stretch; }
+/* Pricing page: the Free card and the two paid plans rendered by js/ui/buy-buttons.js (or their static fallback) form
+   one row of three, like .pricing-grid. The wrappers are display:contents, so all three cards are items of the same
+   grid row: they share one height, their buttons line up, and the checkout note gets a full-width row below. */
+.plans-layout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); align-items: stretch; }
+.plans-paid, .plans-paid .gbs-buy, .plans-paid .gbs-plans { display: contents; }
+.plans-paid .gbs-buy-note, .plans-paid .gbs-buy-setup { grid-column: 1 / -1; }
 .plans-paid .gbs-plan { padding: clamp(22px, 2.4vw, 32px); border-radius: var(--r-xl); gap: var(--s-3); }
-.plans-paid .gbs-plan--lifetime { border-width: 2px; box-shadow: var(--shadow-2); }
+.plans-paid .gbs-plan--lifetime { border-width: 2px; box-shadow: var(--shadow-2); padding: calc(clamp(22px, 2.4vw, 32px) - 1px); }
 .plans-paid .gbs-plan-name { font-size: var(--fs-xl); }
 .plans-paid .gbs-price { font-size: clamp(38px, 3.6vw, 48px); line-height: 1; letter-spacing: -0.03em; }
 .plans-paid .gbs-price-was { font-size: var(--fs-lg); }
@@ -394,11 +399,8 @@ h3 { font-size: var(--fs-xl); }
 .plans-paid .gbs-buy-note, .plans-paid .gbs-buy-setup { text-align: center; font-size: var(--fs-sm); }
 /* license.css uses --text-3 for these; on the pricing page they carry real information, so keep AA contrast. */
 .plans-paid .gbs-price-unit, .plans-paid .gbs-price-was, .plans-paid .gbs-buy-note { color: var(--text-2); }
-@media (max-width: 1023.98px) {
-  .plans-layout { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 679.98px) {
-  .plans-paid .gbs-plans { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 899.98px) {
+  .plans-layout { grid-template-columns: minmax(0, 1fr); max-width: 520px; margin-inline: auto; }
 }
 .plans-table { min-width: 640px; }
 .plans-table tbody th { font-weight: 400; color: var(--text); }
@@ -461,7 +463,7 @@ h3 { font-size: var(--fs-xl); }
 .faq summary::after { content: ''; position: absolute; right: 14px; top: 50%; width: 10px; height: 10px; margin-top: -7px;
   border-right: 2px solid var(--text-2); border-bottom: 2px solid var(--text-2); transform: rotate(45deg); transition: transform .2s var(--ease); }
 .faq details[open] > summary::after { transform: rotate(-135deg); margin-top: -2px; }
-.faq summary:hover { color: var(--accent); }
+.faq summary:hover { color: var(--accent-text); }
 .faq-a { padding: 0 48px var(--s-5) 0; color: var(--text-2); }
 .faq-a > :last-child { margin-bottom: 0; }
 @media (max-width: 559.98px) {
@@ -504,7 +506,7 @@ h3 { font-size: var(--fs-xl); }
 .result-value { font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .result-sub { font-size: var(--fs-sm); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .result-primary { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-.result-primary .result-value { color: var(--accent); }
+.result-primary .result-value { color: var(--accent-text); }
 
 /* ---------- Prose (help text, legal pages) ---------- */
 .prose { max-width: 72ch; font-size: 17px; line-height: 1.7; color: var(--text); }
@@ -554,8 +556,10 @@ h3 { font-size: var(--fs-xl); }
 @media (pointer: coarse) {
   .btn, .btn-sm, .chip, .seg > button, .site-nav a:not(.btn), .text-link, .source-link { min-height: 44px; }
   .site-footer ul { gap: 0; }
-  .site-footer li a { display: inline-flex; align-items: center; min-height: 44px; }
+  .site-footer li a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   .data-table a { display: inline-flex; align-items: center; min-height: 44px; }
+  .pricing-foot { align-items: center; }
+  .pricing-foot a { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
 /* ---------- Print ---------- */

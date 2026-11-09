@@ -2,20 +2,22 @@
 // shortcuts}.js): boot, pipeline + preflight, undo/redo, reorder, delete + undo, autosave across reloads, deep links,
 // blocked storage and keyboard shortcuts. The preview, inspector, export and template modules are replaced with tiny
 // stubs (Playwright routes), so this tests the shell's contracts on its own.
-// Serves site/ on port 8211 (override with SHELL_TEST_PORT). Skipped when Playwright or its Chromium is missing.
+// Serves site/ in-process on a free loopback port (or SHELL_TEST_PORT, which fails loudly if taken).
+// Skipped when Playwright or its Chromium is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { startServer } from '../serve.mjs';
 
 const SITE = fileURLToPath(new URL('../../site/', import.meta.url));
-const PORT = Number(process.env.SHELL_TEST_PORT) || 8211;
-const BASE = `http://localhost:${PORT}/app/`;
+const PORT = Number(process.env.SHELL_TEST_PORT) || 0; // 0 = any free port
+let BASE; // set once the server listens
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser;
 
 const STUBS = {
@@ -50,30 +52,22 @@ const settled = (page, cond = '() => true') => page.waitForFunction(`(() => {
 })()`, null, { timeout: 30000 });
 const toastTexts = (page) => page.$$eval('.toast .toast-msg', (els) => els.map((e) => e.textContent));
 
-async function waitForServer(url, ms = 10000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try { if ((await fetch(url)).ok) return; } catch { /* not up yet */ }
-    if (Date.now() > end) throw new Error(`server did not start at ${url}`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
-}
-
 before(async () => {
   if (skip) return;
   try {
     browser = await chromium.launch();
   } catch (e) {
-    skip = `chromium unavailable: ${e.message.split('\n')[0]}`;
+    skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`);
     return;
   }
-  server = spawn(process.execPath, [fileURLToPath(new URL('../serve.mjs', import.meta.url)), String(PORT), SITE], { stdio: 'ignore' });
-  await waitForServer(BASE);
+  let origin;
+  ({ server, origin } = await startServer(SITE, { port: PORT }));
+  BASE = `${origin}/app/`;
 });
 
 after(async () => {
   await browser?.close();
-  server?.kill();
+  server?.close();
 });
 
 test('first run, editing, undo/redo, reorder, delete + undo, autosave across reload', { timeout: 60000 }, async (t) => {
@@ -198,6 +192,28 @@ test('deep link adds a book; blocked storage still works', { timeout: 60000 }, a
     assert.equal(r.p.theme, 'large');
     assert.equal(r.q, '', 'query string removed');
     assert.equal(r.n, 2, 'the earlier book is kept');
+
+    // Junk values are ignored and the book still opens; parameters that aren't the deep link's stay in the address bar.
+    await page.goto(BASE + '?type=maze&count=0&trim=9x9&theme=neon&licensetest=1');
+    await settled(page, '(a, b) => a.store.get().sections[0]?.type === "maze" && b.project === a.store.get()');
+    const j = await page.evaluate(() => ({ p: gbsApp.store.get(), q: location.search, n: JSON.parse(localStorage.getItem('gbs.projects.index')).length }));
+    assert.deepEqual([j.p.trim, j.p.theme], ['8.5x11', 'standard'], 'defaults instead of junk');
+    assert.ok(j.p.sections[0].count >= 1, 'count=0 gives the default count');
+    assert.equal(j.q, '?licensetest=1', 'only the handled parameters are removed');
+    assert.equal(j.n, 3);
+
+    // A link to nothing opens the last book again (no new book); a last book that is gone falls back to the newest.
+    await page.goto(BASE + '?type=dice');
+    await settled(page);
+    assert.equal(await page.evaluate(() => gbsApp.store.get().id), j.p.id, 'the last open book');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('gbs.projects.index')).length), 3);
+    await page.evaluate(() => localStorage.setItem('gbs.prefs', JSON.stringify({ lastProjectId: 'gone_1' })));
+    await page.goto(BASE);
+    await settled(page);
+    const newest = await page.evaluate(() => JSON.parse(localStorage.getItem('gbs.projects.index'))
+      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0].id);
+    assert.equal(await page.evaluate(() => gbsApp.store.get().id), newest, 'the most recently edited book');
+    assert.equal(await page.evaluate(() => window.__picker), undefined, 'not treated as a first run (no template gallery)');
     assert.deepEqual(page.errors, []);
   } finally {
     await ctx.close();
@@ -217,5 +233,43 @@ test('deep link adds a book; blocked storage still works', { timeout: 60000 }, a
     assert.deepEqual(blocked.page.errors, []);
   } finally {
     await blocked.ctx.close();
+  }
+});
+
+test('boot watchdog: a module that fails to load or link shows a message and Reload instead of an endless spinner', { timeout: 60000 }, async (t) => {
+  if (skip) return t.skip(skip);
+  const state = (page) => page.evaluate(() => ({
+    busy: document.getElementById('app').getAttribute('aria-busy'),
+    boot: document.getElementById('app').dataset.boot ?? null,
+    alert: document.querySelector('#preview [role="alert"]')?.textContent ?? null,
+    reload: !!document.querySelector('#preview .boot-stalled button'),
+  }));
+  // A normal boot never shows it.
+  let { ctx, page } = await newPage();
+  try {
+    await page.goto(BASE);
+    await settled(page);
+    const s = await state(page);
+    assert.equal(s.boot, 'started');
+    assert.equal(s.alert, null);
+    assert.equal(await page.$('.boot-stalled'), null);
+  } finally { await ctx.close(); }
+  // A dependency that fails to download (flaky connection, content blocker) and one that fails to link (old and new
+  // files mixed after a deploy): app.js never runs, so only the inline watchdog can tell the user.
+  for (const [what, handler] of [
+    ['download', (r) => r.abort('connectionreset')],
+    ['link', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: 'export const somethingElse = 1;' })],
+  ]) {
+    ({ ctx, page } = await newPage());
+    try {
+      await ctx.route('**/js/core/bus.js', handler);
+      await page.goto(BASE, { waitUntil: 'commit' });
+      await page.waitForSelector('#preview [role="alert"]', { timeout: 10000 });
+      const s = await state(page);
+      assert.match(s.alert, /The Studio couldn’t load\. Check your connection, then reload the page/, what);
+      assert.equal(s.busy, null, `${what}: #app is no longer marked busy`);
+      assert.equal(s.boot, null, `${what}: app.js never ran`);
+      assert.ok(s.reload, `${what}: Reload button`);
+    } finally { await ctx.close(); }
   }
 });

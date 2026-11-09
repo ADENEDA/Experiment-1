@@ -11,6 +11,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import zlib from 'node:zlib';
+import { budget } from './timing.mjs';
+import { optional } from './optional-tools.mjs';
 
 import { FONT_DATA } from '../../site/js/core/fontmetrics-data.js';
 import { measure } from '../../site/js/core/fontmetrics.js';
@@ -37,7 +39,7 @@ function has(cmd) {
 }
 const POPPLER = has('pdffonts') && has('pdfinfo') && has('pdftoppm');
 const PDFTOTEXT = has('pdftotext');
-const skipPoppler = POPPLER ? false : 'poppler-utils not installed';
+const skipPoppler = optional(POPPLER ? false : 'poppler-utils not installed');
 
 function writePdf(name, buf) {
   const p = join(TMP, name);
@@ -237,7 +239,7 @@ test('every op type: fonts embedded, page size, grayscale only, pixels where exp
   assert.ok(inkIn(5, 625, 60, 645) === 0, 'nothing left of centered text');
 });
 
-test('text alignment in the PDF matches fontmetrics exactly (pdftotext word boxes)', { skip: PDFTOTEXT ? false : 'pdftotext missing' }, () => {
+test('text alignment in the PDF matches fontmetrics exactly (pdftotext word boxes)', { skip: optional(PDFTOTEXT ? false : 'pdftotext missing') }, () => {
   const ops = [
     { t: 'text', x: 540, y: 300, s: 'RightAligned', size: 20, weight: 'bold', align: 'right', gray: 0 },
     { t: 'text', x: 306, y: 340, s: 'Centered', size: 20, weight: 'regular', align: 'center', gray: 0 },
@@ -290,7 +292,7 @@ test('200 pages x 400 ops: fast, compact, every page present', { skip: skipPoppl
   });
   const ms = performance.now() - t0;
   console.log(`# 200 pages x 400 ops: ${Math.round(ms)} ms, ${(buf.byteLength / 1e6).toFixed(2)} MB`);
-  assert.ok(ms < 15000, `built in ${Math.round(ms)} ms (target < 15 s)`);
+  assert.ok(ms < budget(15000), `built in ${Math.round(ms)} ms (target < 15 s)`);
   assert.equal(calls, 200);
   assert.deepEqual(last, [200, 200]);
   assert.ok(buf.byteLength < 4e6, `size ${buf.byteLength} bytes (target <= 4 MB)`);
@@ -562,7 +564,7 @@ test('dash patterns: invalid arrays draw solid lines and never reach the PDF; no
     /Page 1, op 0 \(line\): invalid dash/);
 });
 
-test('text: soft hyphens are dropped, unsupported glyphs print "?", PDF-special characters round-trip', { skip: PDFTOTEXT ? false : 'pdftotext missing' }, () => {
+test('text: soft hyphens are dropped, unsupported glyphs print "?", PDF-special characters round-trip', { skip: optional(PDFTOTEXT ? false : 'pdftotext missing') }, () => {
   const special = 'a(b)c\\d “q” ‘s’ – — … · × • é ñ ß ¿ ½ © ® ° ±';
   const ops = [
     { t: 'text', x: 20, y: 50, s: special, size: 14, weight: 'regular', align: 'left', gray: 0 },
@@ -601,7 +603,7 @@ test('KDP maximum: an 828-page book builds well inside the 15 s budget', { skip:
   const buf = B.buildPdf(jsPDF, pages, FONTS, { metrics: FONT_DATA });
   const ms = performance.now() - t0;
   console.log(`# 828 pages x 300 ops: ${Math.round(ms)} ms, ${(buf.byteLength / 1e6).toFixed(2)} MB`);
-  assert.ok(ms < 15000, `${Math.round(ms)} ms`);
+  assert.ok(ms < budget(15000), `${Math.round(ms)} ms`);
   const file = writePdf('kdp-max.pdf', buf);
   assert.match(execFileSync('pdfinfo', [file], { encoding: 'utf8' }), /Pages:\s+828\b/);
 });
@@ -705,4 +707,41 @@ test('canvas thumbnails greek tiny text; full renders reset compositing state an
   const rt = drawPageThumb(t.canvas, page, { cssWidth: 120, dpr: 1 });
   assert.equal(rt.width, 120);
   assert.deepEqual(t.c.log.filter((c) => c[0] === 'fillText').map((c) => c[1]), ['BIG']);
+});
+
+test('every KDP trim, with and without bleed: the real book PDF is exactly trim (+0.125 in wide, +0.25 in high with bleed); covers match coverSize', { skip: skipPoppler, timeout: 60000 }, async () => {
+  const { TRIMS, interiorPageSize, coverSize, inToPt } = await import('../../site/js/kdp/specs.js');
+  const { layoutBook } = await import('../../site/js/layout/book.js');
+  const { coverTemplate } = await import('../../site/js/kdp/cover.js');
+  const { getType } = await import('../../site/js/puzzles/registry.js');
+  const { makeRng, puzzleSeed } = await import('../../site/js/core/rng.js');
+  const S = getType('sudoku');
+  const section = { id: 's0', type: 'sudoku', title: 'Sudoku', count: 4, perPage: 1, divider: false, opts: S.defaults('standard'), salt: 0, seeds: {}, locked: {} };
+  const puzzles = { s0: Array.from({ length: 4 }, (_, i) => S.generate(section.opts, makeRng(puzzleSeed('trims', section, i)), { index: i, count: 4 })) };
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+  for (const t of TRIMS) {
+    for (const bleed of [false, true]) {
+      const project = { v: 1, id: 'b_trims', seed: 'trims', title: 'Trim Check', author: 'A', year: 2026, trim: t.id, paper: 'white', bleed,
+        theme: 'standard', sections: [section], front: { title: true, copyright: true }, answers: { perPage: 4, position: 'end' },
+        back: {}, pageNumbers: true, header: '' };
+      const book = layoutBook(project, puzzles, { pro: true });
+      const want = interiorPageSize(t.id, bleed);
+      assert.ok(near(want.w, t.w + (bleed ? 0.125 : 0)) && near(want.h, t.h + (bleed ? 0.25 : 0)), `${t.id} bleed=${bleed}: KDP's bleed sizes`);
+      const file = writePdf(`trim-${t.id}-${bleed}.pdf`, B.buildPdf(jsPDF, book.pages, FONTS, { metrics: FONT_DATA }));
+      const got = pageSizes(file, book.pages.length);
+      assert.equal(got.length, book.pages.length, `${t.id} bleed=${bleed}: every page is in the PDF`);
+      for (const [i, [w, h]] of got.entries()) {
+        assert.ok(near(w, inToPt(want.w)) && near(h, inToPt(want.h)), `${t.id} bleed=${bleed} page ${i + 1}: ${w}x${h} pt, want ${inToPt(want.w)}x${inToPt(want.h)}`);
+      }
+    }
+  }
+  // Cover templates: one page, full wrap with bleed and a spine that grows with the page count and paper.
+  for (const trim of ['5x8', '8.25x6', '8.5x11']) {
+    for (const [pages, paper] of [[24, 'white'], [80, 'cream'], [300, 'white']]) {
+      const g = coverTemplate({ trim, paper, title: 'Cover Check' }, pages, { pro: true });
+      const want = coverSize(trim, pages, paper);
+      const [[w, h]] = pageSizes(writePdf(`cover-${trim}-${pages}.pdf`, B.buildPdf(jsPDF, [g], FONTS, { metrics: FONT_DATA })), 1);
+      assert.ok(near(w, inToPt(want.w)) && near(h, inToPt(want.h)), `cover ${trim} ${pages}p ${paper}: ${w}x${h} pt`);
+    }
+  }
 });

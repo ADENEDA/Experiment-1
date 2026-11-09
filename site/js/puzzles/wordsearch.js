@@ -28,6 +28,8 @@ export const MIN_SIZE = 10;
 export const MAX_SIZE = 25;
 const MIN_WORD = 3;
 const MAX_WORDS = 60;
+/** Most entries a custom word list keeps (the rest are left out, and the word-list panel says so). */
+export const MAX_CUSTOM_WORDS = 2000;
 const TRIES = 200;          // random placement tries per word before the exhaustive scan
 const MAX_ATTEMPTS = 12;    // whole-grid rebuilds if cleanup cannot converge (practically never)
 const FILL_TRIES = 4;       // grids to try when one falls short of the target word count
@@ -86,6 +88,7 @@ export const controls = [
   { key: 'wordSource', label: 'Words', kind: 'words' },
   {
     key: 'listPosition', label: 'Word list', kind: 'select', options: [
+      { value: 'auto', label: 'Automatic: beside wide grids' },
       { value: 'below', label: 'Below the grid' },
       { value: 'right', label: 'Right of the grid' },
     ],
@@ -104,11 +107,37 @@ export const controls = [
   },
 ];
 
+/**
+ * "How to solve" text for a book whose word-search sections use these opts (CONTRACTS §11): the directions sentence
+ * covers only the difficulties the book has, so an easy-only book doesn't promise backwards words. → string[]
+ */
+export function howToFor(optsList = []) {
+  const levels = new Set((optsList.length ? optsList : [defaults()]).map((o) => normalizeOpts(o).difficulty));
+  const [easy, medium, hard] = ['easy', 'medium', 'hard'].map((d) => levels.has(d));
+  let dirs;
+  if (levels.size === 1) {
+    dirs = easy ? 'Words run across, from left to right, or down, from top to bottom.'
+      : medium ? 'Words run across, down or diagonally, and never backwards.'
+        : 'Words run in all eight directions: across, down and diagonally, forwards or backwards.';
+  } else {
+    const parts = [];
+    if (easy) parts.push('In easy puzzles words run across or down.');
+    if (medium) parts.push(easy ? 'Medium puzzles add diagonals' : 'In medium puzzles words run across, down or diagonally');
+    if (hard) {
+      const h = 'hard puzzles hide words in all eight directions, including backwards';
+      if (medium) parts[parts.length - 1] += `, and ${h}.`;
+      else parts.push(`${h[0].toUpperCase()}${h.slice(1)}.`);
+    } else parts[parts.length - 1] += '.';
+    dirs = parts.join(' ');
+  }
+  return [meta.howTo[0], dirs, meta.howTo[2]];
+}
+
 export function defaults(themeId = 'standard') {
   const base = {
     size: 15, shape: 'square', difficulty: 'medium', wordCount: 'auto',
     wordSource: { mode: 'themes', themes: 'all' },
-    listPosition: 'below', listSort: 'alpha', letterCase: 'upper',
+    listPosition: 'auto', listSort: 'alpha', letterCase: 'upper',
   };
   if (themeId === 'large') return { ...base, size: 13 };
   if (themeId === 'kids') return { ...base, size: 10, difficulty: 'easy', wordSource: { mode: 'themes', themes: [...KIDS_THEMES] } };
@@ -157,18 +186,49 @@ export function parseWordList(input) {
 }
 
 /**
- * Validate a word list for a grid of `gridSize`.
+ * Pairs [i, j] of `words` (distinct, cleaned) where words[i] hides inside words[j], forwards or backwards, in
+ * (i, j) order. Two words of the same length (one is the other backwards) give one pair, the smaller word first.
+ * Looks up every substring of each word instead of comparing every pair, so long lists stay fast.
+ */
+function hiddenPairs(words) {
+  const at = new Map(), atRev = new Map();
+  words.forEach((w, i) => { at.set(w, i); atRev.set(reverse(w), i); });
+  const lengths = [...new Set(words.map((w) => w.length))].sort((a, b) => a - b);
+  const pairs = [];
+  words.forEach((b, j) => {
+    const found = new Set();
+    for (const L of lengths) {
+      if (L > b.length) break;
+      for (let k = 0; k + L <= b.length; k++) {
+        const part = b.slice(k, k + L);
+        for (const i of [at.get(part), atRev.get(part)]) {
+          if (i === undefined || i === j || found.has(i)) continue;
+          if (L === b.length && !(words[i] < b)) continue; // a reversed pair is reported once
+          found.add(i);
+          pairs.push([i, j]);
+        }
+      }
+    }
+  });
+  return pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+}
+
+/**
+ * Validate a word list for a grid of `gridSize`. `perPuzzle` (words each puzzle takes, if known) makes the
+ * hidden-word messages exact: a list that fits in one puzzle leaves the shorter word out of every puzzle.
+ * Only the first MAX_CUSTOM_WORDS entries are used.
  * @returns {{ words: string[], issues: {word, problem, code, severity}[] }}
  *   words: cleaned, de-duplicated, usable words (uppercase A-Z, 3..gridSize letters), in input order.
- *   codes: 'empty' | 'too-short' | 'too-long' (errors, word removed), 'stripped' | 'duplicate'
+ *   codes: 'empty' | 'too-short' | 'too-long' | 'too-many' (errors, word removed), 'stripped' | 'duplicate'
  *          (warnings, word kept once / cleaned), 'substring' (warning: the pair can't share a puzzle),
  *          'blocked' (warning: the word itself is on the crude/offensive list; kept, as the author chose it).
  */
-export function validateWords(list, gridSize = MAX_SIZE) {
+export function validateWords(list, gridSize = MAX_SIZE, { perPuzzle } = {}) {
   const n = clamp(Math.floor(Number(gridSize)) || MAX_SIZE, MIN_WORD, 99);
   const words = [], issues = [];
   const seen = new Set();
-  for (const original of parseWordList(list)) {
+  const all = parseWordList(list);
+  for (const original of all.slice(0, MAX_CUSTOM_WORDS)) {
     const w = cleanWord(original);
     if (!w) {
       issues.push({ word: original, code: 'empty', severity: 'error', problem: 'has no letters A-Z, so it was removed' });
@@ -195,14 +255,20 @@ export function validateWords(list, gridSize = MAX_SIZE) {
       issues.push({ word: w, code: 'blocked', severity: 'warning', problem: 'is on the list of crude or offensive words (it will still be used if you keep it)' });
     }
   }
-  for (const a of words) {
-    for (const b of words) {
-      if (a === b || a.length > b.length || (a.length === b.length && a > b)) continue;
-      if (b.includes(a) || b.includes(reverse(a))) {
-        const how = a.length === b.length ? `is ${b} spelled backwards` : `hides inside ${b}${b.includes(a) ? '' : ' (backwards)'}`;
-        issues.push({ word: a, code: 'substring', severity: 'warning', problem: `${how}, so the two are never put in the same puzzle` });
-      }
-    }
+  // Puzzles keep the longer word of a pair (of a reversed pair, the one listed first) and leave the other out.
+  const oneChunk = Number.isFinite(perPuzzle) && words.length <= perPuzzle;
+  for (const [i, j] of hiddenPairs(words)) {
+    const a = words[i], b = words[j];
+    const same = a.length === b.length;
+    const how = same ? `is ${b} spelled backwards` : `hides inside ${b}${b.includes(a) ? '' : ' (backwards)'}`;
+    const [out, kept] = !same || i > j ? [a, b] : [b, a];
+    const tail = oneChunk ? `so ${out} is left out of every puzzle` : `so ${out} is left out of puzzles that also use ${kept}`;
+    issues.push({ word: a, code: 'substring', severity: 'warning', problem: `${how}, ${tail}` });
+  }
+  if (all.length > MAX_CUSTOM_WORDS) {
+    const extra = all.length - MAX_CUSTOM_WORDS;
+    issues.push({ word: cleanWord(all[MAX_CUSTOM_WORDS]) || all[MAX_CUSTOM_WORDS], code: 'too-many', severity: 'error',
+      problem: `${extra === 1 ? 'is' : `and the ${extra - 1} words after it are`} left out: a list holds up to ${MAX_CUSTOM_WORDS} words` });
   }
   return { words, issues };
 }
@@ -222,7 +288,7 @@ function normalizeSource(src) {
   if (Array.isArray(src)) return { mode: 'custom', words: src };
   if (src && typeof src === 'object') {
     if (src.mode === 'custom' || (src.mode == null && src.words != null)) {
-      const out = { mode: 'custom', words: src.words ?? [] };
+      const out = { mode: 'custom', words: Array.isArray(src.words) ? src.words.slice(0, MAX_CUSTOM_WORDS) : src.words ?? [] };
       if (typeof src.title === 'string') out.title = src.title;
       return out;
     }
@@ -247,7 +313,8 @@ export function normalizeOpts(opts = {}) {
     difficulty: DIFFICULTIES[o.difficulty] ? o.difficulty : 'medium',
     wordCount: wc === 'auto' || !Number.isFinite(wc) || wc < 1 ? 'auto' : Math.min(wc, MAX_WORDS),
     wordSource: normalizeSource(o.wordSource),
-    listPosition: o.listPosition === 'right' ? 'right' : 'below',
+    // 'auto' (the default) or a fixed side; unknown values mean 'below', the original fixed position.
+    listPosition: o.listPosition === 'right' || o.listPosition === 'auto' ? o.listPosition : 'below',
     listSort: o.listSort === 'length' ? 'length' : 'alpha',
     letterCase: o.letterCase === 'lower' ? 'lower' : 'upper',
   };
@@ -462,12 +529,13 @@ function chooseWords(o, index, limit) {
   const target = o.wordCount === 'auto' ? auto : o.wordCount;
   const notes = [];
   if (src.mode === 'custom') {
-    const raw = parseWordList(src.words);
+    const raw = parseWordList(src.words).slice(0, MAX_CUSTOM_WORDS);
     const list = [];
     const seen = new Set();
     for (const r of raw) {
       const w = cleanWord(r);
-      if (w.length < MIN_WORD) notes.push(`${w || r}: too short (words need ${MIN_WORD}+ letters)`);
+      if (!w) notes.push(`${r}: has no letters A-Z, so it was left out`);
+      else if (w.length < MIN_WORD) notes.push(`${w}: too short (words need ${MIN_WORD}+ letters)`);
       else if (!seen.has(w)) { seen.add(w); list.push(w); }
     }
     if (!list.length) throw new Error('The custom word list is empty: paste some words (3+ letters each) or choose a theme.');
@@ -850,7 +918,7 @@ function resolveStyle(style) {
 
 const fmtPt = (v) => String(Math.round(v * 10) / 10);
 
-/** Grid letter size for a cell size; 0 = draw no letters (mini thumbnails only). */
+/** Grid letter size for a cell size; 0 = draw no letters (mini thumbnails too small for 7pt letters). */
 function letterSize(cell, mode) {
   const f = cell * LETTER_RATIO;
   if (f >= MIN_TEXT) return Math.floor(f * 4) / 4;
@@ -879,6 +947,29 @@ function fitCell(availW, availH, g, cellMax) {
     if (fits(mid)) lo = mid; else hi = mid;
   }
   return lo > 0.5 ? gridMetrics(lo, g) : null;
+}
+
+/**
+ * True when an answer-key mini of a puzzle made with `opts` keeps its letters (7pt or more) in `box`
+ * (CONTRACTS §11). Below that the mini shows only the answer bars, which solvers cannot match to words,
+ * so the layout uses fewer answers per page instead. Sized for the full square grid, so shapes
+ * (which leave edge rows empty) always fit when this says yes.
+ */
+export function miniFits(opts, box, style) {
+  if (!box || !(box.w > 0 && box.h > 0)) return false;
+  const n = normalizeOpts(opts).size;
+  const m = fitCell(box.w, box.h, { gr: n, gc: n, framed: true, mode: 'mini', st: resolveStyle(style) }, Infinity);
+  return !!(m && m.f);
+}
+
+/** Puzzle boxes at least this much wider than tall get an 'auto' word list right of the grid (landscape trims, 2 per page). */
+const AUTO_RIGHT_ASPECT = 1.1;
+const isWide = (box) => box.w >= AUTO_RIGHT_ASPECT * box.h;
+
+/** Where the word list goes in `box` for a listPosition value: 'right' or 'below' ('auto': right on wide boxes). */
+function listSide(pos, box) {
+  if (pos === 'auto') return isWide(box) ? 'right' : 'below';
+  return pos === 'right' ? 'right' : 'below';
 }
 
 /** Balanced column layout of the word list at font size s with about `cols` columns. */
@@ -1019,11 +1110,17 @@ export function draw(puzzle, box, style, mode = 'puzzle') {
   const listWords = showList ? (d.words || []).map((w) => (lower ? w.toLowerCase() : w)) : [];
   const uw = listWords.map((w) => measure(w, 1, 'regular'));
   let m, L = null, gap = 0, scaled = false;
+  let side = listSide(d.listPosition, box);
   if (!showList || !listWords.length) {
     m = fitCell(box.w, box.h, g, mode === 'mini' ? Infinity : (st.pref.letter / LETTER_RATIO) * 1.4);
     if (!m) return { ops: [], warnings: ['The box is too small for this puzzle'] };
   } else {
-    const best = chooseLayout(box, g, uw, st, d.listPosition === 'right');
+    let best = chooseLayout(box, g, uw, st, side === 'right');
+    if (!best && d.listPosition === 'auto') {
+      const other = side === 'right' ? 'below' : 'right';
+      best = chooseLayout(box, g, uw, st, other === 'right');
+      if (best) side = other;
+    }
     if (best) ({ m, L, gap } = best);
     else {
       // Too much for this box even at 7pt: lay out at the minimum sizes and shrink to fit (warned).
@@ -1035,7 +1132,7 @@ export function draw(puzzle, box, style, mode = 'puzzle') {
   }
 
   // ---- positions
-  const right = L && d.listPosition === 'right';
+  const right = L && side === 'right';
   let gx, gy, lx = 0, ly = 0;
   if (!L) { gx = box.x + (box.w - m.w) / 2; gy = box.y + (box.h - m.h) / 2; }
   else if (right) {
@@ -1109,10 +1206,16 @@ export function draw(puzzle, box, style, mode = 'puzzle') {
 
   // ---- warnings (full-size modes only; thumbnails are small by design)
   if (mode !== 'mini') {
-    if (scaled) warnings.push('This puzzle does not fit its space even at 7pt, so it was shrunk below the print minimum. Use fewer puzzles per page, a smaller grid, or fewer words.');
-    else if (m.cell < CLEAR_CELL) warnings.push(`Grid cells are only ${fmtPt(m.cell)}pt, too small for the 7pt letters to print clearly. Use fewer puzzles per page or a smaller grid.`);
-    else if (m.f < st.min.letter) warnings.push(`Letters are ${fmtPt(m.f)}pt; ${st.label} needs ≥${st.min.letter}pt. Use fewer puzzles per page or a smaller grid.`);
-    if (L && !scaled && L.s < st.min.word) warnings.push(`Word list is ${fmtPt(L.s)}pt; ${st.label} needs ≥${st.min.word}pt. Use fewer puzzles per page or fewer words.`);
+    // A list kept below the grid on a wide box is usually the problem: say so first.
+    const use = L && !right && d.listPosition !== 'auto' && isWide(box) ? 'Set Word list to Automatic, or use' : 'Use';
+    if (scaled) warnings.push(`This puzzle does not fit its space even at 7pt, so it was shrunk below the print minimum. ${use} fewer puzzles per page, a smaller grid, or fewer words.`);
+    else if (m.cell < CLEAR_CELL) warnings.push(`Grid cells are only ${fmtPt(m.cell)}pt, too small for the 7pt letters to print clearly. ${use} fewer puzzles per page or a smaller grid.`);
+    else if (m.f < st.min.letter) warnings.push(`Letters are ${fmtPt(m.f)}pt; ${st.label} needs ≥${st.min.letter}pt. ${use} fewer puzzles per page or a smaller grid.`);
+    if (L && !scaled && L.s < st.min.word) warnings.push(`Word list is ${fmtPt(L.s)}pt; ${st.label} needs ≥${st.min.word}pt. ${use} fewer puzzles per page or fewer words.`);
   }
-  return { ops: fitInto(ops, box), warnings };
+  // A mini without letters is only overlapping bars: nobody can tell which bar is which word (CONTRACTS §11 `errors`).
+  const errors = mode === 'mini' && !m.f
+    ? ['The answer grids are too small to print their letters, so the answer key would show only bars. Choose fewer answers per page or a smaller grid.']
+    : [];
+  return { ops: fitInto(ops, box), warnings, errors };
 }

@@ -3,20 +3,22 @@
 // answer view, click-to-select, zoom with capped canvases, virtualisation of a 200+ page book, change detection on
 // relayout, the phone layout and destroy(). The inspector, export dialog and template picker are replaced with
 // tiny stubs (Playwright routes) so this only depends on the preview and the shell.
-// Serves site/ on port 8212 (override with PREVIEW_TEST_PORT). Skipped when Playwright or its Chromium is missing.
+// Serves site/ in-process on a free loopback port (or PREVIEW_TEST_PORT, which fails loudly if taken).
+// Skipped when Playwright or its Chromium is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { startServer } from '../serve.mjs';
 
 const SITE = fileURLToPath(new URL('../../site/', import.meta.url));
-const PORT = Number(process.env.PREVIEW_TEST_PORT) || 8212;
-const BASE = `http://localhost:${PORT}/app/`;
+const PORT = Number(process.env.PREVIEW_TEST_PORT) || 0; // 0 = any free port
+let BASE; // set once the server listens
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser;
 
 const STUBS = {
@@ -48,30 +50,22 @@ const stats = (page) => page.evaluate(() => document.querySelector('.pv').gbsPre
 const uiState = (page) => page.evaluate(() => window.gbsApp.ui.get());
 const frames = (page, n = 3) => page.evaluate((k) => new Promise((r) => { let i = 0; const f = () => (++i >= k ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 
-async function waitForServer(url, ms = 10000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try { if ((await fetch(url)).ok) return; } catch { /* not up yet */ }
-    if (Date.now() > end) throw new Error(`server did not start at ${url}`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
-}
-
 before(async () => {
   if (skip) return;
   try {
     browser = await chromium.launch();
   } catch (e) {
-    skip = `chromium unavailable: ${e.message.split('\n')[0]}`;
+    skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`);
     return;
   }
-  server = spawn(process.execPath, [fileURLToPath(new URL('../serve.mjs', import.meta.url)), String(PORT), SITE], { stdio: 'ignore' });
-  await waitForServer(BASE);
+  let origin;
+  ({ server, origin } = await startServer(SITE, { port: PORT }));
+  BASE = `${origin}/app/`;
 });
 
 after(async () => {
   await browser?.close();
-  server?.kill();
+  server?.close();
 });
 
 test('spreads, toolbar, shortcuts, overlays, selection, zoom', { timeout: 60000 }, async (t) => {
@@ -230,6 +224,28 @@ test('200+ page book is virtualised and ui.page follows scrolling', { timeout: 6
   }
 });
 
+test('empty book: the "Add your first section" card sits on a scrim, so no page text is cut in half behind it', { timeout: 60000 }, async (t) => {
+  if (skip) return t.skip(skip);
+  const { ctx, page } = await newPage();
+  try {
+    await page.goto(`${BASE}?template=blank`);
+    await page.waitForSelector('.pv-empty:not([hidden]) .pv-empty-card', { timeout: 40000 });
+    const s = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('.pv-empty'));
+      // rgb(a)(r, g, b[, a]) or color(srgb r g b[ / a]), depending on how the browser serialises color-mix().
+      const bg = cs.backgroundColor;
+      const legacy = /^rgba?\(([^)]+)\)$/.exec(bg)?.[1].split(',').map(Number);
+      const alpha = legacy ? (legacy.length === 4 ? legacy[3] : 1) : /^color\(/.test(bg) ? Number(/\/\s*([\d.]+)\s*\)$/.exec(bg)?.[1] ?? 1) : 0;
+      return { alpha, bg, blur: cs.backdropFilter };
+    });
+    assert.ok(s.alpha >= 0.6, `scrim alpha ${s.alpha} (${s.bg})`);
+    assert.match(s.blur, /blur/);
+    assert.deepEqual(page.errors, []);
+  } finally {
+    await ctx.close();
+  }
+});
+
 test('phone: no horizontal overflow, floating page navigator, tap selects', { timeout: 60000 }, async (t) => {
   if (skip) return t.skip(skip);
   const { ctx, page } = await newPage({ viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
@@ -240,6 +256,14 @@ test('phone: no horizontal overflow, floating page navigator, tap selects', { ti
     assert.ok(w.doc <= 360 && w.tb <= 360, JSON.stringify(w));
     assert.ok(await page.$('.pv-stage > .pv-nav'), 'navigator floats over the stage');
     assert.equal(await page.isVisible('.pv-strip'), false, 'thumbnails start collapsed on phones');
+    // With no saved choice, phones start on one page at a time, fitted so the caption clears the navigator.
+    assert.equal((await uiState(page)).view, 'single');
+    const clear = await page.evaluate(() => {
+      const cap = document.querySelector('.pv-caption').getBoundingClientRect();
+      const nav = document.querySelector('.pv-stage > .pv-nav').getBoundingClientRect();
+      return { capBottom: cap.bottom, navTop: nav.top };
+    });
+    assert.ok(clear.capBottom <= clear.navTop, `first caption clears the page navigator: ${JSON.stringify(clear)}`);
     await page.evaluate(() => window.gbsApp.ui.update((d) => { d.view = 'single'; d.page = 4; }));
     await frames(page, 4);
     const r = await page.evaluate(() => { const b = document.querySelector('.pv-sheet[data-page="4"] .pv-hit').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });

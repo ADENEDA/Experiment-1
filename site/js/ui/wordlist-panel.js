@@ -6,7 +6,7 @@
 //              AI-disclosure tip.
 // The stored value is { mode:'themes', themes:'all'|string[] } or { mode:'custom', words:string[], title? }.
 import { THEMES, CATEGORIES, THEME_BY_ID } from '../../data/wordlists.js';
-import { normalizeOpts, parseWordList, validateWords, aiPrompt, autoWordCount } from '../puzzles/wordsearch.js';
+import { normalizeOpts, parseWordList, validateWords, aiPrompt, autoWordCount, MAX_CUSTOM_WORDS } from '../puzzles/wordsearch.js';
 import { h, announce } from './dom.js';
 import { segmented, field, textInput, note, svgIcon, copyText, uid } from './controls.js';
 
@@ -74,6 +74,14 @@ export function createWordlistPanel({ app, sectionId, control }) {
   let pendingTitle = '';
   let aiTheme = null;                   // null until the user types: then their text wins over the suggestion
   let pasteNote = '';
+  let checked = { key: null, result: null }; // last validateWords() run: re-run only when the list or grid changes
+
+  /** validateWords, remembered: the panel re-renders on every change to the section (a rename, a slider). */
+  function check(list, n, perPuzzle) {
+    const key = `${n}|${perPuzzle}|${list.join('\n')}`;
+    if (checked.key !== key) checked = { key, result: validateWords(list, n, { perPuzzle }) };
+    return checked.result;
+  }
 
   const commit = (value, { label, coalesce } = {}) => {
     app.actions.updateSection(sectionId, (s) => {
@@ -156,7 +164,7 @@ export function createWordlistPanel({ app, sectionId, control }) {
     e.preventDefault();
     const ta = words.el;
     const whole = !ta.value.trim() || (ta.selectionStart === 0 && ta.selectionEnd === ta.value.length);
-    const block = list.join('\n');
+    const block = list.slice(0, MAX_CUSTOM_WORDS).join('\n');
     if (whole) ta.value = block;
     else {
       const before = ta.value.slice(0, ta.selectionStart), after = ta.value.slice(ta.selectionEnd);
@@ -165,7 +173,9 @@ export function createWordlistPanel({ app, sectionId, control }) {
       const caret = (before + pre + block).length;
       ta.setSelectionRange(caret, caret);
     }
-    pasteNote = `Read ${plural(list.length, 'word')} from the pasted list.`;
+    pasteNote = list.length > MAX_CUSTOM_WORDS
+      ? `Read ${plural(list.length, 'word')} from the pasted list; only the first ${MAX_CUSTOM_WORDS} are used.`
+      : `Read ${plural(list.length, 'word')} from the pasted list.`;
     onWordsInput(ta.value, { paste: true });
   });
   const wordsField = field('Your words, one per line', words, { hint: 'Letters A–Z only; spaces, hyphens and accents are removed. A pasted JSON list works too.' });
@@ -200,8 +210,9 @@ export function createWordlistPanel({ app, sectionId, control }) {
     copyTimer = setTimeout(() => { copyBtn.lastChild.textContent = 'Copy prompt'; }, 2200);
   });
   const kdpLink = h('a', { href: KDP_AI_URL, target: '_blank', rel: 'noopener', text: 'KDP content guidelines' });
+  const aiSummary = h('summary', { class: 'ws-ai-sum' }, svgIcon('sparkle', { size: 16 }), h('span', { text: 'Get a word list from an AI chat' }), svgIcon('chevron-down', { size: 16, cls: 'ws-ai-chev' }));
   const aiDetails = h('details', { class: 'ws-ai' },
-    h('summary', { class: 'ws-ai-sum' }, svgIcon('sparkle', { size: 16 }), h('span', { text: 'Get a word list from an AI chat' }), svgIcon('chevron-down', { size: 16, cls: 'ws-ai-chev' })),
+    aiSummary,
     h('div', { class: 'ws-ai-body' },
       aiField.el,
       field('Prompt', { el: promptBox }, { aside: copyBtn }).el,
@@ -218,7 +229,7 @@ export function createWordlistPanel({ app, sectionId, control }) {
   // ------------------------------------------------------------------ behaviour
   function onWordsInput(text, { paste = false } = {}) {
     if (!paste) pasteNote = ''; // the "Read N words" note stays until the next edit
-    const list = parseWordList(text);
+    const list = parseWordList(text).slice(0, MAX_CUSTOM_WORDS);
     if (src.mode !== 'custom' && !list.length) { renderCustom(); return; }
     const next = { mode: 'custom', words: list };
     const t = src.mode === 'custom' ? src.title : pendingTitle;
@@ -275,9 +286,16 @@ export function createWordlistPanel({ app, sectionId, control }) {
     if (isCustom) {
       // Keep the user's own text while it still says the same thing (blank lines, spacing, a half-typed word).
       const shown = parseWordList(words.el.value);
-      if (shown.length !== list.length || shown.some((w, i) => w !== list[i])) { words.set(list.join('\n')); pasteNote = ''; }
+      if (shown.length !== list.length || shown.some((w, i) => w !== list[i])) {
+        // Typed past the limit: say why the end of the list went away.
+        pasteNote = list.length === MAX_CUSTOM_WORDS && shown.length > list.length
+          ? `A list holds up to ${MAX_CUSTOM_WORDS} words; the rest were left out.` : '';
+        words.set(list.join('\n'));
+      }
     }
-    const { words: ok, issues } = validateWords(list, n);
+    const o = normalizeOpts(opts);
+    const per = o.wordCount === 'auto' ? autoWordCount(o) : o.wordCount;
+    const { words: ok, issues } = check(list, n, per);
     emptyNote.hidden = list.length > 0;
     const shownIssues = displayIssues(issues);
     const errors = shownIssues.filter((i) => i.level === 'error').length;
@@ -299,18 +317,19 @@ export function createWordlistPanel({ app, sectionId, control }) {
     }), ...(shownIssues.length > MAX ? [h('li', { class: 'ws-issue ws-issue--more', text: `…and ${shownIssues.length - MAX} more.` })] : []));
     issuesList.hidden = !shownIssues.length;
     if (ok.length) {
-      const o = normalizeOpts(opts);
-      const per = o.wordCount === 'auto' ? autoWordCount(o) : o.wordCount;
       usage.textContent = ok.length <= per
         ? `Every puzzle uses all ${ok.length} words, each in a new grid. Add more than ${per} words to vary the lists.`
         : `Each puzzle takes the next ${per} words from your list, so neighbouring puzzles use different words.`;
       usage.hidden = false;
     } else usage.hidden = true;
     title.set(isCustom ? src.title ?? '' : pendingTitle);
+    // Open while there are no words, folded away once there are, unless the user opened or closed it themselves.
     if (!aiDetails.dataset.touched) aiDetails.open = list.length === 0;
     renderPrompt();
   }
-  aiDetails.addEventListener('toggle', () => { aiDetails.dataset.touched = '1'; });
+  // Only the user's own toggle counts (a click or Enter/Space on the summary): the 'toggle' event also fires,
+  // a task later, for the panel's own `open = ...`, which made the fold-away depend on timing.
+  aiSummary.addEventListener('click', () => { aiDetails.dataset.touched = '1'; });
 
   function render() {
     const mode = src.mode === 'custom' || pendingCustom ? 'custom' : 'themes';

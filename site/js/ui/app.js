@@ -24,7 +24,7 @@ import { installShortcuts, openShortcutHelp } from './shortcuts.js';
 import { mountTopbar } from './topbar.js';
 import { mountOutline } from './outline.js';
 import { mountStatusbar } from './statusbar.js';
-import { h, icon, announce, media, PHONE_MQ, TABLET_MQ, pickFile, closeMenus } from './dom.js';
+import { h, icon, announce, media, PHONE_MQ, TABLET_MQ, pickFile, closeMenus, openDialog } from './dom.js';
 
 const TEMPLATE_IDS = ['large-print-wordsearch', 'sudoku-easy-expert', 'picture-logic', 'brain-games-mix', 'kids-activity', 'blank'];
 /** If templates.js can't load: the closest single-section book (CONTRACTS §12.8 ids). */
@@ -79,7 +79,8 @@ function initialUi(prefs) {
   return {
     selection: { kind: 'book' },
     page: 0,
-    view: prefs.view === 'single' ? 'single' : 'spread',
+    // Without a saved choice, phones start on one page at a time: a two-page spread there is too small to read.
+    view: prefs.view === 'single' || prefs.view === 'spread' ? prefs.view : (media(PHONE_MQ).matches ? 'single' : 'spread'),
     zoom,
     overlays: { margins: false, answers: false },
     inspectorTab: ['section', 'puzzle', 'book'].includes(prefs.inspectorTab) ? prefs.inspectorTab : 'book',
@@ -125,7 +126,8 @@ export async function boot() {
   const firstRun = !deep && !start;
   if (!start) start = P.newProject();
   P.stampProject(start, nowIso(), { touch: false });
-  const store = createStore(start, { history: 100, coalesceMs: 1000 });
+  // keepBase: past 100 steps the oldest ones merge, so undoing all the way back still reaches the book as opened.
+  const store = createStore(start, { history: 100, coalesceMs: 1000, keepBase: true });
 
   let pipeline;
   let autosave;
@@ -169,14 +171,54 @@ export async function boot() {
     return out;
   }
 
-  /** Make a project the open book: normalise, give it a unique id, stamp it, reset history, save it at once. */
-  function loadNewProject(p, { message } = {}) {
+  let fileSaved = null; // the project state last written to a project file (with storage blocked, the only copy)
+
+  /**
+   * True when the open book has changes that exist nowhere else: its last autosave failed (storage full), or
+   * storage is blocked and it changed since the last project file. Tries the save once more first.
+   */
+  function unsavedWork() {
+    if (!autosave.flush()) return true;
+    return !persist.storageAvailable() && store.canUndo() && store.get() !== fileSaved;
+  }
+
+  /**
+   * Before the open book is replaced (another book, a new one, a project file): if it has unsaved work, ask to save
+   * a project file first or discard the changes. Resolves true to go ahead.
+   */
+  async function confirmLeave(what) {
+    if (!unsavedWork()) return true;
+    const title = (store.get().title || '').trim() || P.DEFAULT_TITLE;
+    const save = h('button', { type: 'button', class: 'btn btn-primary' }, icon('save'), 'Save project file');
+    const discard = h('button', { type: 'button', class: 'btn btn-ghost btn-danger', text: 'Discard changes' });
+    const cancel = h('button', { type: 'button', class: 'btn', text: 'Cancel' });
+    const why = persist.storageAvailable()
+      ? `The latest changes to “${title}” couldn’t be saved, because this browser’s storage for Gridbook Studio is full. If you ${what} now, those changes are lost.`
+      : `This browser blocks storage, so “${title}” is kept only in this tab. If you ${what} now, your changes are lost.`;
+    const dlg = openDialog({
+      title: 'Save your changes first?',
+      className: 'leave-dialog',
+      body: [h('p', { text: why }), h('p', { class: 'hint', text: 'A project file keeps everything. Open it again any time with Open project file.' })],
+      foot: [discard, h('span', { class: 'dialog-foot-spacer' }), cancel, save],
+      initialFocus: () => save,
+    });
+    save.addEventListener('click', () => dlg.close(actions.saveProjectFile() ? 'go' : null));
+    discard.addEventListener('click', () => dlg.close('go'));
+    cancel.addEventListener('click', () => dlg.close(null));
+    return (await dlg.result) === 'go';
+  }
+
+  /**
+   * Make a project the open book: normalise, give it a unique id, stamp it, reset history, save it at once.
+   * Resolves null (nothing changes) if the open book has unsaved work and the user cancels.
+   */
+  async function loadNewProject(p, { message, what = 'open another book' } = {}) {
+    if (!(await confirmLeave(what))) return null;
     let proj = P.normalizeProject(p);
     P.stampProject(proj, nowIso(), { touch: false });
     const taken = new Set(persist.listProjects().map((e) => e.id));
     taken.add(store.get().id);
     while (taken.has(proj.id)) proj.id = newId('b_');
-    autosave.flush();
     projectLoads++;
     store.reset(proj);
     afterSwitch({ save: true });
@@ -250,6 +292,30 @@ export async function boot() {
 
   // ------------------------------------------------------------------ actions
   let exportOpening = null;
+  // A failed import() stays failed for the life of the page in Chromium, so a retry (say, after the connection comes
+  // back) has to ask for the module under a fresh URL.
+  let exportDialogRetry = 0;
+  let exportReady = false; // the export dialog and its PDF and ZIP tools are loaded: exporting works offline too
+  let offlineToast = null;
+  const offlineMsg = () => (exportReady
+    ? 'You’re offline. You can keep editing and exporting. Don’t reload the page until you’re back online.'
+    : 'You’re offline. You can keep editing, but exporting may need the connection. Don’t reload the page until you’re back online.');
+  const loadExportDialog = () => import(exportDialogRetry ? `./export-dialog.js?retry=${exportDialogRetry}` : './export-dialog.js')
+    .catch((e) => { exportDialogRetry++; throw e; });
+
+  /**
+   * Export's code loads on first use. Load it once the Studio is idle instead (same-origin files, held in memory),
+   * so a connection that drops later doesn't stop exports. Skipped offline and with Data Saver on.
+   */
+  function warmExport() {
+    if (exportReady || navigator.onLine === false || navigator.connection?.saveData) return;
+    loadExportDialog()
+      .then((m) => (typeof m.warmExportTools === 'function' ? m.warmExportTools() : Promise.reject(new Error('warmExportTools is missing'))))
+      .then(() => {
+        exportReady = true;
+        offlineToast?.update(offlineMsg());
+      }, (e) => console.info('Gridbook Studio: export tools will load when first used', e?.message || e));
+  }
 
   const actions = {
     addSection(type) {
@@ -440,12 +506,14 @@ export async function boot() {
       if (exportOpening) return exportOpening;
       exportOpening = (async () => {
         try {
-          const m = await import('./export-dialog.js');
+          const m = await loadExportDialog();
           if (typeof m.openExportDialog !== 'function') throw new Error('openExportDialog is missing');
           await m.openExportDialog(app);
         } catch (e) {
           console.warn('Gridbook Studio: export dialog unavailable', e);
-          toast('Export isn’t available right now. Reload the page and try again. Your book is saved in this browser.', {
+          toast(navigator.onLine === false
+            ? 'Export needs the connection: it loads when you first use it. Reconnect, then try again. You can keep editing meanwhile.'
+            : 'Export couldn’t load. Check your connection and try again; if it keeps failing, save a project file and reload the page.', {
             kind: 'warn', action: { label: 'Save project file', run: () => actions.saveProjectFile() },
           });
         } finally {
@@ -470,7 +538,7 @@ export async function boot() {
       } catch (e) {
         console.warn('Gridbook Studio: template picker unavailable', e);
         const p = P.newProject({ sections: [P.newSection('wordsearch', 'standard')] });
-        loadNewProject(p);
+        if (!(await loadNewProject(p, { what: 'start a new book' }))) return null;
         toast(first ? 'Welcome! The template gallery couldn’t load, so you’re starting with one word search section. Add more from the outline.'
           : 'The template gallery couldn’t load, so a new book with one word search section was started instead.', { kind: 'info', timeout: 8000 });
         return store.get();
@@ -485,7 +553,7 @@ export async function boot() {
       }
       if (!p || typeof p !== 'object') return null;
       if (projectLoads !== loadsBefore || p.id === store.get().id) return store.get(); // the picker loaded it itself
-      return loadNewProject(p);
+      return loadNewProject(p, { what: 'start a new book' });
     },
 
     openShortcutHelp() {
@@ -501,10 +569,12 @@ export async function boot() {
     saveProjectFile() {
       closeMenus();
       autosave.flush();
-      const p = P.stampProject(structuredClone(store.get()), nowIso());
+      const state = store.get();
+      const p = P.stampProject(structuredClone(state), nowIso());
       const name = P.projectFileName(p);
       try {
         downloadBlob(new Blob([P.serializeProject(p)], { type: 'application/json' }), name);
+        fileSaved = state;
         toast(`Saved ${name}. Keep it as a backup, or open it on another computer.`, { kind: 'ok' });
         return true;
       } catch (e) {
@@ -529,11 +599,12 @@ export async function boot() {
       const local = persist.loadProject(p.id);
       const strip = (x) => ({ ...x, createdAt: null, updatedAt: null });
       if (local && deepEqual(strip(local), strip(p))) {
-        actions.switchProject(local.id);
+        if (!(await actions.switchProject(local.id))) return null;
         toast(`“${title}” is already in My books, so it was opened from there.`, { kind: 'info' });
         return store.get();
       }
       return loadNewProject(p, {
+        what: 'open that file',
         message: local || p.id === store.get().id
           ? `Opened “${title}” as a new book. Your earlier copy is still in My books.`
           : `Opened “${title}”.`,
@@ -543,17 +614,19 @@ export async function boot() {
     async newProject(templateId, { sample = false } = {}) {
       closeMenus();
       const p = await projectFromTemplate(templateId, { sample });
-      return loadNewProject(p);
+      return loadNewProject(p, { what: 'start a new book' });
     },
 
-    switchProject(id) {
+    /** Open a book from My books. Resolves the project, or null (missing, or the user kept unsaved work open). */
+    async switchProject(id) {
       if (!id || id === store.get().id) return store.get();
-      autosave.flush();
-      const p = persist.loadProject(id);
-      if (!p) {
+      if (!persist.loadProject(id)) {
         toast('That book couldn’t be opened. It may have been deleted in another tab.', { kind: 'err' });
         return null;
       }
+      if (!(await confirmLeave('open another book'))) return null;
+      const p = persist.loadProject(id);
+      if (!p) return null;
       P.stampProject(p, nowIso(), { touch: false });
       projectLoads++;
       store.reset(p);
@@ -561,11 +634,15 @@ export async function boot() {
       return store.get();
     },
 
+    /**
+     * Delete a book from this browser (the open one too: the most recent other book opens). Shows a toast with Undo
+     * and returns { title, undo() → Promise<true if restored> | null }, or null if there was nothing to delete.
+     */
     deleteProject(id) {
       const wasCurrent = id === store.get().id;
       const entry = persist.listProjects().find((e) => e.id === id);
-      const title = (entry?.title || (wasCurrent ? store.get().title : '') || '').trim() || P.DEFAULT_TITLE;
-      if (wasCurrent) autosave.cancel();
+      const title = ((wasCurrent ? store.get().title : entry?.title) || entry?.title || '').trim() || P.DEFAULT_TITLE;
+      if (wasCurrent) { autosave.flush(); autosave.cancel(); } // Undo then brings back the latest version
       const json = persist.deleteProject(id);
       if (wasCurrent) {
         const next = persist.listProjects()[0];
@@ -573,20 +650,23 @@ export async function boot() {
         projectLoads++;
         store.reset(p ? P.stampProject(p, nowIso(), { touch: false }) : P.stampProject(P.newProject(), nowIso()));
         afterSwitch();
+      } else if (autosave.status().state === 'error') {
+        autosave.flush(); // the open book's save failed for lack of room: there may be room now
       }
-      toast(`Deleted “${title}”.`, {
-        kind: 'info',
-        action: json ? {
-          label: 'Undo',
-          run: () => {
-            const r = persist.restoreProject(json);
-            if (!r.ok) { toast('Couldn’t restore that book.', { kind: 'err' }); return; }
-            if (wasCurrent) actions.switchProject(id);
-            toast(`Restored “${title}”.`, { kind: 'ok' });
-          },
-        } : null,
-      });
-      return true;
+      if (!json && !wasCurrent) return null;
+      let undone = false;
+      const undo = async () => {
+        if (undone || !json) return false;
+        const r = persist.restoreProject(json);
+        if (!r.ok) { toast('Couldn’t restore that book.', { kind: 'err' }); return false; }
+        undone = true;
+        note?.dismiss();
+        if (wasCurrent) await actions.switchProject(id);
+        toast(`Restored “${title}”.`, { kind: 'ok' });
+        return true;
+      };
+      const note = toast(`Deleted “${title}”.`, { kind: 'info', action: json ? { label: 'Undo', run: undo } : null });
+      return { title, undo: json ? undo : null };
     },
 
     toggleOutline(open) {
@@ -606,11 +686,20 @@ export async function boot() {
     bus,
     getBook: () => pipeline.current(),
     actions,
+    autosave: null, // set below: { status(), isDirty(), flush() } (My books shows the open book's saving state)
+    exportReady: () => exportReady, // export's code is loaded ahead of time, so exporting works offline
   };
   window.gbsApp = app;
 
   // ------------------------------------------------------------------ persistence + pipeline
   autosave = persist.createAutosave({ store, bus, toast, onOpenMyBooks: () => actions.openMyBooks() });
+  app.autosave = autosave;
+  // Leaving the page would lose changes that exist only in this tab: let the browser ask first.
+  window.addEventListener('beforeunload', (e) => {
+    if (!unsavedWork()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
   pipeline = createPipeline({ store, ui, bus, toast, onSelectPuzzle: (s, i) => actions.selectPuzzle(s, i) });
 
   // Deep link (§12.8): a new book that never overwrites an existing one.
@@ -671,12 +760,15 @@ export async function boot() {
   // Remember view preferences.
   let prefsTimer = 0;
   let lastPrefs = '';
+  // The view is saved once the reader picks one; until then it follows the screen (single page on phones).
+  let autoView = prefs.view === 'single' || prefs.view === 'spread' ? null : ui.get().view;
   ui.subscribe((s) => {
+    if (autoView && s.view !== autoView) autoView = null;
     const sig = JSON.stringify([s.view, s.zoom, s.inspectorTab]);
     if (sig === lastPrefs) return;
     lastPrefs = sig;
     clearTimeout(prefsTimer);
-    prefsTimer = setTimeout(() => persist.updatePrefs({ view: s.view, zoom: s.zoom, inspectorTab: s.inspectorTab }), 500);
+    prefsTimer = setTimeout(() => persist.updatePrefs({ ...(autoView ? {} : { view: s.view }), zoom: s.zoom, inspectorTab: s.inspectorTab }), 500);
   });
 
   // ------------------------------------------------------------------ mount
@@ -718,7 +810,7 @@ export async function boot() {
       h('span', { class: 'banner-mark', 'aria-hidden': 'true' }),
       h('p', { class: 'banner-text' },
         h('strong', { text: 'Free edition. ' }),
-        `Everything works. Exports carry a small footer. Remove it with a ${pass} pass or ${life} lifetime.`),
+        `Build and preview everything free. Book exports carry a proof header and footer. Remove them, and add PNG and ZIP exports, with a ${pass} pass or ${life} lifetime.`),
       more, close);
     banner.hidden = false;
     appEl.classList.add('has-banner');
@@ -731,11 +823,15 @@ export async function boot() {
       kind: 'warn', timeout: 15000, action: { label: 'Save project', run: () => actions.saveProjectFile() },
     });
   }
-  const offlineMsg = 'You’re offline. Everything still works. Your license will be re-checked when you reconnect.';
-  let offlineToast = null;
-  window.addEventListener('offline', () => { offlineToast = toast(offlineMsg, { kind: 'info', timeout: 0 }); });
-  window.addEventListener('online', () => { offlineToast?.dismiss(); offlineToast = null; toast('You’re back online.', { kind: 'ok', timeout: 3000 }); });
-  if (navigator.onLine === false) offlineToast = toast(offlineMsg, { kind: 'info', timeout: 0 });
+  window.addEventListener('offline', () => { offlineToast = toast(offlineMsg(), { kind: 'info', timeout: 0 }); });
+  window.addEventListener('online', () => {
+    offlineToast?.dismiss(); offlineToast = null;
+    toast('You’re back online.', { kind: 'ok', timeout: 3000 });
+    warmExport();
+  });
+  if (navigator.onLine === false) offlineToast = toast(offlineMsg(), { kind: 'info', timeout: 0 });
+  // Once the Studio has settled, get export ready for a connection that drops later.
+  setTimeout(() => (window.requestIdleCallback || ((fn) => setTimeout(fn, 500)))(() => warmExport(), { timeout: 8000 }), 1500);
 
   installErrorToasts(toast);
   appEl.removeAttribute('aria-busy');
@@ -866,6 +962,8 @@ function installErrorToasts(toast) {
 
 // Auto-boot when loaded as the Studio page.
 if (typeof document !== 'undefined' && document.getElementById('app')?.dataset.gbsStudio !== undefined) {
+  // The module graph loaded and linked: tell the boot watchdog in app/index.html to stand down.
+  document.getElementById('app').dataset.boot = 'started';
   boot().catch((e) => {
     console.error('Gridbook Studio failed to start', e);
     const el = document.getElementById('app');

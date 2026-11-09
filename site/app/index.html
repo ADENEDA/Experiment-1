@@ -4,18 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Gridbook Studio · Puzzle book builder</title>
-  <meta name="description" content="Build a KDP-ready puzzle book interior in your browser: word search, sudoku, mazes and picture nonograms, with answer key, front matter, gutter and spine width worked out for you. Free to use; Pro removes the proof footer.">
+  <meta name="description" content="Build a KDP-ready puzzle book in your browser: word search, sudoku, mazes and picture nonograms, with answer key, gutter and spine width worked out for you.">
   <link rel="canonical" href="https://gridbookstudio.com/app/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Gridbook Studio">
   <meta property="og:title" content="Gridbook Studio: the puzzle book builder">
   <meta property="og:description" content="Make word search, sudoku, maze and picture nonogram books with answer keys, checked against KDP print rules. Runs in your browser.">
   <meta property="og:image" content="https://gridbookstudio.com/og/home.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Print-ready puzzle books, built in your browser: three pages from Gridbook Studio sample books">
   <meta property="og:url" content="https://gridbookstudio.com/app/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#0e7c66">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+  <link rel="manifest" href="../site.webmanifest">
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/app.css">
   <link rel="stylesheet" href="../css/license.css">
@@ -24,12 +29,90 @@
   <link rel="stylesheet" href="../css/export.css">
   <link rel="stylesheet" href="../css/templates.css">
   <link rel="modulepreload" href="../js/ui/app.js">
+  <!-- Every module app.js imports statically (npm test keeps this list in sync), so the browser fetches them all at
+       once instead of discovering them one import level at a time. -->
+  <link rel="modulepreload" href="../config.js">
+  <link rel="modulepreload" href="../data/blocklist.js">
+  <link rel="modulepreload" href="../data/pictures.js">
+  <link rel="modulepreload" href="../data/wordlists.js">
+  <link rel="modulepreload" href="../js/core/bus.js">
+  <link rel="modulepreload" href="../js/core/fontmetrics-data.js">
+  <link rel="modulepreload" href="../js/core/fontmetrics.js">
+  <link rel="modulepreload" href="../js/core/project.js">
+  <link rel="modulepreload" href="../js/core/rng.js">
+  <link rel="modulepreload" href="../js/core/store.js">
+  <link rel="modulepreload" href="../js/kdp/preflight.js">
+  <link rel="modulepreload" href="../js/kdp/specs.js">
+  <link rel="modulepreload" href="../js/layout/book.js">
+  <link rel="modulepreload" href="../js/layout/displaylist.js">
+  <link rel="modulepreload" href="../js/layout/pages.js">
+  <link rel="modulepreload" href="../js/layout/text.js">
+  <link rel="modulepreload" href="../js/layout/themes.js">
+  <link rel="modulepreload" href="../js/license/gumroad.js">
+  <link rel="modulepreload" href="../js/license/license.js">
+  <link rel="modulepreload" href="../js/license/offline-code.js">
+  <link rel="modulepreload" href="../js/license/polar.js">
+  <link rel="modulepreload" href="../js/puzzles/common.js">
+  <link rel="modulepreload" href="../js/puzzles/generate.js">
+  <link rel="modulepreload" href="../js/puzzles/masks.js">
+  <link rel="modulepreload" href="../js/puzzles/maze.js">
+  <link rel="modulepreload" href="../js/puzzles/nonogram-solver.js">
+  <link rel="modulepreload" href="../js/puzzles/nonogram.js">
+  <link rel="modulepreload" href="../js/puzzles/registry.js">
+  <link rel="modulepreload" href="../js/puzzles/sudoku.js">
+  <link rel="modulepreload" href="../js/puzzles/wordsearch.js">
+  <link rel="modulepreload" href="../js/render/canvas-backend.js">
+  <link rel="modulepreload" href="../js/render/export-pdf.js">
+  <link rel="modulepreload" href="../js/render/fonts.js">
+  <link rel="modulepreload" href="../js/ui/buy-buttons.js">
+  <link rel="modulepreload" href="../js/ui/dom.js">
+  <link rel="modulepreload" href="../js/ui/outline.js">
+  <link rel="modulepreload" href="../js/ui/persist.js">
+  <link rel="modulepreload" href="../js/ui/pipeline.js">
+  <link rel="modulepreload" href="../js/ui/shortcuts.js">
+  <link rel="modulepreload" href="../js/ui/statusbar.js">
+  <link rel="modulepreload" href="../js/ui/toasts.js">
+  <link rel="modulepreload" href="../js/ui/topbar.js">
+  <link rel="modulepreload" href="../js/ui/unlock-dialog.js">
+  <script>
+    // Boot watchdog (CONTRACTS.md §12.9). If one of the Studio's modules fails to download or to link, js/ui/app.js
+    // never runs and the spinner would turn forever, so say what happened and offer a Reload button. app.js marks
+    // #app with data-boot as soon as it runs, which turns this off. No network requests. If you enable the CSP in
+    // site/_headers, its script-src must list this script's hash (npm test checks it).
+    (function () {
+      var failed = false;
+      function running() { var a = document.getElementById('app'); return !a || a.hasAttribute('data-boot'); }
+      function show(fatal) {
+        var box = document.querySelector('#preview .pane-loading');
+        if (failed || running() || !box) return;
+        failed = fatal;
+        if (fatal) document.getElementById('app').removeAttribute('aria-busy');
+        var p = document.createElement('p');
+        p.textContent = fatal
+          ? 'The Studio couldn’t load. Check your connection, then reload the page (if that doesn’t help, hold Shift while you reload). Books you made before are still saved in this browser.'
+          : 'This is taking longer than usual. On a slow connection it can take a minute; if nothing happens, reload the page.';
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn btn-sm'; b.textContent = 'Reload';
+        b.onclick = function () { location.reload(); };
+        box.className = 'pane-loading boot-stalled';
+        box.setAttribute('role', fatal ? 'alert' : 'status');
+        box.replaceChildren(p, b);
+      }
+      addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && t.tagName === 'SCRIPT') { if (t.type === 'module') show(true); return; }
+        if (e.filename && e.filename.indexOf(location.origin + '/') === 0) show(true);
+      }, true);
+      setTimeout(function () { show(false); }, 15000);
+    })();
+  </script>
   <script type="module" src="../js/ui/app.js"></script>
 </head>
 <body class="studio">
   <a class="skip-link" href="#preview">Skip to the preview</a>
 
   <div class="app" id="app" data-gbs-studio data-mobile-tab="preview" aria-busy="true">
+    <h1 class="visually-hidden">Gridbook Studio</h1>
     <header class="app-topbar" id="topbar">
       <a class="tb-brand" href="../"><span class="tb-brand-name">Gridbook Studio</span></a>
     </header>

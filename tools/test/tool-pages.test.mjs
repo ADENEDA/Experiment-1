@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { CONFIG } from '../../site/config.js';
-import { formatPrice } from '../../site/js/ui/buy-buttons.js';
+import { formatPrice, pricingInfo } from '../../site/js/ui/buy-buttons.js';
 import { PICTURES } from '../../site/data/pictures.js';
 import { THEMES, THEME_BY_ID } from '../../site/data/wordlists.js';
 import * as wordsearch from '../../site/js/puzzles/wordsearch.js';
@@ -30,7 +30,7 @@ const PAGES = [
     studio: 'app/?template=picture-logic', keywords: [/nonogram/i, /picture logic/i, /printable/i] },
   { dir: 'large-print-word-search-maker', type: 'wordsearch', og: 'wordsearch', nav: true, sample: 'samples/large-print-word-search-24p.pdf',
     studio: 'app/?template=large-print-wordsearch', keywords: [/large print word search/i, /printable/i] },
-  { dir: 'sudoku-book-generator', type: 'sudoku', og: 'sudoku', nav: false, sample: 'samples/sudoku-sampler-24p.pdf',
+  { dir: 'sudoku-book-generator', type: 'sudoku', og: 'sudoku', nav: true, sample: 'samples/sudoku-sampler-24p.pdf',
     studio: 'app/?template=sudoku-easy-expert', keywords: [/sudoku book generator/i, /sudoku/i] },
 ];
 
@@ -38,7 +38,7 @@ const PAGES = [
 const KNOWN_ROUTES = new Set([
   '', 'app/', 'pricing/', 'play/', 'kdp-spine-width-calculator/', 'kdp-margin-calculator/', 'nonogram-puzzle-book-maker/',
   'large-print-word-search-maker/', 'sudoku-book-generator/', 'book-bolt-alternative/',
-  'legal/terms.html', 'legal/privacy.html', 'legal/refunds.html', 'legal/license.html', 'legal/credits.html',
+  'legal/terms', 'legal/privacy', 'legal/refunds', 'legal/license', 'legal/credits', // served from legal/*.html, like Cloudflare Pages
   'samples/picture-logic-32p.pdf', 'samples/large-print-word-search-24p.pdf', 'samples/sudoku-sampler-24p.pdf',
   'favicon.svg', 'img/apple-touch-icon.png', 'site.webmanifest',
 ]);
@@ -188,8 +188,10 @@ for (const page of PAGES) {
       if (patch.picture) assert.ok(PICTURES.some((p) => p.id === patch.picture), `picture ${patch.picture}`);
       if (patch.size) assert.ok(nonogram.SIZES.includes(patch.size));
     }
-    const want = { lifetime: formatPrice(CONFIG.pricing.lifetime), lifetimeRegular: formatPrice(CONFIG.pricing.lifetimeRegular), pass: formatPrice(CONFIG.pricing.pass) };
-    for (const m of html.matchAll(/data-cfg-price="(\w+)">([^<]*)</g)) assert.equal(m[2], want[m[1]], `data-cfg-price=${m[1]}`);
+    // Today's prices (the launch price until pricing.launchEnds): node tools/sync-prices.mjs keeps the fallbacks current.
+    const today = pricingInfo(CONFIG, Date.now());
+    const want = { lifetime: formatPrice(today.lifetime), lifetimeRegular: formatPrice(today.lifetimeRegular), pass: formatPrice(today.pass) };
+    for (const m of html.matchAll(/data-cfg-price="(\w+)">([^<]*)</g)) assert.equal(m[2], want[m[1]], `data-cfg-price=${m[1]} (run node tools/sync-prices.mjs)`);
     const text = stripTags(html);
     assert.ok(!/testimonial|5 stars|trusted by|\d[\d,]* (users|customers|publishers|teachers)|best-selling|#1/i.test(text), 'no fake social proof');
     assert.ok(!/lorem ipsum|TODO|TBD/i.test(html));
@@ -200,6 +202,25 @@ for (const page of PAGES) {
 test('nonogram page: seasonal hooks and library facts quoted in the copy', () => {
   const html = read('site/nonogram-puzzle-book-maker/index.html');
   for (const h of ['January brain games', 'Valentine’s Day', 'Easter']) assert.ok(html.includes(`<h3>${h}</h3>`), h);
+  // Every subject a seasonal card lists is a library picture (a "cupcakes" there would send people looking for one).
+  const SUBJECTS = {
+    snowflakes: 'snowflake', mountains: 'mountains', 'evergreen trees': 'tree-evergreen', hearts: 'heart', flowers: 'flower',
+    cakes: 'cake', gifts: 'gift', envelopes: 'envelope', rabbits: 'rabbit', tulips: 'flower-tulip', butterflies: 'butterfly',
+    'cracked eggs': 'egg-crack', birds: 'bird',
+  };
+  for (const id of Object.values(SUBJECTS)) assert.ok(PICTURES.some((p) => p.id === id), `library picture ${id}`);
+  const cards = [...html.matchAll(/<article class="feature season-card">[\s\S]*?<p>([\s\S]*?)<\/p>/g)].map((m) => stripTags(m[1]));
+  assert.equal(cards.length, 3);
+  for (const text of cards) {
+    const list = /(?:^|such as )([A-Za-z ]+(?:, [A-Za-z ]+)+ and [A-Za-z ]+)/.exec(text);
+    assert.ok(list, `a list of subjects in: ${text}`);
+    for (const item of list[1].split(/, | and /)) {
+      // The last item runs on into the sentence ("envelopes for love notes"): take its longest known prefix.
+      const words = item.toLowerCase().split(' ');
+      const known = words.map((_, i) => words.slice(0, words.length - i).join(' ')).find((w) => w in SUBJECTS);
+      assert.ok(known, `"${item}" is not a library picture`);
+    }
+  }
   assert.ok(html.includes(`The ${PICTURES.length} library pictures are already solvable`));
   // "up to 30, or 4% of a larger grid" is nonogram-solver.js repairBudget().
   assert.equal(Math.max(30, Math.round(0.04 * 30 * 30)), 36);

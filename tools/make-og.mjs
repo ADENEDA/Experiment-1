@@ -17,7 +17,9 @@
 //   --html <dir>    also write each generated HTML page to <dir> for inspection
 //
 // The domain and the proof marks on the pages come from site/config.js: after changing printDomain or the prices
-// there, run this script again.
+// there, run this script again. Each PNG carries a tEXt chunk "gbs-copy" with a SHA-256 of its words (kicker,
+// headline, facts), so npm test notices an image made from other words, such as og/pricing.png still showing the
+// launch price after pricing.launchEnds (SETUP.md 2.2).
 //
 // Files (site/og/), one per page that sets og:image:
 //   home.png       site/index.html (and the Studio)     spine.png      kdp-spine-width-calculator/
@@ -25,6 +27,7 @@
 //   wordsearch.png large-print-word-search-maker/       sudoku.png     sudoku-book-generator/
 //   bookbolt.png   book-bolt-alternative/               pricing.png    pricing/
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +39,7 @@ import { layoutBook, watermarkText } from '../site/js/layout/book.js';
 import { measure } from '../site/js/core/fontmetrics.js';
 import { coverTemplate } from '../site/js/kdp/cover.js';
 import { buildFromTemplate } from '../site/js/ui/templates.js';
+import { pricingInfo } from '../site/js/ui/buy-buttons.js';
 import * as nonogram from '../site/js/puzzles/nonogram.js';
 import { THEMES as WORD_THEMES } from '../site/data/wordlists.js';
 import { PICTURES } from '../site/data/pictures.js';
@@ -295,7 +299,7 @@ export const IMAGES = [
   {
     name: 'bookbolt', kicker: 'An honest comparison',
     headline: 'A <mark>Book Bolt</mark> alternative for puzzle books',
-    facts: ['Five tools compared on 12-month cost', 'Every figure linked to its source', 'Prices checked Nov 9, 2026'],
+    facts: ['Five tools compared on price and features', 'Every figure linked to its source', 'Checked Nov 9, 2026; gaps marked'],
     art: ART.bookbolt,
   },
   {
@@ -304,7 +308,10 @@ export const IMAGES = [
     facts: [
       'Free: build, preview and proof every page',
       `7-day pass ${money(P.pass)}, no renewal`,
-      `Lifetime ${money(P.lifetime)} until ${shortDate(P.launchEnds)}, then ${money(P.lifetimeRegular)}`,
+      // Re-made after pricing.launchEnds (SETUP.md 2.2), the image drops the launch price.
+      pricingInfo(CONFIG, Date.now()).launch
+        ? `Lifetime ${money(P.lifetime)} until ${shortDate(P.launchEnds)}, then ${money(P.lifetimeRegular)}`
+        : `Lifetime ${money(P.lifetimeRegular)}, paid once`,
     ],
     art: ART.pricing,
   },
@@ -386,6 +393,55 @@ li{display:flex;align-items:center;gap:12px;font-size:23px;color:${t.text2};line
 </body></html>`;
 }
 
+// ------------------------------------------------------------------ the words an image was made from
+
+export const COPY_KEY = 'gbs-copy';
+
+/** SHA-256 (hex) of an image's words: kicker, headline and facts. */
+export function copyDigest(img) {
+  return createHash('sha256').update(JSON.stringify([img.kicker, img.headline, img.facts])).digest('hex');
+}
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+/** The PNG with a tEXt chunk (Latin-1 keyword and text) inserted just before IEND. */
+export function withTextChunk(png, keyword, text) {
+  const data = Buffer.from(`${keyword}\0${text}`, 'latin1');
+  const chunk = Buffer.alloc(12 + data.length);
+  chunk.writeUInt32BE(data.length, 0);
+  chunk.write('tEXt', 4, 'latin1');
+  data.copy(chunk, 8);
+  chunk.writeUInt32BE(crc32(chunk.subarray(4, 8 + data.length)), 8 + data.length);
+  const iend = png.length - 12;   // IEND is always the last chunk: length 0, type, CRC
+  if (png.subarray(iend + 4, iend + 8).toString('latin1') !== 'IEND') throw new Error('PNG does not end with IEND');
+  return Buffer.concat([png.subarray(0, iend), chunk, png.subarray(iend)]);
+}
+
+/** tEXt chunks of a PNG as { keyword: text }. */
+export function pngText(png) {
+  const out = {};
+  for (let o = 8; o + 8 <= png.length;) {
+    const len = png.readUInt32BE(o), type = png.subarray(o + 4, o + 8).toString('latin1');
+    if (type === 'tEXt') {
+      const s = png.subarray(o + 8, o + 8 + len).toString('latin1');
+      const z = s.indexOf('\0');
+      if (z > 0) out[s.slice(0, z)] = s.slice(z + 1);
+    }
+    if (type === 'IEND') break;
+    o += 12 + len;
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------ render
 
 /** Render the given images; returns [{ name, png, warnings }]. */
@@ -429,7 +485,8 @@ export async function renderImages(images = IMAGES, { htmlDir = null } = {}) {
         return c.scrollHeight > c.clientHeight + 1 || [...c.querySelectorAll('li')].some((li) => li.getBoundingClientRect().height > 40);
       });
       if (overflow) problems.push('the text column overflows: shorten the headline or a fact');
-      const png = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: W, height: H } });
+      const shot = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: W, height: H } });
+      const png = withTextChunk(shot, COPY_KEY, copyDigest(img));
       await page.close();
       out.push({ name: img.name, png, problems });
     }

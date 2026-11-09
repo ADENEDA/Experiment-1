@@ -146,12 +146,14 @@ function spineLabel(panels, safe, sp, c, pages) {
     const y0 = midY - (pitch * (letters.length - 1)) / 2 + vm.capHeight / 2;
     letters.forEach((l, i) => ops.push(text(panels.spine.x + sp / 2, y0 + i * pitch, l, { size: sz, weight: 'bold', align: 'center', gray: GUIDE.label })));
   } else {
-    // Too narrow for letters: label inside the back panel, with a small triangle pointing at the spine.
+    // Too narrow for letters: label inside the back panel's safe zone (clear of its dashed line), with a small
+    // triangle in the gap between that line and the fold, pointing at the spine.
     const label = `SPINE ${one(c.spine)}`;
     const size = 8;
-    const right = panels.spine.x - 10;
-    ops.push(text(right - 2, midY + vmetrics(size).capHeight / 2, label, { size, weight: 'bold', align: 'right', gray: GUIDE.label }));
-    ops.push(poly([right, midY - 3.5, right + 6, midY, right, midY + 3.5], { closed: true, fill: GUIDE.label }));
+    const safeRight = safe.back.x + safe.back.w;
+    ops.push(text(safeRight - 3, midY + vmetrics(size).capHeight / 2, label, { size, weight: 'bold', align: 'right', gray: GUIDE.label }));
+    const tx = (safeRight + panels.spine.x) / 2 - 3;
+    ops.push(poly([tx, midY - 3.5, tx + 6, midY, tx, midY + 3.5], { closed: true, fill: GUIDE.label }));
   }
   // Spine text note under the spine label, when there is room on the spine; always in the info block too.
   if (pages > 0 && safe.spine && safe.spine.w > measure('No', 7) + 2) {

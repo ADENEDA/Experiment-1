@@ -60,6 +60,37 @@ export function defaults(themeId = 'standard') {
   return { size: 9, difficulty: 'medium', symmetry: 'rotational' };
 }
 
+const SIZE_HOWTO = {
+  9: 'A 9×9 grid uses the digits 1 to 9 in 3×3 boxes.',
+  6: 'A 6×6 grid uses the digits 1 to 6 in boxes of 2 rows by 3 columns.',
+  4: 'A 4×4 grid uses the digits 1 to 4 in 2×2 boxes.',
+};
+const andList = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+/**
+ * "How to solve" text for a book whose sudoku sections use these opts (CONTRACTS §11): only the grid sizes and
+ * grades the book has, so a book of easy 4×4 puzzles doesn't explain 9×9 grids and pencil marks. → string[]
+ */
+export function howToFor(optsList = []) {
+  const all = (optsList.length ? optsList : [defaults()]).map(normalizeOpts);
+  const sizes = [9, 6, 4].filter((n) => all.some((o) => o.size === n));
+  // A 4×4 asked to be Hard or Expert is made as the hardest 4×4 there is (MAX_GRADE), so it reads as Medium.
+  const grades = new Set(all.map((o) => (RANK[o.difficulty] > RANK[MAX_GRADE[o.size]] ? MAX_GRADE[o.size] : o.difficulty)));
+  const simple = ['easy', 'medium'].filter((g) => grades.has(g)).map((g) => GRADE_LABEL[g]);
+  const hard = ['hard', 'expert'].filter((g) => grades.has(g)).map((g) => GRADE_LABEL[g]);
+  const out = [
+    meta.howTo[0],
+    sizes.map((n) => SIZE_HOWTO[n]).join(' '),
+    `Every puzzle has exactly one solution. ${simple.length ? `${andList(simple)} puzzles need only two ideas` : 'Start with two ideas'}: `
+      + 'a square where just one digit fits, or a digit that fits in just one square of a row, column or box.',
+  ];
+  const marks = 'pencil marks: write the possible digits small in each square and look for pairs and for digits locked into one row or column of a box';
+  if (hard.length === 2) out.push(`Hard puzzles also need ${marks}. Expert puzzles go further still.`);
+  else if (hard[0] === 'Hard') out.push(`Hard puzzles also need ${marks}.`);
+  else if (hard[0] === 'Expert') out.push(`Expert puzzles also need ${marks}, and then bigger patterns such as triples and X-Wings.`);
+  return out;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Geometry
 // ---------------------------------------------------------------------------------------------------------------

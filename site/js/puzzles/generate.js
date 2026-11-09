@@ -169,6 +169,9 @@ async function mainLoop() {
   try {
     let slice = now();
     while (queue.length) {
+      // configureGeneration may have switched to workers while this loop was yielding: the pool owns the queue now.
+      const p = ensurePool();
+      if (p) { pumpPool(p); break; }
       const job = queue.shift();
       job.state = 'running';
       let res;

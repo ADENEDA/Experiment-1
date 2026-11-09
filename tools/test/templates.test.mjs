@@ -12,6 +12,7 @@ import { getType } from '../../site/js/puzzles/registry.js';
 import { puzzleSeed } from '../../site/js/core/rng.js';
 import { layoutBook } from '../../site/js/layout/book.js';
 import { preflight } from '../../site/js/kdp/preflight.js';
+import { TRIMS } from '../../site/js/kdp/specs.js';
 
 const CONTRACT_IDS = ['large-print-wordsearch', 'sudoku-easy-expert', 'picture-logic', 'brain-games-mix', 'kids-activity', 'blank'];
 
@@ -114,6 +115,26 @@ test('templateFacts gives the numbers the cards show', () => {
   assert.equal(f.sections, 4);
   assert.ok(f.pages >= 100 && f.pages % 2 === 0, `${f.pages} pages`);
   assert.equal(templateFacts(buildFromTemplate('blank')).pages, 24, 'the blank book pads to KDP’s 24-page minimum');
+});
+
+test('Brain Games Mix answer keys never leave a section’s last answer alone on a page it could share (every trim)', { timeout: 60000 }, () => {
+  const project = buildFromTemplate('brain-games-mix');
+  const puzzles = generateAll(project);
+  for (const trim of TRIMS.map((t) => t.id)) {
+    for (const position of ['end', 'after-section']) {
+      for (const answersOnly of [false, true]) {
+        const book = layoutBook({ ...project, trim, answers: { ...project.answers, position } }, puzzles, { pro: true, answersOnly });
+        const ans = book.pages.filter((pg) => pg.kind === 'answers');
+        assert.equal(ans.flatMap((pg) => pg.refs).length, 100, `${trim} ${position}: every answer`);
+        for (const pg of ans.filter((x) => x.refs.length === 1)) {
+          // Only a one-row grid (2 per page side by side) can't be balanced: 25 = 12 × 2 + 1, as on its puzzle pages.
+          const sid = pg.refs[0].sectionId;
+          const rowsOfSection = new Set(ans.flatMap((x) => x.refs.filter((r) => r.sectionId === sid).map((r) => Math.round(r.box.y))));
+          assert.equal(rowsOfSection.size, 1, `${trim} ${position}${answersOnly ? ' answers-only' : ''}: "${pg.label}" holds a lone answer`);
+        }
+      }
+    }
+  }
 });
 
 for (const id of [...CONTRACT_IDS, 'sample']) {

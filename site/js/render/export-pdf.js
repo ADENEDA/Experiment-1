@@ -3,6 +3,7 @@
 //   exportPdf(pages, { title, author, subject, keywords, onProgress, signal, useWorker = true }) -> Promise<Blob>
 //   exportPng(page, { dpi = 300 }) -> Promise<Blob>      PNG with a pHYs chunk so editors see the real DPI
 //   downloadBlob(blob, filename)
+//   warmPdfExport() -> Promise<'worker'|'main'>   load the PDF tools ahead of the first export (see below)
 //   safeFilename(...parts[, '.ext']) -> ASCII-only name, parts joined with '_', e.g.
 //       safeFilename('Large Print Word Search', 'interior', '8.5x11', '128p', '.pdf')
 //       -> 'large-print-word-search_interior_8.5x11_128p.pdf'
@@ -45,9 +46,11 @@ function failWorker(rec, reason) {
   clearTimeout(rec.startTimer);
   try { rec.w.terminate(); } catch { /* already gone */ }
   if (worker === rec) worker = null;
-  if (!rec.ready) workerBroken = true;
+  // A worker that never started is not tried again this session, unless it failed because the browser was offline.
+  if (!rec.ready && globalThis.navigator?.onLine !== false) workerBroken = true;
   for (const job of rec.jobs.values()) job.reject(new WorkerUnavailable(reason));
   rec.jobs.clear();
+  rec.onFail?.(new WorkerUnavailable(reason));
 }
 
 function getWorker() {
@@ -61,10 +64,12 @@ function getWorker() {
     throw new WorkerUnavailable(e && e.message);
   }
   const rec = { w, ready: false, fontsSent: false, jobs: new Map(), startTimer: 0 };
+  rec.whenReady = new Promise((resolve, reject) => { rec.onReady = resolve; rec.onFail = reject; });
+  rec.whenReady.catch(() => {}); // only warmPdfExport() waits for it
   rec.startTimer = setTimeout(() => { if (!rec.ready) failWorker(rec, 'PDF worker did not start'); }, WORKER_START_TIMEOUT_MS);
   w.onmessage = (e) => {
     const m = e.data || {};
-    if (m.type === 'ready') { rec.ready = true; clearTimeout(rec.startTimer); return; }
+    if (m.type === 'ready') { rec.ready = true; clearTimeout(rec.startTimer); rec.onReady(); return; }
     const job = rec.jobs.get(m.id);
     if (!job) return; // cancelled job still reporting
     if (m.type === 'progress') job.onProgress?.(m.done, m.total);
@@ -127,8 +132,19 @@ function loadJsPdf() {
   return jsPdfPromise;
 }
 
+// A failed import() stays failed for the life of the page in Chromium, so a retry asks under a fresh URL.
+let backendRetry = 0;
+
+function loadBackend() {
+  if (globalThis.GBSPdfBackend) return Promise.resolve();
+  return import(backendRetry ? `${BACKEND_URL.href}?retry=${backendRetry}` : BACKEND_URL.href).catch(() => {
+    backendRetry++;
+    throw new Error('Could not load the PDF tools. Check your connection and try again.');
+  });
+}
+
 async function buildOnMainThread(pages, fonts, meta, onProgress, signal) {
-  const [jsPDF] = await Promise.all([loadJsPdf(), import(BACKEND_URL.href)]);
+  const [jsPDF] = await Promise.all([loadJsPdf(), loadBackend()]);
   throwIfAborted(signal);
   return globalThis.GBSPdfBackend.buildPdfAsync(jsPDF, pages, fonts, {
     ...meta, metrics: FONT_DATA, onProgress, signal, yieldMs: 16,
@@ -164,6 +180,19 @@ export async function exportPdf(pages, { title, author, subject, keywords, onPro
     lastPath = 'main';
   }
   return new Blob([buffer], { type: 'application/pdf' });
+}
+
+/**
+ * Load the PDF tools now, ahead of the first export (same-origin files only; nothing is built), so exporting keeps
+ * working if the connection drops later: starts the PDF worker (jsPDF loads inside it), or, where a worker can't
+ * run, loads jsPDF and the backend for the main-thread fallback. Resolves with the path that is ready; rejects
+ * when nothing could load (e.g. the browser is already offline).
+ */
+export function warmPdfExport() {
+  const main = () => Promise.all([loadJsPdf(), loadBackend()]).then(() => 'main');
+  let rec;
+  try { rec = getWorker(); } catch { return main(); }
+  return rec.whenReady.then(() => 'worker', main);
 }
 
 /** Which path built the most recent PDF: 'worker', 'main' or null. */

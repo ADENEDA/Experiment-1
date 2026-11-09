@@ -17,6 +17,8 @@ import { makeRng } from '../../site/js/core/rng.js';
 import { THEMES } from '../../site/js/layout/themes.js';
 import { bbox, unionBox } from '../../site/js/layout/displaylist.js';
 import { isSupported, measure, vmetrics } from '../../site/js/core/fontmetrics.js';
+import { budget, fastest } from './timing.mjs';
+import { optional } from './optional-tools.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SITE = join(ROOT, 'site');
@@ -144,17 +146,16 @@ test('20×20 line-solve is under 30ms', () => {
   for (const p of puzzles) solveLines(p.data.rows, p.data.cols, 20, 20); // warm up
   let worst = 0;
   for (const p of puzzles) {
-    const t = now();
-    const r = solveLines(p.data.rows, p.data.cols, 20, 20, p.data.givens);
-    worst = Math.max(worst, now() - t);
+    const { value: r, ms } = fastest(() => solveLines(p.data.rows, p.data.cols, 20, 20, p.data.givens), 30);
+    worst = Math.max(worst, ms);
     assert.equal(r.solved, true);
   }
   // Also a library picture (long runs, many passes).
   const lib = gen({ size: 20, source: 'library', library: { pictures: ['bicycle'] } }, 'perf-lib');
-  const t = now();
-  assert.equal(solveLines(lib.data.rows, lib.data.cols, 20, 20).solved, true);
-  worst = Math.max(worst, now() - t);
-  assert.ok(worst < 30, `worst 20×20 solve took ${worst.toFixed(2)}ms`);
+  const { value: libSolve, ms: libMs } = fastest(() => solveLines(lib.data.rows, lib.data.cols, 20, 20), 30);
+  assert.equal(libSolve.solved, true);
+  worst = Math.max(worst, libMs);
+  assert.ok(worst < budget(30), `worst 20×20 solve took ${worst.toFixed(2)}ms`);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -202,21 +203,20 @@ test('500 random-mode puzzles are line-solvable and deterministic', (t) => {
     const size = sizes[i % sizes.length];
     const density = [0.45, 0.5, 0.55, 0.6][i % 4];
     const opts = { size, source: 'random', density };
-    const t = now();
-    const p = gen(opts, `rand:${i}`, i);
-    worst = Math.max(worst, now() - t);
+    const { value: p, ms } = fastest(() => gen(opts, `rand:${i}`, i), 1500);
+    worst = Math.max(worst, ms);
     assert.equal(p.data.w, size);
     assert.equal(p.data.h, size);
     const v = N.verify(p);
     assert.ok(v.ok, `puzzle ${i}: ${v.reason}`);
-    assert.equal(p.title, '');
+    assert.equal(p.title, `${size}×${size} · ${p.stats.grade}`, 'subtitle: size and grade, like the other types');
     assert.ok(p.stats.density >= 0.4 && p.stats.density <= 0.65, `density ${p.stats.density}`);
     const q = gen(opts, `rand:${i}`, i);
     assert.ok(same(p.data, q.data) && same(p.solution, q.solution), `puzzle ${i} is not deterministic`);
     adjusted += p.stats.adjusted;
     givens += p.stats.givens;
   }
-  assert.ok(worst < 1500, `slowest random puzzle took ${worst.toFixed(0)}ms`);
+  assert.ok(worst < budget(1500), `slowest random puzzle took ${worst.toFixed(0)}ms`);
   t.diagnostic(`random: 500 puzzles, ${adjusted} cells adjusted in total, ${givens} givens, slowest ${worst.toFixed(1)}ms`);
 });
 
@@ -263,17 +263,16 @@ test('every library picture at every size makes a line-solvable puzzle in time',
   const resampled = { count: 0, adjusted: 0, givens: 0 };
   for (const size of [10, 15, 20, 25, 30]) {
     PICTURES.forEach((pic, k) => {
-      const t0 = now();
       // Selecting just this picture forces it even at a size where it is not stored (then it is resampled).
-      const p = gen({ size, source: 'library', library: { pictures: [pic.id] } }, `lib:${pic.id}:${size}`, k);
-      const ms = now() - t0;
+      const { value: p, ms } = fastest(() => gen({ size, source: 'library', library: { pictures: [pic.id] } }, `lib:${pic.id}:${size}`, k), 3000);
       worst = Math.max(worst, ms);
-      assert.ok(ms < 3000, `${pic.id}@${size} took ${ms}ms`);
+      assert.ok(ms < budget(3000), `${pic.id}@${size} took ${ms}ms`);
       const v = N.verify(p);
       assert.ok(v.ok, `${pic.id}@${size}: ${v.reason}`);
       assert.equal(p.data.w, size);
       assert.equal(p.answerTitle, pic.name);
-      assert.equal(p.title, '');
+      assert.equal(p.title, `${size}×${size} · ${p.stats.grade}`);
+      assert.ok(!p.title.toLowerCase().includes(pic.name.toLowerCase()), 'the puzzle page never names the picture');
       assert.equal(p.stats.picture, pic.id);
       made++;
       if (pic.bits[size]) {
@@ -667,15 +666,14 @@ test('hard custom pictures: few givens, well inside the deadline', () => {
   let worst = 0;
   for (const [n, d] of [[30, 0.5], [30, 0.3]]) {
     for (const showGivens of [true, false]) {
-      const t0 = now();
-      const p = gen(custom(n, n, noise(n, d, `hard${n}${d}`), { showGivens }), `hard${n}${d}`);
-      worst = Math.max(worst, now() - t0);
+      const { value: p, ms } = fastest(() => gen(custom(n, n, noise(n, d, `hard${n}${d}`), { showGivens }), `hard${n}${d}`), 1500);
+      worst = Math.max(worst, ms);
       assert.ok(N.verify(p).ok, `${n}/${d}`);
       if (showGivens) assert.ok(p.stats.adjusted <= repairBudget(n, n));
       else assert.ok(p.stats.adjusted <= Math.max(60, Math.round(0.12 * n * n)));
     }
   }
-  assert.ok(worst < 1500, `slowest hard custom puzzle took ${worst.toFixed(0)}ms`);
+  assert.ok(worst < budget(1500), `slowest hard custom puzzle took ${worst.toFixed(0)}ms`);
   // A wide scan for givens needs far fewer of them than a handful of random tries.
   let wide = 0, narrow = 0;
   for (const [n, d] of [[30, 0.5], [20, 0.3], [25, 0.5]]) {
@@ -691,10 +689,9 @@ test('hard custom pictures: few givens, well inside the deadline', () => {
   const open = n * n - solveBits(left.bits, n, n).determinedCount;
   assert.ok(rep.givens.length <= open / 4 + 4, `${rep.givens.length} givens for ${open / 4} open switches`);
   // Even the largest pathological upload finishes far inside the default 3s deadline (with many givens).
-  const t0 = now();
-  const huge = gen(custom(N.CUSTOM_MAX, N.CUSTOM_MAX, noise(N.CUSTOM_MAX, 0.3, 'huge')), 'huge');
+  const { value: huge, ms: hugeMs } = fastest(() => gen(custom(N.CUSTOM_MAX, N.CUSTOM_MAX, noise(N.CUSTOM_MAX, 0.3, 'huge')), 'huge'), 2500);
   assert.ok(N.verify(huge).ok);
-  assert.ok(now() - t0 < 2500, `${N.CUSTOM_MAX}×${N.CUSTOM_MAX} noise took ${(now() - t0).toFixed(0)}ms`);
+  assert.ok(hugeMs < budget(2500), `${N.CUSTOM_MAX}×${N.CUSTOM_MAX} noise took ${hugeMs.toFixed(0)}ms`);
 });
 
 test('deadline expiry throws GenTimeout (never another error) for every source', () => {
@@ -749,7 +746,7 @@ test('a 60-puzzle library section: valid, varied, quick', () => {
     seen.add(p.stats.picture);
   }
   assert.equal(seen.size, 60, 'no picture repeats within a section shorter than the library');
-  assert.ok(now() - t0 < 3000);
+  assert.ok(now() - t0 < budget(3000));
   // Size 10 skips the icons that are not curated for 10×10 (e.g. heart, spade).
   const at10 = new Set(N.listPictures({ size: 10 }).map((p) => p.id));
   for (const id of ['heart', 'spade', 'club', 'diamond']) assert.ok(!at10.has(id), id);
@@ -770,7 +767,7 @@ test('draw: clue numbers never crowd each other without a warning', () => {
     gen({ size: 20, source: 'random' }, 'r20'),
     gen({ size: 10, library: { pictures: ['cat'] } }, 'cat10'),
   ];
-  let crowdedWarned = 0;
+  let crowdedWarned = 0, clashes = 0;
   for (const theme of Object.values(THEMES)) {
     for (const p of puzzles) {
       for (const W of [140, 200, 260, 330, 420, 504]) {
@@ -779,17 +776,22 @@ test('draw: clue numbers never crowd each other without a warning', () => {
         if (!d.ops.length) continue;
         checkOps(d.ops, box, `${theme.id} ${p.data.w} ${W}`);
         const { col, row } = clueGaps(d.ops);
-        const warned = d.warnings.some((s) => /too small for/.test(s));
+        const warned = [...d.warnings, ...d.errors].some((s) => /too small for/.test(s));
         if (col < 0.25 - 1e-6 || row < 0.25 - 1e-6) {
           assert.ok(warned, `${theme.id} ${p.data.w}×${p.data.h} in ${W}pt: gaps ${col.toFixed(2)}/${row.toFixed(2)}em, no warning`);
           crowdedWarned++;
         }
+        // Clues that run together (under 0.2em of clear space: 12 13 reads as 1213) are an error, never just a warning.
+        const clash = col < 0.2 - 1e-3 || row < 0.2 - 1e-3;
+        assert.equal(d.errors.length > 0, clash, `${theme.id} ${p.data.w}×${p.data.h} in ${W}pt: gaps ${col.toFixed(2)}/${row.toFixed(2)}em, errors ${d.errors.join(' | ')}`);
+        if (clash) clashes++;
         const size = d.ops.find((o) => o.t === 'text').size;
         if (size > 7) assert.ok(col >= 0.25 - 1e-6 && row >= 0.25 - 1e-6, `${theme.id} ${W}: ${size}pt clues crowd (${col.toFixed(2)}em)`);
       }
     }
   }
   assert.ok(crowdedWarned > 0, 'the stress set reaches the crowded case');
+  assert.ok(clashes > 0, 'the stress set reaches clues that run together');
   // Large Print, one 15×15 per letter page: clues at least 14pt, no warnings at all.
   const lp = N.draw(gen({ size: 15, library: { pictures: ['dog'] } }, 'lp15'), { x: 54, y: 72, w: 504, h: 648 }, THEMES.large, 'puzzle');
   assert.deepEqual(lp.warnings, []);
@@ -854,9 +856,9 @@ function loadPlaywright() {
 
 test('picture-raster.js in Chromium', async (t) => {
   const pw = loadPlaywright();
-  if (!pw) { t.skip('Playwright is not installed'); return; }
+  if (!pw) { t.skip(optional('Playwright is not installed')); return; }
   let browser;
-  try { browser = await pw.chromium.launch(); } catch (e) { t.skip(`Chromium unavailable: ${e.message}`); return; }
+  try { browser = await pw.chromium.launch(); } catch (e) { t.skip(optional(`Chromium unavailable: ${e.message}`)); return; }
   try {
     const page = await browser.newPage();
     await page.route('http://gbs.test/**', async (route) => {

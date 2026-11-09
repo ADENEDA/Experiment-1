@@ -14,17 +14,17 @@ import { CONFIG } from '../../config.js';
 import { initLicense, getLicense, activate, activateOfflineCode, deactivate, onLicenseChange } from '../license/license.js';
 import { renderBuyButtons, ensureLicenseCss } from './buy-buttons.js';
 
-const REFUNDS_HREF = new URL('../../legal/refunds.html', import.meta.url).href;
+const REFUNDS_HREF = new URL('../../legal/refunds', import.meta.url).href; // extensionless, like the canonical URL
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const REASONS = {
-  export: 'Clean, publishable exports (no proof footer or header) are part of Pro.',
+  export: 'Clean, publishable exports (no proof header or footer) are part of Pro.',
   printable: `Free printables include up to ${CONFIG.free?.printableMaxPuzzles ?? 10} puzzles with a small footer. Pro removes the limit and the footer.`,
   png: 'PNG export at 300 DPI is part of Pro.',
   zip: 'The ZIP bundle is part of Pro.',
   credit: 'The optional credit line is a Pro setting.',
 };
-const DEFAULT_LEAD = 'Everything works in the free edition. Pro removes the proof footer and adds a commercial-use licence.';
+const DEFAULT_LEAD = 'You can build and preview everything in the free edition. Pro removes the proof header and footer, adds PNG and ZIP exports and a commercial-use license.';
 
 // Short label + tone for each license status and activation outcome.
 function labelFor(status, reason) {

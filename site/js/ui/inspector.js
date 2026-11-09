@@ -696,7 +696,7 @@ function createBookView(app) {
 
   // Page furniture
   const pageNums = segmented({
-    options: [{ value: 'none', label: 'None' }, { value: 'outside', label: 'Outside' }, { value: 'center', label: 'Centre' }],
+    options: [{ value: 'none', label: 'None' }, { value: 'outside', label: 'Outside' }, { value: 'center', label: 'Center' }],
     value: 'outside', fk: 'book:pagenumbers',
     onChange: (v) => updP((d) => { d.pageNumbers = v === 'none' ? false : v; }, { label: v === 'none' ? 'Turn off page numbers' : 'Change page number position' }),
   });

@@ -8,7 +8,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { CONFIG } from '../../site/config.js';
-import { formatPrice } from '../../site/js/ui/buy-buttons.js';
+import { formatPrice, pricingInfo } from '../../site/js/ui/buy-buttons.js';
 import {
   TRIMS, GUTTER_TIERS, SPINE_PER_PAGE, coverSize, interiorPageSize, maxPages, inToPt,
 } from '../../site/js/kdp/specs.js';
@@ -294,15 +294,17 @@ test('comparison: cheapest KDP Builder credits (checked against brute force)', (
 
 test('comparison: figures match SPEC §1 and config.js', () => {
   const spec = read('docs/SPEC.md');
-  assert.ok(spec.includes('$9.97–19.97/mo; puzzles only on the higher tier'));
-  assert.deepEqual(C.PRICES.bookbolt, { low: 9.97, high: 19.97 });
+  // Book Bolt's pricing page blocked the 2026-11-09 check and reviews disagree: no price is quoted for it.
+  assert.ok(spec.includes('Monthly or yearly subscription; puzzle tools only on the higher plan; prices n/v'));
+  assert.equal(C.PRICES.bookbolt, null);
   assert.ok(spec.includes('$49 at launch, then $79, once'));
   assert.deepEqual(C.PRICES.puzzlebindery, { launch: 49, regular: 79 });
-  assert.ok(spec.includes('"$197 regular, 71% off" (about $57)'));
+  assert.ok(spec.includes('"Regular Price $197", "You Save 71%" (about $57)'));
+  assert.ok(spec.includes('Credit packs from $8.99 for 100, or plans from $16/mo'));
   assert.deepEqual(C.PRICES.sudokumaker, { regular: 197, discountPct: 71 });
   assert.deepEqual(C.PRICES.gridbook, { pass: CONFIG.pricing.pass, lifetime: CONFIG.pricing.lifetime, lifetimeRegular: CONFIG.pricing.lifetimeRegular });
   const y12 = C.yearCosts(12), y48 = C.yearCosts(48);
-  assert.equal(y12.bookbolt, 239.64);
+  assert.equal(y12.bookbolt, null);
   assert.equal(y12.sudokumaker, 57.13);
   assert.deepEqual(y12.kdpbuilder, { low: 87.96, high: 111.98 });
   assert.deepEqual(y48.kdpbuilder, { low: 291.96, high: 390 });
@@ -319,7 +321,7 @@ const OTHER_TOOL_PAGES = ['nonogram-puzzle-book-maker', 'large-print-word-search
 const KNOWN_ROUTES = new Set([
   '', 'app/', 'pricing/', 'play/', 'kdp-spine-width-calculator/', 'kdp-margin-calculator/', 'nonogram-puzzle-book-maker/',
   'large-print-word-search-maker/', 'sudoku-book-generator/', 'book-bolt-alternative/',
-  'legal/terms.html', 'legal/privacy.html', 'legal/refunds.html', 'legal/license.html', 'legal/credits.html',
+  'legal/terms', 'legal/privacy', 'legal/refunds', 'legal/license', 'legal/credits', // served from legal/*.html, like Cloudflare Pages
   'samples/picture-logic-32p.pdf', 'favicon.svg', 'img/apple-touch-icon.png', 'site.webmanifest',
 ]);
 const KDP_SOURCES = ['https://kdp.amazon.com/en_US/help/topic/G201953020', 'https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6',
@@ -465,8 +467,10 @@ for (const page of PAGES) {
     for (const b of tags(html, 'button')) assert.equal(b.type, 'button');
     for (const i of tags(html, 'input').filter((x) => x.type !== 'radio')) assert.ok(ids.includes(i.id) && html.includes(`<label for="${i.id}">`), `label for ${i.id}`);
     for (const s of tags(html, 'select')) assert.ok(html.includes(`<label for="${s.id}">`), `label for ${s.id}`);
-    const want = { lifetime: formatPrice(CONFIG.pricing.lifetime), lifetimeRegular: formatPrice(CONFIG.pricing.lifetimeRegular), pass: formatPrice(CONFIG.pricing.pass) };
-    for (const m of html.matchAll(/data-cfg-price="(\w+)">([^<]*)</g)) assert.equal(m[2], want[m[1]], `data-cfg-price=${m[1]}`);
+    // Today's prices (the launch price until pricing.launchEnds): node tools/sync-prices.mjs keeps the fallbacks current.
+    const today = pricingInfo(CONFIG, Date.now());
+    const want = { lifetime: formatPrice(today.lifetime), lifetimeRegular: formatPrice(today.lifetimeRegular), pass: formatPrice(today.pass) };
+    for (const m of html.matchAll(/data-cfg-price="(\w+)">([^<]*)</g)) assert.equal(m[2], want[m[1]], `data-cfg-price=${m[1]} (run node tools/sync-prices.mjs)`);
     const text = stripTags(html);
     assert.ok(!/testimonial|5 stars|trusted by|\d[\d,]* (users|customers|publishers|teachers)|best-selling|#1/i.test(text), 'no fake social proof');
     assert.ok(!/lorem ipsum|TODO|TBD/i.test(html));
@@ -553,6 +557,10 @@ test('comparison page: dated, sourced, fair, and the cost table matches the arit
   // Every cited source is linked from the Sources list, and every external link is a cited source.
   const sources = /<ol class="cmp-sources">([\s\S]*?)<\/ol>/.exec(html)[1];
   for (const u of COMPETITOR_SOURCES) assert.ok(sources.includes(`href="${u}"`), u);
+  // The Sources list starts at the same left edge as the rest of the page (a plain .wrap, not the centred .wrap-text),
+  // and the copy speaks to readers, not about our tooling.
+  assert.match(html, /<section class="section section-alt" aria-labelledby="sources-h">\s*<div class="wrap">/);
+  assert.ok(!/automated check|blocked our|refused our|our earlier notes/i.test(text), 'no internal-notes wording');
   // Fair: says where competitors are better and what Gridbook lacks.
   for (const s of ['keyword and niche research', 'Gridbook has no research tools', 'Gridbook doesn’t make these yet', 'variants Gridbook doesn’t make',
     'What Gridbook Studio doesn’t do', 'No crosswords, cryptograms']) assert.ok(html.includes(s), s);
@@ -564,18 +572,51 @@ test('comparison page: dated, sourced, fair, and the cost table matches the arit
     const m = new RegExp(`<tr data-cost="${key}"><th scope="row">[^<]+</th><td class="num">(.*?)</td><td class="num">(.*?)</td></tr>`).exec(html);
     return [stripTags(m[1]), stripTags(m[2])];
   };
-  assert.deepEqual(row('gridbook'), [money(y12.gridbook), money(y48.gridbook)]);
-  assert.deepEqual(row('bookbolt'), [money(y12.bookbolt), money(y48.bookbolt)]);
+  // The Gridbook cells are data-cfg-price fallbacks: today's Lifetime price (tools/sync-prices.mjs switches them).
+  const lifetimeToday = formatPrice(pricingInfo(CONFIG, Date.now()).lifetime);
+  assert.deepEqual(row('gridbook'), [lifetimeToday, lifetimeToday]);
+  assert.deepEqual([y12.gridbook, y48.gridbookRegular], [CONFIG.pricing.lifetime, CONFIG.pricing.lifetimeRegular]);
+  assert.deepEqual([y12.bookbolt, y48.bookbolt], [null, null]);
+  assert.deepEqual(row('bookbolt'), ['Not verified', 'Not verified']);
   assert.deepEqual(row('puzzlebindery'), [money(y12.puzzlebindery), money(y48.puzzlebindery)]);
   assert.deepEqual(row('kdpbuilder'), [`${money(y12.kdpbuilder.low)}–${money(y12.kdpbuilder.high)}`, `${money(y48.kdpbuilder.low)}–${money(y48.kdpbuilder.high)}`]);
   assert.deepEqual(row('sudokumaker'), [`about $${Math.round(y12.sudokumaker)}`, `about $${Math.round(y48.sudokumaker)}`]);
   assert.ok(html.includes('1,200–1,800 credits and 4,800–7,200 credits'));
   assert.deepEqual(C.KDP_BUILDER.creditsPerPuzzleBook.map((n) => n * 12), [1200, 1800]);
   assert.deepEqual(C.KDP_BUILDER.creditsPerPuzzleBook.map((n) => n * 48), [4800, 7200]);
-  assert.ok(html.includes('12 × $19.97'));
   assert.ok(html.includes('Credits: 100 for $8.99 up to 1,500 for $89.99, or plans from $16 a month'));
   assert.deepEqual([C.KDP_BUILDER.packs[0].price, C.KDP_BUILDER.packs[3].price], [8.99, 89.99]);
-  assert.ok(html.includes('$9.97–$19.97 a month'));
   assert.ok(html.includes('$49 once at launch, then $79'));
   assert.ok(html.includes('“Regular Price $197”, “You Save 71%” (about $57)'));
+  // No Book Bolt price from unverifiable notes, and the summary claims match what the page actually does.
+  assert.doesNotMatch(text, /9\.97|19\.97|239\.64|earlier research notes/);
+  assert.match(text, /Monthly or yearly subscription; puzzle generators only on the higher plan\. Prices not verified on 2026-11-09/);
+  assert.doesNotMatch(/<meta property="og:description" content="([^"]*)"/.exec(html)[1], /Prices checked/);
+});
+
+test('comparison tables on the home and pricing pages use the comparison page\'s dated, sourced figures', () => {
+  const sourced = stripTags(read('site/book-bolt-alternative/index.html'));
+  for (const f of ['site/index.html', 'site/pricing/index.html']) {
+    const html = read(f);
+    const table = /<table class="data-table compare-table">([\s\S]*?)<\/table>/.exec(html)[1];
+    const cells = (label) => [...new RegExp(`<tr><th scope="row">${label}</th>(.*?)</tr>`).exec(table)[1].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((m) => stripTags(m[1]));
+    const [, bookbolt, puzzlebindery, kdpbuilder, sudokumaker] = cells('Price');
+    // Book Bolt: no number, and marked as unverified, as on the comparison page.
+    assert.doesNotMatch(bookbolt, /\d/, `${f}: Book Bolt price`);
+    assert.match(bookbolt, /not verified/i);
+    assert.ok(sourced.includes('Monthly or yearly subscription; puzzle generators only on the higher plan. Prices not verified'));
+    // The others quote what the comparison page quotes.
+    assert.equal(puzzlebindery, '$49 once at launch, then $79');
+    assert.match(kdpbuilder, /\$8\.99 for 100, or plans from \$16 a month; it estimates 100–150 credits per puzzle book/);
+    assert.equal(sudokumaker, '“Regular Price $197”, “You Save 71%” (about $57), one-time');
+    for (const quote of ['“Regular Price $197”, “You Save 71%” (about $57), one-time', '$49 once at launch, then $79', 'plans from $16 a month', '100–150 credits per puzzle book']) {
+      assert.ok(sourced.includes(quote), `comparison page quotes ${quote}`);
+    }
+    assert.doesNotMatch(table, /10\.99|75 free credits|9\.97|19\.97|“\$197 regular/);
+    // KDP Builder's own pricing page lists its puzzle types and a cover PDF: the cells say so instead of "not verified".
+    assert.equal(cells('Picture nonograms')[3], 'Not among its listed puzzle types');
+    assert.equal(cells('Crossword, cryptogram and other word puzzles')[3], 'Crosswords');
+    assert.match(cells('Cover')[3], /Cover PDF/);
+    assert.ok(html.includes('book-bolt-alternative/">full comparison</a> links every figure to its source'), `${f} links the sourced comparison`);
+  }
 });

@@ -245,8 +245,18 @@ function drawPuzzle(S, item, box, mode, rc) {
   }
   // Keep only well-formed ops (an engine bug must not take the whole book down); preflight reports bad geometry.
   let ops = (Array.isArray(res.ops) ? res.ops : []).filter((op) => op && typeof op === 'object' && OP_TYPES.has(op.t));
-  const warnings = (Array.isArray(res.warnings) ? res.warnings : res.warnings ? [res.warnings] : [])
-    .map((w) => ({ code: 'draw', msg: String(w && typeof w === 'object' && w.msg ? w.msg : w) }));
+  const list = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+  const msgOf = (w) => String(w && typeof w === 'object' && w.msg ? w.msg : w);
+  // `errors` (optional): the drawing prints but cannot be solved or read as printed; preflight reports these as errors.
+  // A puzzle the engine could not draw at all (box too small) leaves a hole in the book: its warnings are errors too.
+  const empty = !ops.length;
+  const warnings = [
+    ...list(res.errors).map((w) => ({ code: 'draw-illegible', msg: msgOf(w) })),
+    ...list(res.warnings).map((w) => ({ code: empty ? 'draw-illegible' : 'draw', msg: msgOf(w) })),
+  ];
+  if (empty && !warnings.length) {
+    warnings.push({ code: 'draw-illegible', msg: 'The puzzle could not be drawn in its space. Use fewer puzzles per page or a smaller grid.' });
+  }
   const u = opsBox(ops);
   const tol = 0.25;
   if (u && [u.x, u.y, u.w, u.h].every(Number.isFinite)
@@ -308,75 +318,209 @@ function planPuzzlePages(S, perPage, rc) {
   return pages;
 }
 
-/** Planned answer-key pages for a section (mini solutions, `perPage` per page). */
-function planAnswerPages(S, perPage, rc) {
-  const pages = [];
+const ANSWER_GAP = 14;     // pt between answer-key slots
+const answerTitleOf = (it) => (puzzleState(it.puzzle) === 'ok' ? it.puzzle.answerTitle : '');
+
+/** The part of an answer page's content box below its "Answers: …" heading. */
+function answerArea(box, rc) {
+  const headH = P.headingBlockHeight(rc.sz.h3);
+  return { x: box.x, y: box.y + headH, w: box.w, h: box.h - headH };
+}
+
+/**
+ * Slot grid + label format of a section's answer pages at `perPage` minis per page in `area`: the same on every
+ * page (every answer page has the same content-box size), so the minis line up across pages. Labels get a second
+ * line only if some name doesn't fit beside its number.
+ * → { format, header, mini: { w, h } (the mini's box), cols, rows, cw, ch (a slot, label included) }
+ */
+function answerGrid(S, perPage, area, rc) {
   const { sz } = rc;
-  const labelSize = sz.small;
-  const headH = P.headingBlockHeight(sz.h3);
-  const gap = 14;
-  const titleOf = (it) => (puzzleState(it.puzzle) === 'ok' ? it.puzzle.answerTitle : '');
-  const headerH = (two) => P.slotHeaderHeight({ titleSize: labelSize, subSize: labelSize, hasSub: two, gap: 4 });
-  // Slot grid + label format for the whole section (every answer page has the same content-box size), so the
-  // minis line up across pages. Labels get a second line only if some name doesn't fit beside its number.
-  let memo = null;
-  const labels = S.items.map((it) => ({ num: it.num, title: titleOf(it) }));
-  const sectionLayout = (area) => {
-    const key = `${area.w}|${area.h}`;
-    if (memo && memo.key === key) return memo;
-    let g = gridShape(perPage, area.w, area.h, { headerH: headerH(false), gap });
-    let format = P.answerLabelFormat(g.cw, labels, sz.floor);
-    const two = format === 'two' || format === 'two-short';
-    if (two) {
-      g = gridShape(perPage, area.w, area.h, { headerH: headerH(true), gap });
-      format = P.answerLabelFormat(g.cw, labels, sz.floor, { twoLine: true });
-    }
-    memo = { key, format, header: headerH(two) };
-    return memo;
+  const headerH = (two) => P.slotHeaderHeight({ titleSize: sz.small, subSize: sz.small, hasSub: two, gap: 4 });
+  const labels = S.items.map((it) => ({ num: it.num, title: answerTitleOf(it) }));
+  let g = gridShape(perPage, area.w, area.h, { headerH: headerH(false), gap: ANSWER_GAP });
+  let format = P.answerLabelFormat(g.cw, labels, sz.floor);
+  const two = format === 'two' || format === 'two-short';
+  if (two) {
+    g = gridShape(perPage, area.w, area.h, { headerH: headerH(true), gap: ANSWER_GAP });
+    format = P.answerLabelFormat(g.cw, labels, sz.floor, { twoLine: true });
+  }
+  const header = headerH(two);
+  return { format, header, mini: { w: g.cw, h: Math.max(0, g.ch - header) }, cols: g.cols, rows: g.rows, cw: g.cw, ch: g.ch };
+}
+
+/**
+ * Answers per page for a section whose engine can tell whether its minis stay readable (`miniFits`, e.g. word
+ * search letters): the requested count if they do, else the largest smaller allowed count (then 2, then 1) that
+ * keeps them readable. → { n, from } (from = the requested count when it was lowered)
+ */
+function legibleAnswerPerPage(S, n, box, rc) {
+  const fits = S.type.miniFits;
+  if (typeof fits !== 'function' || !box) return { n };
+  const area = answerArea(box, rc);
+  const allowed = (Array.isArray(S.meta.answerPerPage) ? S.meta.answerPerPage : []).filter((v) => Number.isInteger(v) && v > 0 && v < n);
+  const tries = [...new Set([n, ...allowed.sort((a, b) => b - a), 2, 1])].filter((v) => v <= n);
+  for (const k of tries) {
+    let ok;
+    try { ok = fits(S.sec.opts, { x: 0, y: 0, ...answerGrid(S, k, area, rc).mini }, rc.style); } catch { ok = true; }
+    if (ok) return k === n ? { n } : { n: k, from: n };
+  }
+  return { n };   // nothing keeps them readable (a huge grid on a tiny page): draw() reports it
+}
+
+/**
+ * Planned answer-key pages for `list` = [{ S, perPage }] (mini solutions), in order, for content boxes of `box`'s size.
+ * Minis are placed row by row in each section's own grid (answerGrid: the same on every page, so they line up across
+ * pages). With `flow`, a section that starts part-way down a page continues there under a sub-heading with its name
+ * (if the sub-heading and one row fit) instead of starting a new page, so a section's last answer or two never get a
+ * page of their own. A row with fewer minis than columns is centred. A section whose last page would still hold
+ * just one short row and nothing else (no next section fits under it) splits its last two pages evenly instead
+ * (7 answers at 6 per page: 4 + 3, not 6 + 1); a one-row grid (2 per page side by side) can't, so an odd count
+ * leaves its last answer alone, as on the puzzle pages.
+ */
+function planAnswerPages(list, box, rc, { flow = true } = {}) {
+  const { sz } = rc;
+  const area = answerArea(box, rc);     // only its size is used here; rows are placed relative to its top
+  const subH = P.answerSubheadingHeight(rc);
+  const secs = list.filter(({ S }) => S.items.length).map(({ S, perPage }) => ({ S, L: answerGrid(S, perPage, area, rc) }));
+  const plans = [];
+  let page = null, y = 0;
+  const newPage = () => { page = { blocks: [] }; plans.push(page); y = 0; };
+  const fitsBelow = (L) => page && flow && y + subH + L.ch <= area.h + EPS;
+  /** Rows of `items` in grid L from y0 down. */
+  const rowsFrom = (items, L, y0) => {
+    const rows = [];
+    for (let k = 0; k < items.length; k += L.cols) rows.push({ y: y0 + rows.length * (L.ch + ANSWER_GAP), items: items.slice(k, k + L.cols) });
+    return rows;
   };
-  for (let k = 0; k < S.items.length; k += perPage) {
-    const chunk = S.items.slice(k, k + perPage);
-    const first = chunk[0].num, last = chunk[chunk.length - 1].num;
-    pages.push({
-      kind: 'answers', section: S,
-      label: `Answers ${rangeLabel(first, last)} · ${S.name}`,
-      render(box) {
-        const ops = [...P.heading(box, `Answers: ${S.name}`, { size: sz.h3, floor: sz.floor, gray: sz.ink, rule: true }).ops];
+  secs.forEach(({ S, L }, i) => {
+    if (!fitsBelow(L)) newPage();
+    let block = { S, L, sub: page.blocks.length ? y : null, rows: [] };
+    if (block.sub !== null) y += subH;
+    page.blocks.push(block);
+    const blocks = [block];
+    for (let k = 0; k < S.items.length; k += L.cols) {
+      if (y > EPS && y + L.ch > area.h + EPS) {
+        newPage();
+        block = { S, L, sub: null, rows: [] };
+        page.blocks.push(block);
+        blocks.push(block);
+      }
+      block.rows.push({ y, items: S.items.slice(k, k + L.cols) });
+      y += L.ch + ANSWER_GAP;
+    }
+    // Last page = one short row on a page of its own: share the last two pages' answers evenly (the first gets the
+    // extra one). Every earlier row of the section is full, so both halves fit where the rows were.
+    const next = secs[i + 1];
+    if (blocks.length < 2 || block.rows.length !== 1 || block.rows[0].items.length >= L.cols || (next && fitsBelow(next.L))) return;
+    const prev = blocks[blocks.length - 2];
+    const items = [...prev.rows, ...block.rows].flatMap((r) => r.items);
+    const keep = Math.ceil(items.length / 2);
+    if (keep >= items.length - block.rows[0].items.length) return;   // e.g. 2 + 1 in a one-row grid: nothing to gain
+    prev.rows = rowsFrom(items.slice(0, keep), L, prev.rows[0].y);
+    block.rows = rowsFrom(items.slice(keep), L, 0);
+    y = block.rows.length * (L.ch + ANSWER_GAP);
+  });
+  return plans.map(({ blocks }) => {
+    const items = blocks.flatMap((b) => b.rows.flatMap((r) => r.items));
+    const names = [...new Set(blocks.map((b) => b.S.name))];
+    return {
+      kind: 'answers', section: blocks[0].S,
+      label: `Answers ${rangeLabel(items[0].num, items[items.length - 1].num)} · ${names.join(', ')}`,
+      render(b) {
+        const ops = [...P.heading(b, `Answers: ${blocks[0].S.name}`, { size: sz.h3, floor: sz.floor, gray: sz.ink, rule: true }).ops];
         const refs = [], warnings = [];
-        const area = { x: box.x, y: box.y + headH, w: box.w, h: box.h - headH };
-        const L = sectionLayout(area);
-        const slots = slotBoxes(area, perPage, { headerH: L.header, gap });
-        chunk.forEach((it, j) => {
-          const slot = slots[j];
-          ops.push(...P.miniLabel(slot, P.answerLabelLines(it.num, titleOf(it), L.format), labelSize, rc).ops);
-          const mbox = { x: slot.x, y: slot.y + L.header, w: slot.w, h: Math.max(0, slot.h - L.header) };
-          const d = drawPuzzle(S, it, mbox, 'mini', rc);
-          ops.push(...d.ops);
-          for (const w of d.warnings) warnings.push({ ...w, sectionId: S.id, mode: 'mini', num: it.num });
-          refs.push({ sectionId: S.id, index: it.index, num: it.num, box: mbox, mode: 'mini' });
-        });
+        const at = answerArea(b, rc);
+        for (const { S, L, sub, rows } of blocks) {
+          if (sub !== null) ops.push(...P.answerSubheading({ x: at.x, y: at.y + sub, w: at.w, h: subH }, S.name, rc).ops);
+          for (const row of rows) {
+            const x0 = at.x + (L.cols - row.items.length) * (L.cw + ANSWER_GAP) / 2;   // centre a short row
+            row.items.forEach((it, j) => {
+              const slot = { x: x0 + j * (L.cw + ANSWER_GAP), y: at.y + row.y, w: L.cw, h: L.ch };
+              ops.push(...P.miniLabel(slot, P.answerLabelLines(it.num, answerTitleOf(it), L.format), sz.small, rc).ops);
+              const mbox = { x: slot.x, y: slot.y + L.header, w: slot.w, h: Math.max(0, slot.h - L.header) };
+              const d = drawPuzzle(S, it, mbox, 'mini', rc);
+              ops.push(...d.ops);
+              for (const w of d.warnings) warnings.push({ ...w, sectionId: S.id, mode: 'mini', num: it.num });
+              refs.push({ sectionId: S.id, index: it.index, num: it.num, box: mbox, mode: 'mini' });
+            });
+          }
+        }
         return { ops, refs, warnings };
       },
-    });
+    };
+  });
+}
+
+/**
+ * "How to solve" paragraphs for one puzzle type: from the engine's optional howToFor(opts of the book's sections of
+ * that type), which keeps only what the book contains (sizes, grades), else meta.howTo (or the blurb).
+ */
+function howToParas(type, meta, optsList) {
+  let src = null;
+  if (typeof type?.howToFor === 'function') {
+    try { src = type.howToFor(optsList); } catch { src = null; }
   }
+  if (!Array.isArray(src) || !src.length) {
+    src = Array.isArray(meta.howTo) && meta.howTo.length ? meta.howTo : typeof meta.howTo === 'string' ? [meta.howTo] : [meta.blurb];
+  }
+  return src.map((s) => cleanLine(s)).filter(Boolean);
+}
+
+const howToLead = (size, tight) => (tight
+  ? { size, lineGap: size * LINE_GAP_RATIO * 0.5, paraGap: size * 0.45 }
+  : { size, lineGap: undefined, paraGap: undefined });
+
+/**
+ * One how-to page for several puzzle types (entries [{ name, paras }]) under sub-headings, if they fit: at the body
+ * size, then with tighter leading, then a little smaller (never below the theme floor). → planned page or null
+ */
+function planHowToGroup(entries, box, rc) {
+  const { sz } = rc;
+  const minSize = Math.max(sz.floor, sz.body * 0.85);
+  for (let s = sz.body; s >= minSize - EPS; s -= 0.5) {
+    for (const tight of [false, true]) {
+      const o = howToLead(s, tight);
+      const groups = entries.map((e) => ({ name: e.name, lines: flowLines(e.paras.join('\n\n'), box.w, Infinity, o)[0] || [] }));
+      if (P.howToGroupPage(box, { groups, ...o }, rc).overflow) continue;
+      return { kind: 'howto', label: `How to solve: ${entries.map((e) => e.name).join(', ')}`,
+        render: (b) => ({ ops: P.howToGroupPage(b, { groups, ...o }, rc).ops }) };
+    }
+  }
+  return null;
+}
+
+/**
+ * How-to pages for the book's puzzle types (entries [{ name, paras }], in book order). Types share a page under
+ * sub-headings while they fit (consecutive types, greedily); a type on its own gets planHowTo's page(s).
+ */
+function planHowTos(entries, box, rc) {
+  if (entries.length < 2) return entries.flatMap((e) => planHowTo(e, box, rc));
+  const pages = [];
+  let group = [];
+  const close = () => {
+    if (group.length > 1) pages.push(planHowToGroup(group, box, rc));
+    else if (group.length) pages.push(...planHowTo(group[0], box, rc));
+    group = [];
+  };
+  for (const e of entries) {
+    if (group.length && !planHowToGroup([...group, e], box, rc)) close();
+    group.push(e);
+  }
+  close();
   return pages;
 }
 
 /**
- * How-to pages for one puzzle type. Keeps the text on one page if it can: first with slightly tighter leading,
- * then a little smaller (never below the theme floor). Otherwise it flows onto continuation pages, moving lines
- * back so the last page never holds a lone line or two.
+ * How-to pages for one puzzle type ({ name, paras }). Keeps the text on one page if it can: first with slightly
+ * tighter leading, then a little smaller (never below the theme floor). Otherwise it flows onto continuation pages,
+ * moving lines back so the last page never holds a lone line or two.
  */
-function planHowTo(meta, box, rc) {
+function planHowTo({ name, paras }, box, rc) {
   const { sz } = rc;
-  const src = Array.isArray(meta.howTo) && meta.howTo.length ? meta.howTo : typeof meta.howTo === 'string' ? [meta.howTo] : [meta.blurb];
-  const paras = src.map((s) => cleanLine(s)).filter(Boolean);
   if (!paras.length) return [];
   const body = paras.join('\n\n');
   const h = box.h - P.headingBlockHeight(sz.h2);
-  const lead = (size, tight) => (tight
-    ? { size, lineGap: size * LINE_GAP_RATIO * 0.5, paraGap: size * 0.45 }
-    : { size, lineGap: undefined, paraGap: undefined });
+  const lead = howToLead;
   let opts = lead(sz.body, false), chunks = flowLines(body, box.w, h, opts);
   const minSize = Math.max(sz.floor, sz.body * 0.85);
   search:
@@ -394,7 +538,6 @@ function planHowTo(meta, box, rc) {
     const c = flowLines(body, box.w, h - cut * pitch, opts);
     if (c.length === chunks.length) chunks = c;
   }
-  const name = meta.plural || meta.name || meta.id;
   return chunks.map((lines, i) => ({
     kind: 'howto', label: `How to solve: ${name}${i ? ' (continued)' : ''}`,
     render: (b) => ({ ops: P.howToPage(b, { name, lines, continued: i > 0, ...opts }, rc).ops }),
@@ -418,10 +561,12 @@ function planKdp(ctx, geo) {
   const box = insetBox(geo, geo.marginsIn, 'R');      // content size is the same on both sides
   const plan = [];
   const answersAt = ctx.answers.position;
-  const answerPages = (S) => planAnswerPages(S, ctx.answerPerPage(S), rc);
+  ctx.legible = new Map();
+  /** Answer pages for these sections; with several, they flow on from one section to the next. */
+  const answerPages = (list) => planAnswerPages(list.map((S) => ({ S, perPage: ctx.legibleAnswerPerPage(S, box) })), box, rc);
 
   if (opts.answersOnly) {
-    for (const S of sections) plan.push(...answerPages(S));
+    plan.push(...answerPages(sections));
     return { plan, padded: 0 };
   }
 
@@ -438,16 +583,17 @@ function planKdp(ctx, geo) {
 
   const toc = [];   // [{ label, indent, target: planned page }]
   if (front.howto) {
-    const seen = new Set();
-    let firstHowTo = null;
+    // One entry per puzzle type, in book order, with the text for the opts its sections use.
+    const byType = new Map();
     for (const S of sections) {
-      if (seen.has(S.sec.type)) continue;
-      seen.add(S.sec.type);
-      const pages = planHowTo(S.meta, box, rc);
-      if (pages.length && !firstHowTo) firstHowTo = pages[0];
-      plan.push(...pages);
+      if (!byType.has(S.sec.type)) byType.set(S.sec.type, { S, opts: [] });
+      byType.get(S.sec.type).opts.push(S.sec.opts || {});
     }
-    if (firstHowTo) toc.push({ label: seen.size > 1 ? 'How to solve the puzzles' : 'How to solve', target: firstHowTo });
+    const entries = [...byType.values()].map(({ S, opts: list }) => ({
+      name: S.meta.plural || S.meta.name || S.meta.id, paras: howToParas(S.type, S.meta, list) }));
+    const pages = planHowTos(entries, box, rc);
+    if (pages.length) toc.push({ label: byType.size > 1 ? 'How to solve the puzzles' : 'How to solve', target: pages[0] });
+    plan.push(...pages);
   }
 
   let firstAnswers = null;
@@ -465,18 +611,18 @@ function planKdp(ctx, geo) {
     plan.push(...planPuzzlePages(S, ctx.perPage(S), rc));
     toc.push({ label: S.name, target: plan[start] });
     if (answersAt === 'after-section') {
-      const pages = answerPages(S);
+      const pages = answerPages([S]);
       if (pages.length) toc.push({ label: 'Answers', indent: true, target: pages[0] });
       plan.push(...pages);
     }
   }
   if (answersAt === 'end') {
-    for (const S of sections) {
-      const pages = answerPages(S);
-      if (pages.length && !firstAnswers) firstAnswers = pages[0];
-      plan.push(...pages);
+    const pages = answerPages(sections);
+    if (pages.length) {
+      firstAnswers = pages[0];
+      toc.push({ label: 'Answers', target: firstAnswers });
     }
-    if (firstAnswers) toc.push({ label: 'Answers', target: firstAnswers });
+    plan.push(...pages);
   }
 
   if (back.thanks) {
@@ -510,15 +656,22 @@ function planKdp(ctx, geo) {
 }
 
 /** Page plan for a home printable: optional title page, 1 puzzle per page, answers at the end. */
-function planPrintable(ctx) {
+function planPrintable(ctx, geo) {
   const { project, sections, rc, opts } = ctx;
+  const box = insetBox(geo, geo.marginsIn, 'R');
   const plan = [];
+  ctx.legible = new Map();
   if (!opts.answersOnly) {
     if (ctx.front.title) plan.push(titlePlan(project, rc));
     for (const S of sections) plan.push(...planPuzzlePages(S, 1, rc));
   }
   if (ctx.answers.position !== 'none' || opts.answersOnly) {
-    for (const S of sections) plan.push(...planAnswerPages(S, ctx.answerPerPage(S), rc));
+    // A printable with one or two puzzles gets answers as big as the puzzles (1 or 2 per page) instead of one or two
+    // minis in the corner of an otherwise empty page.
+    plan.push(...planAnswerPages(sections.map((S) => {
+      const n = ctx.legibleAnswerPerPage(S, box);
+      return { S, perPage: S.items.length <= 2 ? Math.min(n, S.items.length) : n };
+    }), box, rc));
   }
   return { plan, padded: 0 };
 }
@@ -557,11 +710,13 @@ function furniture(ctx, geo, d, num, side, content) {
   ];
 }
 
+const DRAW_CODES = new Set(['draw', 'draw-illegible', 'draw-overflow', 'draw-failed']);
+
 /** Merge per-puzzle draw warnings into one entry per (section, mode, message) with the pages it affects. */
 function groupDrawWarnings(raw, sectionsById) {
   const out = [], byKey = new Map();
   for (const w of raw) {
-    if (w.code !== 'draw' && w.code !== 'draw-overflow' && w.code !== 'draw-failed') { out.push(w); continue; }
+    if (!DRAW_CODES.has(w.code)) { out.push(w); continue; }
     const key = `${w.sectionId}|${w.mode}|${w.code}|${w.msg}`;
     let g = byKey.get(key);
     if (!g) {
@@ -650,6 +805,13 @@ export function layoutBook(project, puzzles = {}, opts = {}) {
       }
       return r.n;
     },
+    /** answerPerPage(), lowered when the engine's minis would be unreadable in this content box (see ctx.legible). */
+    legibleAnswerPerPage(S, box) {
+      const r = legibleAnswerPerPage(S, this.answerPerPage(S), box, rc);
+      if (r.from) this.legible.set(S.id, { S, ...r });
+      return r.n;
+    },
+    legible: new Map(),   // sectionId -> { S, n, from }: answers per page lowered in the latest plan
     copyrightText: '',
     thanksText: cleanLine(project.thanksText) ? String(project.thanksText) : P.defaultThanksText(),
     pageNumberOf: () => 0,
@@ -662,7 +824,7 @@ export function layoutBook(project, puzzles = {}, opts = {}) {
   let geo, planned;
   if (isPrintable) {
     geo = pageGeometry(project, { target, printableSize });
-    planned = planPrintable(ctx);
+    planned = planPrintable(ctx, geo);
   } else {
     let gutter = GUTTER_TIERS[0][2];
     for (let pass = 0; pass < GUTTER_TIERS.length; pass++) {
@@ -674,6 +836,10 @@ export function layoutBook(project, puzzles = {}, opts = {}) {
     }
   }
   const { plan, padded } = planned;
+  for (const { S, n, from } of ctx.legible.values()) {
+    warn({ code: 'answers-per-page-legible', sectionId: S.id,
+      msg: `${S.name}: the answer key shows ${n} answer${n === 1 ? '' : 's'} per page instead of ${from}, so every solution stays big enough to read on this page size.` });
+  }
   const indexOf = new Map(plan.map((d, i) => [d, i]));
   ctx.pageNumberOf = (d) => (indexOf.has(d) ? indexOf.get(d) + 1 : 0);
 
@@ -712,6 +878,12 @@ export function layoutBook(project, puzzles = {}, opts = {}) {
     warnings,
   };
   if (!isPrintable && !answersOnly) {
+    const pn = project.pageNumbers;
+    const contents = pages.find((pg) => pg.kind === 'contents');
+    if (contents && (pn === false || pn === 'none')) {
+      warnings.push({ code: 'contents-no-numbers', page: contents.num,
+        msg: 'The contents page lists page numbers, but page numbers are turned off, so readers can’t find those pages. Turn page numbers on, or turn the contents page off.' });
+    }
     if (padded) {
       const why = pageCount - padded < MIN_PAGES ? `KDP's minimum of ${MIN_PAGES} pages` : 'an even page count';
       warnings.push({ code: 'padded', page: pageCount - padded + 1,

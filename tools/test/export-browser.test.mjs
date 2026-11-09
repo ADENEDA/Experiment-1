@@ -2,12 +2,14 @@
 // export-jobs.js) in the real Studio: first-run picker + sample link, free exports (watermarked PDF, Pro formats
 // gated behind the unlock dialog), and Pro exports simulated with an offline code signed by a throwaway key made
 // in memory here (config.js is served with its public key through a Playwright route; no key is written to disk).
-// Serves site/ on port 8214 (override with EXPORT_TEST_PORT). Skipped when Playwright or its Chromium is missing.
+// Serves site/ in-process on a free loopback port (or EXPORT_TEST_PORT, which fails loudly if taken).
+// Skipped when Playwright or its Chromium is missing.
 // PDF text checks use pdftotext/pdfinfo when installed and are skipped otherwise.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional, popplerSkip } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
@@ -15,18 +17,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { rawPublicKeyB64u } from '../keygen.mjs';
 import { signOfflineCode } from '../sign-code.mjs';
+import { startServer } from '../serve.mjs';
 
 const SITE = fileURLToPath(new URL('../../site/', import.meta.url));
-const PORT = Number(process.env.EXPORT_TEST_PORT) || 8214;
-const BASE = `http://localhost:${PORT}/app/`;
+const PORT = Number(process.env.EXPORT_TEST_PORT) || 0; // 0 = any free port
+let BASE; // set once the server listens
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser, dir;
 
-const hasTool = (t) => { try { execFileSync(t, ['-v'], { stdio: 'ignore' }); return true; } catch (e) { return e.code !== 'ENOENT'; } };
-const PDFTOOLS = hasTool('pdftotext') && hasTool('pdfinfo');
+const PDF_SKIP = popplerSkip('pdftotext', 'pdfinfo'); // PDF checks are subtests: listed as SKIP without poppler
 const pdfText = (p) => execFileSync('pdftotext', [p, '-']).toString();
 const pdfPages = (p) => Number(/Pages:\s+(\d+)/.exec(execFileSync('pdfinfo', [p]).toString())[1]);
 /** Entry names from a ZIP's central directory. */
@@ -42,15 +44,6 @@ function zipNames(buf) {
     o += 46 + len + extra + comment;
   }
   return names;
-}
-
-async function waitForServer(url, ms = 10000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try { if ((await fetch(url)).ok) return; } catch { /* not up yet */ }
-    if (Date.now() > end) throw new Error(`server did not start at ${url}`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
 }
 
 async function newPage({ publicKey } = {}) {
@@ -92,17 +85,18 @@ before(async () => {
   try {
     browser = await chromium.launch();
   } catch (e) {
-    skip = `chromium unavailable: ${e.message.split('\n')[0]}`;
+    skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`);
     return;
   }
   dir = mkdtempSync(join(tmpdir(), 'gbs-export-'));
-  server = spawn(process.execPath, [fileURLToPath(new URL('../serve.mjs', import.meta.url)), String(PORT), SITE], { stdio: 'ignore' });
-  await waitForServer(BASE);
+  let origin;
+  ({ server, origin } = await startServer(SITE, { port: PORT }));
+  BASE = `${origin}/app/`;
 });
 
 after(async () => {
   await browser?.close();
-  server?.kill();
+  server?.close();
   if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -150,18 +144,18 @@ test('free edition: watermarked interior, Pro formats open the unlock dialog', {
     await page.goto(`${BASE}?template=picture-logic&sample=1`);
     await settled(page);
     await openExport(page);
-    assert.match(await page.$eval('.ex-notice.is-free', (e) => e.textContent), /Free proof: every page carries a footer, so KDP will reject it\. Unlock Pro for a clean file\./);
+    assert.match(await page.$eval('.ex-notice.is-free', (e) => e.textContent), /Free proof: every page carries a proof header and footer, so KDP will reject it\. Unlock Pro for a clean file\./);
     assert.equal(await page.$eval('[data-check="clean"]', (e) => e.className), 'ex-check is-err');
 
     const pdf = await download(page, '[data-export="interior"]');
     assert.equal(pdf.name, 'picture-logic-puzzles_interior_8.5x11_32p.pdf');
     assert.match(await page.$eval('[data-kind="interior"] .ex-status', (e) => e.textContent), /Downloaded picture-logic-puzzles_interior_8\.5x11_32p\.pdf.*free proof/);
-    if (PDFTOOLS) {
+    await t.test('free interior PDF: 32 pages, proof footer and notice', { skip: PDF_SKIP }, () => {
       assert.equal(pdfPages(pdf.path), 32);
       const text = pdfText(pdf.path);
       assert.match(text, /FREE PROOF · made with Gridbook Studio/);
       assert.match(text, /Proof copy · not for sale/);
-    }
+    });
     let downloads = 0;
     page.on('download', () => downloads++);
     await page.click('[data-export="png"]');
@@ -198,15 +192,127 @@ test('Pro (offline code): clean interior, KDP bundle with README', { timeout: 60
     assert.equal(await page.$eval('[data-check="clean"]', (e) => e.className), 'ex-check is-ok');
 
     const pdf = await download(page, '[data-export="interior"]');
-    if (PDFTOOLS) {
-      const text = pdfText(pdf.path);
-      assert.doesNotMatch(text, /FREE PROOF|Proof copy/);
-    }
+    await t.test('Pro interior PDF: no proof marks', { skip: PDF_SKIP }, () => {
+      assert.doesNotMatch(pdfText(pdf.path), /FREE PROOF|Proof copy/);
+    });
     const zip = await download(page, '[data-export="bundle"]');
     assert.match(zip.name, /^brain-games-mix_kdp-bundle_8\.5x11_\d+p\.zip$/);
     const names = zipNames(readFileSync(zip.path));
     assert.deepEqual(names.sort(), ['README.txt', 'answers.pdf', 'brain-games-mix.gridbook.json', 'cover-template.pdf', 'cover-template.png', 'interior.pdf']);
     assert.deepEqual(page.errors, []);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('answers-only row gives the file\'s own page count; a book without puzzles offers no empty or failing downloads', { timeout: 90000 }, async (t) => {
+  if (skip) return t.skip(skip);
+  const { ctx, page } = await newPage();
+  try {
+    // Answers after each section: the book's own key starts every section on a new page, the answers-only file flows.
+    await page.goto(`${BASE}?template=brain-games-mix`);
+    await settled(page);
+    await page.evaluate(() => window.gbsApp.store.update((d) => { d.answers = { ...d.answers, position: 'after-section', perPage: 6 }; }));
+    await settled(page);
+    await openExport(page);
+    const desc = await page.$eval('[data-kind="answers"] .ex-format-desc', (e) => e.textContent);
+    const said = Number(/Just the answer key \((\d+) pages\)/.exec(desc)?.[1]);
+    const inBook = await page.evaluate(() => window.gbsApp.getBook().pages.filter((p) => p.kind === 'answers').length);
+    assert.ok(said > 0 && said < inBook, `the row counts the answers-only file (${said}), not the book's own key (${inBook}): ${desc}`);
+    const ans = await download(page, '[data-export="answers"]');
+    assert.match(ans.name, new RegExp(`_answers_8\\.5x11_${said}p\\.pdf$`));
+    await t.test('answers-only PDF: as many pages as the row said', { skip: PDF_SKIP }, () => assert.equal(pdfPages(ans.path), said));
+    assert.deepEqual(page.errors, []);
+
+    // A blank book: interior, cover, bundle and project file work; the formats that would be empty are disabled.
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.export-dialog[open]'));
+    await page.goto(`${BASE}?template=blank`);
+    await settled(page);
+    await openExport(page);
+    const rows = await page.$$eval('.ex-format', (els) => Object.fromEntries(els.map((li) => [li.dataset.kind,
+      { disabled: [...li.querySelectorAll('.ex-btn')].map((b) => b.disabled), desc: li.querySelector('.ex-format-desc').textContent }])));
+    for (const kind of ['printable', 'answers', 'png']) {
+      assert.deepEqual(rows[kind].disabled, [true], `${kind} is disabled`);
+      assert.match(rows[kind].desc, /^Add a section with puzzles first/, `${kind} says why`);
+    }
+    for (const kind of ['interior', 'cover', 'bundle', 'project']) assert.ok(rows[kind].disabled.every((d) => !d), `${kind} stays available`);
+    assert.doesNotMatch(JSON.stringify(rows), /\(0 pages\)|\(0 images\)/);
+    await page.click('[data-export="answers"]', { force: true });
+    await page.waitForTimeout(200);
+    assert.equal(await page.$('[data-kind="answers"] .ex-retry'), null, 'nothing ran, so nothing failed');
+    assert.deepEqual(page.errors, []);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('offline after load: export\'s code is loaded ahead of time, so PDF and ZIP exports work with the connection off', { timeout: 60000 }, async (t) => {
+  if (skip) return t.skip(skip);
+  const { ctx, page } = await newPage();
+  try {
+    await page.goto(`${BASE}?template=picture-logic&sample=1`);
+    await settled(page);
+    await page.waitForFunction(() => window.gbsApp.exportReady(), null, { timeout: 20000 });
+    await ctx.setOffline(true);
+    await page.waitForFunction(() => [...document.querySelectorAll('.toast-msg')].some((e) => /offline/.test(e.textContent)));
+    const offlineToast = (await page.$$eval('.toast-msg', (els) => els.map((e) => e.textContent))).find((s) => /offline/.test(s));
+    assert.match(offlineToast, /You can keep editing and exporting/);
+    await openExport(page);
+    const pdf = await download(page, '[data-export="interior"]');
+    assert.equal(pdf.name, 'picture-logic-puzzles_interior_8.5x11_32p.pdf');
+    await t.test('interior PDF: 32 pages', { skip: PDF_SKIP }, () => assert.equal(pdfPages(pdf.path), 32));
+    const answers = await download(page, '[data-export="answers"]');
+    assert.match(answers.name, /answers.*\.pdf$/);
+    assert.deepEqual(page.errors, []);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('offline before export\'s code loaded: an honest message, and export works again after reconnecting without a reload', { timeout: 60000 }, async (t) => {
+  if (skip) return t.skip(skip);
+  const { ctx, page } = await newPage();
+  // The connection drops before the Studio could load export's code: its requests fail until "reconnected"
+  // (the PDF tools' a while longer, so the first export after reconnecting still has to load them).
+  let dialogBlocked = true, pdfBlocked = true;
+  await ctx.route(/\/js\/ui\/export-dialog\.js/, (r) => (dialogBlocked ? r.abort('internetdisconnected') : r.continue()));
+  await ctx.route(/\/js\/workers\/pdf\.worker\.js|\/vendor\/jspdf-|\/js\/render\/pdf-backend\.js/,
+    (r) => (pdfBlocked ? r.abort('internetdisconnected') : r.continue()));
+  try {
+    const warmFailed = page.waitForEvent('console', { predicate: (m) => /export tools will load when first used/.test(m.text()), timeout: 20000 });
+    await page.goto(`${BASE}?template=picture-logic&sample=1`);
+    await settled(page);
+    await warmFailed;
+    assert.equal(await page.evaluate(() => window.gbsApp.exportReady()), false);
+    const toasts = () => page.$$eval('.toast-msg', (els) => els.map((e) => e.textContent));
+    await ctx.setOffline(true);
+    await page.waitForFunction(() => [...document.querySelectorAll('.toast-msg')].some((e) => /offline/.test(e.textContent)));
+    const offlineToast = (await toasts()).find((s) => /offline/.test(s));
+    assert.match(offlineToast, /You can keep editing, but exporting may need the connection/);
+    assert.doesNotMatch(offlineToast, /Everything still works/);
+
+    // Export's code has not loaded: it can't open offline, and the toast says to reconnect (a reload would fail).
+    await page.evaluate(() => { window.gbsApp.actions.openExport(); });
+    await page.waitForFunction(() => [...document.querySelectorAll('.toast-msg')].some((e) => /Reconnect/.test(e.textContent)));
+    assert.equal(await page.$('.export-dialog[open]'), null);
+    assert.doesNotMatch((await toasts()).join(' '), /Reload the page/);
+
+    // Back online: the same action now works (the failed import is not stuck for the rest of the session).
+    dialogBlocked = false;
+    await ctx.setOffline(false);
+    await openExport(page);
+
+    // The PDF tools didn't load: offline the export stops with an honest message, then "Try again" works.
+    await ctx.setOffline(true);
+    await page.click('[data-export="interior"]');
+    await page.waitForSelector('[data-kind="interior"] .ex-retry', { timeout: 30000 });
+    assert.match(await page.$eval('[data-kind="interior"] .ex-status', (e) => e.textContent), /Check your connection and try again/);
+    pdfBlocked = false;
+    await ctx.setOffline(false);
+    const pdf = await download(page, '[data-kind="interior"] .ex-retry');
+    assert.equal(pdf.name, 'picture-logic-puzzles_interior_8.5x11_32p.pdf');
+    await t.test('interior PDF: 32 pages', { skip: PDF_SKIP }, () => assert.equal(pdfPages(pdf.path), 32));
   } finally {
     await ctx.close();
   }

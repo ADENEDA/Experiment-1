@@ -8,6 +8,9 @@ import { makeRng, puzzleSeed } from '../../site/js/core/rng.js';
 import { bbox, unionBox } from '../../site/js/layout/displaylist.js';
 import { isSupported } from '../../site/js/core/fontmetrics.js';
 import { THEMES } from '../../site/js/layout/themes.js';
+import { layoutBook } from '../../site/js/layout/book.js';
+import { preflight } from '../../site/js/kdp/preflight.js';
+import { budget, fastest } from './timing.mjs';
 
 const EPS = 1e-6;
 const N = 1, E = 2, S = 4, W = 8;
@@ -365,11 +368,10 @@ test('60×60 generation takes well under 50ms for every algorithm and opening', 
       gen({ size: 'custom', cols: 60, rows: 60, algorithm, openings }, 'warm');
       let worst = 0;
       for (let i = 0; i < 10; i++) {
-        const t0 = now();
-        gen({ size: 'custom', cols: 60, rows: 60, algorithm, openings }, 'perf' + i);
-        worst = Math.max(worst, now() - t0);
+        // A slow seed is slow every time; a sample that only lost the CPU to another process is timed again.
+        worst = Math.max(worst, fastest(() => gen({ size: 'custom', cols: 60, rows: 60, algorithm, openings }, 'perf' + i), 50).ms);
       }
-      assert.ok(worst < 50, `${algorithm}/${openings}: worst ${worst.toFixed(1)}ms`);
+      assert.ok(worst < budget(50), `${algorithm}/${openings}: worst ${worst.toFixed(1)}ms`);
     }
   }
 });
@@ -839,16 +841,15 @@ test('large batch: 2400 mazes over every size 5..60, algorithm and opening verif
   let worst = 0, n = 0;
   for (let i = 0; i < 2400; i++) {
     const cfg = { size: 'custom', cols: 5 + (i % 56), rows: 5 + ((i * 17) % 56), algorithm: M.ALGORITHMS[i % 3], openings: M.OPENINGS[(i >> 2) % 3] };
-    const t0 = now();
-    const p = gen(cfg, 'batch' + i);
-    worst = Math.max(worst, now() - t0);
+    const { value: p, ms } = fastest(() => gen(cfg, 'batch' + i), 50);
+    worst = Math.max(worst, ms);
     const r = M.verify(p);
     assert.deepEqual(r, { ok: true }, `${JSON.stringify(cfg)} #${i}: ${r.reason}`);
     assert.equal(p.solution.path.length, p.stats.pathLength);
     n++;
   }
   assert.equal(n, 2400);
-  assert.ok(worst < 50, `worst single generation ${worst.toFixed(1)}ms`);
+  assert.ok(worst < budget(50), `worst single generation ${worst.toFixed(1)}ms`);
 });
 
 test('verify() rejects more malformed data without throwing', () => {
@@ -1024,16 +1025,7 @@ test('answer keys at every allowed answers-per-page stay legible for the preset 
   }
 });
 
-test('works inside the real book layout and passes KDP preflight with no errors', async (t) => {
-  // Imported lazily: these modules belong to other owners and may be mid-edit while engines are developed.
-  let layoutBook, preflight;
-  try {
-    ({ layoutBook } = await import('../../site/js/layout/book.js'));
-    ({ preflight } = await import('../../site/js/kdp/preflight.js'));
-  } catch (e) {
-    t.skip(`layout or preflight could not be loaded: ${e.message}`);
-    return;
-  }
+test('works inside the real book layout and passes KDP preflight with no errors', () => {
   const types = { maze: M };
   const cases = [
     ['8.5x11', 'standard', 1, 6, 'expert', 'corners'], ['6x9', 'standard', 2, 9, 'medium', 'corners-sides'],

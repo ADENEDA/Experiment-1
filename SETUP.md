@@ -64,8 +64,9 @@ Nothing needs installing beyond Node. There is no build step: the `site/` folder
 
 ## 2. Set up Gumroad and `config.js`
 
-`site/config.js` is the only file you edit to start selling. Nothing in it is secret: product IDs and checkout links
-are public by design. Open it in any text editor (TextEdit in plain-text mode, Notepad, VS Code).
+`site/config.js` is the file you edit to start selling, plus two lines in `site/_redirects` (step 2.4). Nothing in
+them is secret: product IDs and checkout links are public by design. Open them in any text editor (TextEdit in
+plain-text mode, Notepad, VS Code).
 
 ### 2.1 Create your Gumroad account
 
@@ -84,18 +85,33 @@ launch, or you can't be paid. Gumroad's menus change from time to time, so the l
 5. Paste the description and the content-page text from [2.5](#25-copy-for-your-gumroad-pages) below.
 6. Publish the product.
 
-**The launch price.** The site shows Lifetime at $29 until the end of `launchEnds` (2027-01-31) and $39 after that,
-and promises "until January 31, 2027 or the first 100 buyers, whichever comes first". Gumroad does not change your
-price for you, so:
-- put a reminder in your calendar for **February 1, 2027**: change the Gumroad price to **$39**;
-- if you reach 100 Lifetime sales before then, change the Gumroad price to $39 that day **and** set `launchEnds` in
-  `config.js` to that day's date (for example `launchEnds: '2026-12-14'`), so the site shows $39 too.
+**The launch price.** The site shows Lifetime at $29 until the end of `launchEnds` (2027-01-31) and $39 from
+February 1, 2027. The switch is by date only: there is no limit on the number of buyers, so never claim one. Gumroad
+does not change your price for you, so put a reminder in your calendar for **February 1, 2027**, and that day:
 
-Buyers at $29 keep every future update. Don't extend the launch price quietly: that turns the scarcity into a lie.
+1. In Gumroad, change the Lifetime price to **$39**.
+2. Run `node tools/sync-prices.mjs`. It writes the prices from `config.js` that apply that day into the pages
+   themselves: every Lifetime price reads $39, the "Launch price until Jan 31, 2027" notes are hidden, and the
+   Lifetime offer in `site/index.html`'s structured data says 39 without `priceValidUntil`. Browsers running the
+   page script switch by themselves, but search engines, link previews and visitors without JavaScript read the
+   pages as you upload them. (`node tools/sync-prices.mjs --check --date 2027-02-01` shows beforehand which files
+   it will change.)
+3. Re-make the preview images (`node tools/make-og.mjs`, step 6), so `og/pricing.png` stops showing the launch price.
+4. Run `npm test`, then commit and push. From February 1, `npm test` fails until steps 2 and 3 are done.
 
-### 2.3 Create the 7-Day Sprint Pass ($9)
+Leave the `pricing` block in `config.js` as it is: every price on the pages and in the Studio comes from it and
+switches to $39 by itself. The only other place that names the Lifetime prices in plain text is the pricing FAQ
+"Will the Lifetime price go up?" (`site/pricing/index.html`, in the page and in its structured data), and it states
+both dates, so it stays true. Page titles and descriptions don't name the Lifetime price. If you ever change a price
+itself (not just the date), change it in `config.js`, in Gumroad and in that FAQ, then run
+`node tools/sync-prices.mjs` and re-make the preview images.
 
-Same steps: name `Gridbook Studio 7-Day Sprint Pass`, price **$9**, URL ending in `gridbook-sprint`, insert a
+Buyers at $29 keep every future update. Don't extend the launch price quietly: that turns a real deadline into a fake
+one. To test a lower price, use a Gumroad discount code with its own end date (`LAUNCH.md` §4), not `config.js`.
+
+### 2.3 Create the 7-Day Pass ($9)
+
+Same steps: name `Gridbook Studio 7-Day Pass` (the site and the Studio call it the 7-Day Pass), price **$9**, URL ending in `gridbook-sprint`, insert a
 **License key**, copy its **product_id**. The pass length is enforced by the Studio (7 days from the purchase time
 Gumroad reports), not by Gumroad, so don't set any expiry in Gumroad.
 
@@ -109,17 +125,27 @@ In `site/config.js`, replace the four placeholders:
     pass: { productId: 'PASTE_PASS_PRODUCT_ID', url: 'https://YOURNAME.gumroad.com/l/gridbook-sprint', days: 7 },
     test: { productId: '' },
     maxActivations: 5,
+    legacyProductIds: [],
   },
 ```
 
 - `lifetime.productId`: the Lifetime product_id, between the quotes.
 - `lifetime.url`: the Lifetime product link.
-- `pass.productId` and `pass.url`: the same for the pass.
+- `pass.productId` and `pass.url`: the same for the pass. Don't mix the two IDs up: a key's tier comes from the slot
+  its product sits in, so swapped IDs turn new and existing Lifetime keys into 7-day passes until you fix them.
 - Leave `days: 7`, `maxActivations: 5`, `provider: 'gumroad'` and the `pricing` block as they are
   (`pricing: { lifetime: 29, lifetimeRegular: 39, pass: 9, launchEnds: '2027-01-31', currency: 'USD' }`).
+- Leave `legacyProductIds: []` empty. The Studio re-checks keys only against the products named here, so if you ever
+  replace a product after launch, put the old product_id in it (`legacyProductIds: ['the_old_id']`) when you paste
+  the new one, or the old product's buyers drop to the free edition at their next weekly check.
 
 Until the placeholders are replaced, buy buttons show "Checkout is not set up yet" and keys can't be checked. Reload
 the local site: the buy buttons on `/pricing/` now open Gumroad.
+
+Then, in `site/_redirects`, put the same two links in place of `/pricing/` on the `/buy/lifetime` and `/buy/pass`
+lines, for example `/buy/lifetime  https://yourshop.gumroad.com/l/gridbook-lifetime  302`. The buy buttons in the
+pages link to `/buy/lifetime` and `/buy/pass` until the page script swaps in the links from `config.js`, and for
+visitors with JavaScript off. Until you do this, those two addresses open the pricing page, so nothing breaks.
 
 ### 2.5 Copy for your Gumroad pages
 
@@ -138,7 +164,7 @@ Plain and honest; edit freely. Replace `gridbookstudio.com` if you use another d
 >
 > Try it first: the free edition at gridbookstudio.com builds and previews the whole book.
 
-**7-Day Sprint Pass: description**
+**7-Day Pass: description**
 
 > All of Pro for 7 days from purchase: clean KDP interiors, unlimited printables, PNG and ZIP exports, and a
 > commercial license. Books you export during the 7 days stay yours to sell. It doesn't renew and there is nothing
@@ -176,7 +202,9 @@ This proves that buying, receiving a key and unlocking Pro all work, without spe
 7. In the Unlock dialog press **Deactivate on this device**.
 
 When you are happy, empty `test.productId` again (`test: { productId: '' }`). Every test key then stops unlocking
-Pro, wherever it was activated.
+Pro, wherever it was activated. If you want to repeat this test on the live site (step 8), keep it until that check
+is done, then empty it and push straight away: while it is set, anyone who finds the $0 product's link can get a key
+that unlocks Lifetime with `?licensetest=1`.
 
 Then test the **real** products once, after deployment (step 5): use your 100%-off code to "buy" the 7-Day Pass, open
 your live site's `/app/` **without** `?licensetest`, and activate that key. The badge should read "Pass: 7 days left"
@@ -185,7 +213,38 @@ your live site's `/app/` **without** `?licensetest`, and activate that key. The 
 **What the check sends:** only the key, the product_id and whether to count a new device, straight from the buyer's
 browser to `api.gumroad.com`. Book content never leaves the device. The Privacy page says the same.
 
-**If a buyer hits the 5-device limit**, the quickest fix is to send them an offline Lifetime code (step 3).
+**If a buyer hits the 5-device limit.** The pricing page and the Studio promise to free up room when a buyer asks.
+Each browser counts once, the first time the key is activated in it, so private windows, new browser profiles and
+cleared site data each use a slot (your own tests in step 8 use slots too). The Studio refuses a new activation once
+Gumroad's count is above 5. Gumroad can't reset the count to zero, but its API can lower it by one per call:
+
+1. In Gumroad, open **Settings → Advanced → Applications**, create an application (any name; the redirect URI can be
+   `http://localhost`), then press **Generate access token**. Keep the token private: never put it in `config.js`
+   or anywhere in this project.
+2. Lower the count by one for each slot to free (the buyer's key and the product_id of the product they bought):
+
+   ```sh
+   curl -X PUT https://api.gumroad.com/v2/licenses/decrement_uses_count \
+     -d access_token=YOUR_TOKEN -d product_id=PRODUCT_ID -d license_key=THE_BUYERS_KEY
+   ```
+
+   The reply shows the new `uses`. A new device can activate while it is 4 or lower. (This endpoint is in Gumroad's
+   API documentation; it could not be run while writing this guide, so check the reply the first time.)
+
+If you'd rather not use the API, send an offline code instead (step 3). Match what they bought: a Lifetime code for a
+Lifetime buyer, or for a 7-Day Pass buyer a pass code that starts when their purchase did:
+`--type pass --iat <sale time>`, with the sale time as Gumroad reports it (`sale_timestamp`, like
+`2026-11-09T20:00:00Z`). A pass code runs 7 × 24 hours from that moment, not from when it's used, so it ends when the
+pass they bought does. The license check (the same call the Studio makes) shows it as `purchase.sale_timestamp`
+without using up a device slot; like the call above, it could not be run against a real key while writing this guide:
+
+```sh
+curl https://api.gumroad.com/v2/licenses/verify \
+  -d product_id=PASS_PRODUCT_ID -d license_key=THE_BUYERS_KEY -d increment_uses_count=false
+```
+
+With only a date (`--iat 2026-11-09`) the code starts at 00:00 UTC that day and can end up to a day before their
+pass; if you don't have the time, give the next day's date instead.
 
 ---
 
@@ -222,11 +281,29 @@ signed with a private key that only you have, and checked in the browser with a 
    ```
 
    Each prints one code (it starts with `GBS1.`). The first never expires, the second works for 30 days, and the third
-   is a 7-day pass. The `--name` is printed in the buyer's Unlock dialog, so use something you will recognise.
+   is a 7-day pass. Like `--days`, a pass runs for exactly that many days from the moment you sign it (it shows "7 days
+   left" and ends at the same time of day, like a pass bought on Gumroad), or from `--iat`: the moment given as a
+   UTC date-time (`--iat 2026-11-09T20:00:00Z`) or the start of the UTC day given as a date (`--iat 2026-11-09`). It
+   does not wait for the day it is used, so send it straight away. The command prints when the
+   code ends. The `--name` is printed in the buyer's Unlock dialog, so use something you will recognise.
+
+   Give every person their own `--name`. A code without `--days` works for anyone who has it, for ever, so keep those
+   for one named person you trust, and use `--days` (or a pass) for anything posted publicly or sent to a group.
 
 4. Send the code to the person. In the Studio they click **Free** → **Have an offline code?**, paste it and press
    **Use offline code**. Offline codes need a recent browser (Chrome 137+, Firefox 129+ or Safari 17+); older
    browsers are told to use a license key instead.
+
+5. **If a code leaks**, withdraw just that one: add the `--name` it was signed with to a `revoked` list next to the
+   public key in `site/config.js`, then push:
+
+   ```js
+   offlineCodes: { publicKey: 'OkgJZhiA-…', revoked: ['reviewer-jane'] },
+   ```
+
+   Every code signed with that name stops unlocking Pro the next time it is opened, in every browser; other codes keep
+   working. Removing the name brings it back. (To stop **all** codes at once, replace the key pair with
+   `keygen.mjs --force`; removing `publicKey` turns offline codes off, and codes already in use stop working too.)
 
 ---
 
@@ -349,9 +426,13 @@ Privacy page already describes it; if you skip this step, delete that part of th
    Cloudflare can add it), then under **Sitemaps** submit `https://yourdomain.com/sitemap.xml`.
 2. [Bing Webmaster Tools](https://www.bing.com/webmasters): import your site from Google Search Console.
 
-About `site/_headers`: it adds basic security headers and caching (libraries and fonts for a year, data for a day,
-code and styles for an hour). After you deploy a code change, a returning visitor can keep the old version of a
-cached file for up to an hour. Changes to `config.js` and the HTML pages are picked up at once. A Content Security
+About `site/_headers`: it adds basic security headers (including one that stops other sites from showing your pages
+inside a frame) and caching. Libraries and fonts are kept for a year (their
+file names carry a version), and images, samples and preview images for a day. Code, styles and data (`site/js/`,
+`site/css/`, `site/data/`) are checked with Cloudflare on every visit, like the HTML pages and `config.js`, so a
+deploy is picked up at once: a file that hasn't changed costs a tiny "not modified" reply. Don't give them a longer
+cache time: their names carry no version, and a returning visitor with some old and some new files would get a
+Studio that never finishes loading. A Content Security
 Policy is written there as a comment only; don't enable it without testing the Gumroad checkout (see the comment).
 
 ---
@@ -413,9 +494,16 @@ Gumroad's script loaded only where you can buy, cookieless analytics, payments b
    not legal advice. Consumer law (refunds, digital goods, EU/UK data rules) differs from place to place.
 4. Delete the yellow "Site owner: review this page before you sell" box at the top of each page (the
    `<div class="callout callout-warn" role="note">…</div>` block).
-5. If you change the refund promise, change it everywhere it appears: the Refunds page, the pricing page FAQ, the home
-   page FAQ, and the Unlock dialog and buy buttons in the Studio (`site/js/ui/unlock-dialog.js`,
-   `site/js/ui/buy-buttons.js`).
+5. The refund promise has two parts: a full refund within 30 days for any reason, and the KDP promise (a full refund
+   if KDP rejects a Pro interior for a technical-spec reason). If you change it, change it everywhere it appears:
+   - the Refunds page (`site/legal/refunds.html`), the Terms (sections 7 and 8) and the License page;
+   - the home page (`site/index.html`): the KDP promise box and the FAQ answers "Will KDP accept the files?" and
+     "What about refunds?", each in the page **and** in the FAQ structured data in the `<head>`;
+   - the pricing page (`site/pricing/index.html`): the KDP promise box and the FAQ answer "What is the refund
+     policy?", in the page and in its structured data;
+   - the Studio: the Unlock dialog (`site/js/ui/unlock-dialog.js`) and the compact "30-day refund" note of the buy
+     buttons (`site/js/ui/buy-buttons.js`);
+   - your Gumroad product descriptions and content page (the copy in 2.5).
 
 ---
 
@@ -425,14 +513,15 @@ Gumroad's script loaded only where you can buy, cookieless analytics, payments b
 - [ ] Gumroad payout and tax details are complete (account holder 18+).
 - [ ] Lifetime is $29, the pass is $9, both have a License key, both are published.
 - [ ] Affiliates on at 40%; a 100%-off reviewer code exists.
-- [ ] A calendar reminder exists for February 1, 2027 (Lifetime to $39), and you have a way to notice the 100th
-      Lifetime sale.
+- [ ] A calendar reminder exists for February 1, 2027: Lifetime to $39 in Gumroad, plus the steps in 2.2.
 
 **`site/config.js`**
-- [ ] No `PASTE_` and no `YOURNAME` left: `grep -nE "PASTE_|YOURNAME" site/config.js` prints nothing.
+- [ ] No `PASTE_` and no `YOURNAME` left anywhere in the site:
+      `grep -rnE "PASTE_|YOURNAME" site --exclude-dir=js` prints nothing (the code in `site/js/` names them on
+      purpose, to spot an unfinished `config.js`).
+- [ ] `site/_redirects` sends `/buy/lifetime` and `/buy/pass` to your two product links (step 2.4).
 - [ ] `siteUrl`, `printDomain` and `supportEmail` use your domain, and an email to `supportEmail` arrives.
 - [ ] `offlineCodes.publicKey` is set if you use offline codes, and `tools/.private-key` is backed up.
-- [ ] `test.productId` is empty again after testing.
 
 **Site**
 - [ ] `gridbookstudio.com` replaced (step 4.2); samples and preview images re-made (step 6).
@@ -447,6 +536,9 @@ Gumroad's script loaded only where you can buy, cookieless analytics, payments b
 - [ ] The Studio works on a phone: open a template, preview, export.
 - [ ] One real Pro interior uploaded to KDP as a **draft**, accepted by the previewer, and a printed proof copy ordered
       and checked. This is the best protection against a refund-promise surprise.
+- [ ] Last: `test.productId` is empty again (`test: { productId: '' }`), pushed and deployed. Reload
+      `/app/?licensetest=1` in the window where the $0 test key is active: the badge reads **Free** and the Unlock
+      dialog says it was a test key.
 
 **Before you post anywhere**
 - [ ] Trademark knockout search done (step 4.1).
@@ -473,8 +565,8 @@ an offline code. Decide before you have many buyers.
 | Buy buttons say "Checkout is not set up yet" | `config.js` still has `YOURNAME` in a URL. |
 | "Store not configured yet" when activating | A product_id is still `PASTE_…`, or (with `?licensetest=1`) `test.productId` is empty. |
 | "That key isn't valid for Gridbook Studio" | The key belongs to another product, it was mistyped, or a product_id in `config.js` has a typo. |
-| "This key is active on many devices" | The buyer passed 5 devices. Send an offline code (step 3). |
+| "This key is active on many devices" | The buyer passed 5 devices. Free up room (end of step 2.7) or send an offline code (step 3). |
 | The page loads but the Studio stays blank on your domain, while `*.pages.dev` works | In Cloudflare, under your domain's **Speed** settings, make sure **Rocket Loader** is off. |
-| Old version still showing after a deploy | Code and styles are cached for up to an hour (`site/_headers`). Wait, or reload with Shift. |
+| Old version still showing after a deploy | Code, styles and pages are checked on every visit (`site/_headers`), so reload once. Images, samples and preview images are cached for a day: reload with Shift to see new ones at once. If the Studio says it couldn't load, check that `_headers` still gives `/js/*`, `/css/*` and `/data/*` `max-age=0, must-revalidate`. |
 | `node tools/make-og.mjs` says Playwright is not available | Run the two install commands in step 6 inside the project folder. |
 | The sample PDFs test fails after a domain change | Run `node tools/make-samples.mjs`. |

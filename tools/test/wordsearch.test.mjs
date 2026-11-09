@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { budget } from './timing.mjs';
 import * as ws from '../../site/js/puzzles/wordsearch.js';
 import { MASKS, MASK_LIST, maskCells, maskStats } from '../../site/js/puzzles/masks.js';
 import { THEMES, CATEGORIES, THEME_BY_ID } from '../../site/data/wordlists.js';
@@ -460,6 +461,66 @@ test('custom lists: each puzzle takes the next N words, cycling; conflicts and m
   // Empty lists are a clear error, not a timeout.
   assert.throws(() => ws.generate({ wordSource: { mode: 'custom', words: [] } }, makeRng('e')), (e) => !(e instanceof GenTimeout) && /empty/.test(e.message));
   assert.throws(() => ws.generate({ size: 10, wordSource: ['abcdefghijklmnop'] }, makeRng('e')), /None of the words fit/);
+});
+
+test('word-list messages match what the puzzles do: hidden words name the one left out; non-Latin words say so', () => {
+  const list = ['CAT', 'CATS', 'DOG', 'BIRD', 'FISH', 'КОШКА', '東京'];
+  // The list fits one puzzle (20 words each), so every puzzle has both CAT and CATS, and CAT is never used.
+  const v = ws.validateWords(list, 15, { perPuzzle: 20 });
+  const sub = v.issues.find((i) => i.code === 'substring');
+  assert.equal(sub.word, 'CAT');
+  assert.equal(sub.problem, 'hides inside CATS, so CAT is left out of every puzzle');
+  const used = new Set();
+  for (let i = 0; i < 20; i++) for (const w of ws.generate({ size: 15, wordCount: 20, wordSource: list }, makeRng(`m${i}`), { index: i }).data.words) used.add(w);
+  assert.deepEqual([...used].sort(), ['BIRD', 'CATS', 'DOG', 'FISH']);
+  // Unknown puzzle size: the message holds either way.
+  assert.match(ws.validateWords(['cat', 'cats'], 15).issues[0].problem, /so CAT is left out of puzzles that also use CATS$/);
+  // A reversed pair: the word listed first is kept.
+  const rev = ws.validateWords(['cat', 'dog', 'tac'], 15, { perPuzzle: 10 }).issues.find((i) => i.code === 'substring');
+  assert.equal(rev.problem, 'is TAC spelled backwards, so TAC is left out of every puzzle');
+  const pr = ws.generate({ size: 12, wordSource: ['cat', 'dog', 'tac'] }, makeRng('rev'), { index: 0 });
+  assert.ok(pr.data.words.includes('CAT') && !pr.data.words.includes('TAC'));
+  // Words with no A-Z letters: the panel and the print check say the same thing.
+  for (const w of ['КОШКА', '東京']) {
+    assert.ok(v.issues.some((i) => i.word === w && i.code === 'empty' && /has no letters A-Z/.test(i.problem)));
+  }
+  const p = ws.generate({ size: 15, wordSource: list }, makeRng('nl'), { index: 0 });
+  const notes = p.stats.notes.join(' | ');
+  assert.match(notes, /КОШКА: has no letters A-Z/);
+  assert.match(notes, /東京: has no letters A-Z/);
+  assert.doesNotMatch(notes, /too short/);
+});
+
+test('long custom lists: capped at MAX_CUSTOM_WORDS with a note, and checked quickly', () => {
+  assert.equal(ws.MAX_CUSTOM_WORDS, 2000);
+  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const words = [];
+  while (words.length < 20000) { let w = ''; const L = 4 + Math.floor(rnd() * 6); for (let i = 0; i < L; i++) w += abc[Math.floor(rnd() * 26)]; words.push(w); }
+  const t0 = performance.now();
+  const v = ws.validateWords(words, 15);
+  const ms = performance.now() - t0;
+  assert.ok(ms < budget(2000), `validateWords on 20,000 words took ${Math.round(ms)} ms`);
+  assert.ok(v.words.length <= 2000);
+  const many = v.issues.find((i) => i.code === 'too-many');
+  assert.equal(many.severity, 'error');
+  assert.equal(many.word, words[2000]);
+  assert.match(many.problem, /^and the 17999 words after it are left out: a list holds up to 2000 words$/);
+  // The same pairs as comparing every word with every other (2,000 words, with planted hidden words).
+  const some = [...words.slice(0, 1990), 'TOP', 'STOP', 'POTS', 'OPT', 'ZYX', 'XYZ', 'ABZYXAB', 'NOON', 'NOO', 'MOM'];
+  const pairs = ws.validateWords(some, 25).issues.filter((i) => i.code === 'substring').map((i) => i.word + '|' + i.problem.split(',')[0]);
+  const clean = ws.validateWords(some, 25).words;
+  const expect = [];
+  const rev = (s) => [...s].reverse().join('');
+  for (const a of clean) for (const b of clean) {
+    if (a === b || a.length > b.length || (a.length === b.length && a > b)) continue;
+    if (b.includes(a) || b.includes(rev(a))) expect.push(a + '|' + (a.length === b.length ? `is ${b} spelled backwards` : `hides inside ${b}${b.includes(a) ? '' : ' (backwards)'}`));
+  }
+  assert.deepEqual(pairs, expect);
+  assert.ok(expect.length >= 6);
+  // normalizeOpts keeps at most MAX_CUSTOM_WORDS entries, so generation never walks a huge list.
+  assert.equal(ws.normalizeOpts({ wordSource: { mode: 'custom', words }}).wordSource.words.length, 2000);
 });
 
 test('custom words containing a blocked word are kept and still verify', () => {

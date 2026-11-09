@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KDP Spine Width Calculator and Cover Size with Bleed · Gridbook Studio</title>
+<title>KDP Spine Width and Cover Size Calculator · Gridbook Studio</title>
 <meta name="description" content="Free KDP spine width calculator for every paperback trim size: spine in inches and mm, full cover size with bleed, pixels at 300 DPI, and a cover guide PDF.">
 <link rel="canonical" href="https://gridbookstudio.com/kdp-spine-width-calculator/">
 <meta property="og:type" content="website">
@@ -11,6 +11,9 @@
 <meta property="og:title" content="KDP spine width and cover size calculator">
 <meta property="og:description" content="Spine width, full cover size with bleed in inches, mm and pixels, and a free cover guide for any KDP paperback trim and page count.">
 <meta property="og:image" content="https://gridbookstudio.com/og/spine.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="KDP spine width and cover size calculator, with a cover guide that marks the spine">
 <meta property="og:url" content="https://gridbookstudio.com/kdp-spine-width-calculator/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
@@ -20,6 +23,8 @@
 <link rel="stylesheet" href="../css/tokens.css">
 <link rel="stylesheet" href="../css/site.css">
 <link rel="stylesheet" href="../css/tools.css">
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"KDP spine width and cover size calculator",
 "url":"https://gridbookstudio.com/kdp-spine-width-calculator/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
 "description":"Works out the spine width and full cover size with bleed (inches, millimetres and pixels at 300 DPI) for any KDP paperback trim size, page count and paper, using KDP's published formulas, and downloads a free cover guide.",
@@ -48,6 +53,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
       <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../sudoku-book-generator/">Sudoku</a>
       <a href="../kdp-spine-width-calculator/" aria-current="page">Spine calculator</a>
       <a href="../kdp-margin-calculator/">Margin calculator</a>
       <a href="../pricing/">Pricing</a>
@@ -286,11 +292,11 @@
     <div>
       <h2 class="footer-h">Legal</h2>
       <ul>
-        <li><a href="../legal/terms.html">Terms</a></li>
-        <li><a href="../legal/privacy.html">Privacy</a></li>
-        <li><a href="../legal/refunds.html">Refunds</a></li>
-        <li><a href="../legal/license.html">License</a></li>
-        <li><a href="../legal/credits.html">Credits</a></li>
+        <li><a href="../legal/terms">Terms</a></li>
+        <li><a href="../legal/privacy">Privacy</a></li>
+        <li><a href="../legal/refunds">Refunds</a></li>
+        <li><a href="../legal/license">License</a></li>
+        <li><a href="../legal/credits">Credits</a></li>
       </ul>
     </div>
   </div>

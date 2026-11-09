@@ -5,7 +5,7 @@
 import { text, line, rect } from './displaylist.js';
 import { vmetrics, measure } from '../core/fontmetrics.js';
 import { MIN_FONT_PT } from '../kdp/specs.js';
-import { cleanLine, fitLine, fitText, layoutLines, lineBoxHeight, paragraph, truncate } from './text.js';
+import { cleanLine, fitLine, fitText, layoutLines, lineBoxHeight, paragraph, truncate, LINE_GAP_RATIO } from './text.js';
 
 /** Large Print promise: every piece of layout text is at least this size (watermarks excepted). */
 export const LARGE_PRINT_MIN_PT = 16;
@@ -145,6 +145,29 @@ export function howToPage(box, { name, lines, continued, size, lineGap, paraGap 
   return { ops: [...h.ops, ...body.ops], overflow: body.overflow };
 }
 
+/**
+ * Several puzzle types' how-to text on one page: "How to solve the puzzles", then per type a bold sub-heading (its
+ * plural name) and its pre-wrapped lines (text.flowLines at the same size/lineGap/paraGap). → { ops, overflow }
+ */
+export function howToGroupPage(box, { groups, size, lineGap, paraGap }, rc) {
+  const { sz } = rc;
+  const ops = [...heading(box, 'How to solve the puzzles', { size: sz.h2, floor: sz.floor, gray: sz.ink, rule: true }).ops];
+  const bottom = box.y + box.h;
+  const hs = Math.max(sz.floor, Math.min(sz.h3, size * 1.25));
+  let y = box.y + headingBlockHeight(sz.h2), overflow = false;
+  groups.forEach((g, i) => {
+    if (overflow) return;
+    if (i) y += size * 1.1;
+    const head = layoutLines([g.name], { x: box.x, y, w: box.w, h: bottom - y }, { size: hs, weight: 'bold', gray: sz.ink });
+    y += head.height + hs * 0.4;
+    const body = layoutLines(g.lines, { x: box.x, y, w: box.w, h: bottom - y }, { size, align: 'left', gray: sz.ink, lineGap, paraGap });
+    ops.push(...head.ops, ...body.ops);
+    overflow = head.overflow || body.overflow;
+    y += body.height;
+  });
+  return { ops, overflow };
+}
+
 /** Geometry of a contents page: rows that fit below the heading. */
 export function contentsCapacity(box, rc) {
   const { sz } = rc;
@@ -254,6 +277,24 @@ export function miniLabel(box, lines, size, rc) {
   return slotHeader(box, { title: first, subtitle: second || '', titleSize: size, subSize: size, hasSub: !!second }, rc);
 }
 
+/**
+ * Space an answer-key sub-heading takes, gaps included (see answerSubheading), rounded up to a whole point, so it
+ * moves the rows below it by whole points only.
+ */
+export function answerSubheadingHeight(rc) {
+  const s = rc.sz.body;
+  return Math.ceil(s * 0.5 + lineBoxHeight(s, 'bold') + s * 0.45 + 0.5 + s * 0.8);
+}
+
+/**
+ * Sub-heading for a section whose answers start part-way down an answer page: the section name, bold and centred
+ * with a short rule, like a small page heading. Fits in answerSubheadingHeight(rc) from the top of `box`.
+ */
+export function answerSubheading(box, title, rc) {
+  const { sz } = rc;
+  return heading({ ...box, y: box.y + sz.body * 0.5 }, title, { size: sz.body, floor: sz.floor, gray: sz.ink, rule: true });
+}
+
 /** Light placeholder for a puzzle that is not generated yet or failed: dashed box + centred message. */
 export function placeholder(box, { label, detail }, rc) {
   const { sz } = rc;
@@ -290,20 +331,45 @@ export function defaultThanksText() {
     + 'Reviews help other puzzle fans find this book, and they help independent authors keep making new ones.';
 }
 
+/**
+ * Thank-you page: heading with a short rule, the text centred below it and the author's name. → { ops, overflow }
+ * Roomiest layout first. When the text doesn't fit (Large Print on small or landscape trims, where the text can't
+ * shrink below 16pt), the block moves up, the leading tightens and the heading gets smaller before anything is cut;
+ * overflow (text cut off) is left only for a custom text far too long for a page.
+ */
 export function thanksPage(box, { text: body, author }, rc) {
   const { sz } = rc;
+  const tries = [
+    { top: 0.22, head: sz.h1, inset: 0.06, tight: false },
+    { top: 0.1, head: sz.h1, inset: 0.06, tight: false },
+    { top: 0.1, head: sz.h1, inset: 0.06, tight: true },
+    { top: 0.04, head: sz.h2, inset: 0.03, tight: true },
+    { top: 0, head: sz.h3, inset: 0, tight: true },
+  ];
+  let r;
+  for (const t of tries) {
+    r = thanksLayout(box, body, author, t, rc);
+    if (!r.overflow) break;
+  }
+  return r;
+}
+
+function thanksLayout(box, body, author, { top: at, head, inset, tight }, rc) {
+  const { sz } = rc;
   const ops = [];
-  const top = box.y + box.h * 0.22;
-  const h = heading({ ...box, y: top }, 'Thank you!', { size: sz.h1, floor: sz.floor, gray: sz.ink, rule: true });
+  const top = box.y + box.h * at;
+  const h = heading({ ...box, y: top }, 'Thank you!', { size: head, floor: sz.floor, gray: sz.ink, rule: true });
   ops.push(...h.ops);
-  const inner = { x: box.x + box.w * 0.06, y: top + h.height + sz.h1 * 0.8, w: box.w * 0.88 };
+  const inner = { x: box.x + box.w * inset, y: top + h.height + head * 0.8, w: box.w * (1 - 2 * inset) };
   inner.h = box.y + box.h - inner.y;
   const sign = cleanLine(author);
-  const signH = sign ? lineBoxHeight(sz.body) + sz.body * 1.2 : 0;
-  const p = fitText(body, { ...inner, h: inner.h - signH }, { max: sz.body, min: sz.floor, align: 'center', gray: sz.ink });
+  const signGap = sz.body * (tight ? 0.8 : 1.2);
+  const signH = sign ? lineBoxHeight(sz.body) + signGap : 0;
+  const lead = tight ? { lineGap: sz.body * LINE_GAP_RATIO * 0.5, paraGap: sz.body * 0.45 } : {};
+  const p = fitText(body, { ...inner, h: inner.h - signH }, { max: sz.body, min: sz.floor, align: 'center', gray: sz.ink, ...lead });
   ops.push(...p.ops);
   if (sign) {
-    const y = inner.y + Math.min(p.height, inner.h - signH) + sz.body * 1.2 + vmetrics(sz.body).ascent;
+    const y = inner.y + Math.min(p.height, inner.h - signH) + signGap + vmetrics(sz.body).ascent;
     const s = fitLine(`– ${sign}`, inner.w, { max: sz.body, min: sz.floor });
     ops.push(text(cx(box), y, s.s, { size: s.size, align: 'center', gray: sz.soft }));
   }

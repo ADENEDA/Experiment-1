@@ -11,6 +11,9 @@
 <meta property="og:title" content="Gridbook Studio credits and open-source licenses">
 <meta property="og:description" content="Gridbook Studio is built on open-source work: Atkinson Hyperlegible (SIL OFL 1.1), jsPDF, fflate and Phosphor Icons (MIT). Full notices here.">
 <meta property="og:image" content="https://gridbookstudio.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Print-ready puzzle books, built in your browser: three pages from Gridbook Studio sample books">
 <meta property="og:url" content="https://gridbookstudio.com/legal/credits">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
@@ -19,6 +22,8 @@
 <meta name="theme-color" content="#0e7c66">
 <link rel="stylesheet" href="../css/tokens.css">
 <link rel="stylesheet" href="../css/site.css">
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -41,6 +46,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
       <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../sudoku-book-generator/">Sudoku</a>
       <a href="../kdp-spine-width-calculator/">Spine calculator</a>
       <a href="../kdp-margin-calculator/">Margin calculator</a>
       <a href="../pricing/">Pricing</a>
@@ -58,11 +64,11 @@
     <p class="lead">Gridbook Studio is built on generous open-source work. Here is each project it uses, what it does in Gridbook Studio, and its license notice.</p>
     <p class="prose-meta">Last updated November 9, 2026</p>
     <nav class="btn-row" aria-label="Legal documents">
-      <a class="btn btn-sm" href="terms.html">Terms</a>
-      <a class="btn btn-sm" href="privacy.html">Privacy</a>
-      <a class="btn btn-sm" href="refunds.html">Refunds</a>
-      <a class="btn btn-sm" href="license.html">License</a>
-      <a class="btn btn-sm btn-primary" href="credits.html" aria-current="page">Credits</a>
+      <a class="btn btn-sm" href="terms">Terms</a>
+      <a class="btn btn-sm" href="privacy">Privacy</a>
+      <a class="btn btn-sm" href="refunds">Refunds</a>
+      <a class="btn btn-sm" href="license">License</a>
+      <a class="btn btn-sm btn-primary" href="credits" aria-current="page">Credits</a>
     </nav>
   </div>
 </section>
@@ -84,7 +90,7 @@
           <tbody>
             <tr><th scope="row"><a href="#atkinson">Atkinson Hyperlegible</a></th><td>The typeface of the site, the Studio and every exported PDF</td><td>SIL Open Font License 1.1</td></tr>
             <tr><th scope="row"><a href="#jspdf">jsPDF 4.2.1</a></th><td>Writing the PDF files, in your browser</td><td>MIT</td></tr>
-            <tr><th scope="row"><a href="#fflate">fflate 0.8.2</a></th><td>Packing the Pro ZIP downloads</td><td>MIT</td></tr>
+            <tr><th scope="row"><a href="#fflate">fflate 0.8.3</a></th><td>Packing the Pro ZIP downloads</td><td>MIT</td></tr>
             <tr><th scope="row"><a href="#phosphor">Phosphor Icons</a></th><td>The shapes behind the nonogram picture library</td><td>MIT</td></tr>
           </tbody>
         </table>
@@ -100,10 +106,10 @@
       <p>The jsPDF file also bundles small components under their own permissive licenses, among them pako 2.1.0 (MIT and Zlib), omggif (MIT) and a JPEG encoder (Copyright 2008 Adobe Systems Incorporated, BSD license). Their notices are kept inside the shipped file, <code>vendor/jspdf-4.2.1.umd.min.js</code>.</p>
 
       <h2 id="fflate">fflate</h2>
-      <p>fflate 0.8.2 packs the ZIP files that Pro exports on your device: the book bundle (interior, cover guide, answer key, project file and a README with the KDP upload settings) and the per-page PNG images.</p>
+      <p>fflate 0.8.3 packs the ZIP files that Pro exports on your device: the book bundle (interior, cover guide, answer key, project file and a README with the KDP upload settings) and the per-page PNG images.</p>
       <blockquote>
         <p>MIT License</p>
-        <p>Copyright (c) 2023 Arjun Barrett</p>
+        <p>Copyright (c) 2026 Arjun Barrett</p>
         <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
         <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
         <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
@@ -124,7 +130,7 @@
       </div>
 
       <h2 id="everything-else">Everything else</h2>
-      <p>The Studio, the puzzle generators and solvers, the word lists, the page layouts, the site design and its icons were made for Gridbook Studio. Copyright © 2026 <mark>[OWNER: your full legal name or business name]</mark>. All rights reserved, except as described on the <a href="license.html">License page</a> and in the <a href="terms.html">Terms of use</a>.</p>
+      <p>The Studio, the puzzle generators and solvers, the word lists, the page layouts, the site design and its icons were made for Gridbook Studio. Copyright © 2026 <mark>[OWNER: your full legal name or business name]</mark>. All rights reserved, except as described on the <a href="license">License page</a> and in the <a href="terms">Terms of use</a>.</p>
       <p>Spotted a missing credit? Please email <a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a>.</p>
     </div>
   </div>
@@ -162,11 +168,11 @@
     <div>
       <h2 class="footer-h">Legal</h2>
       <ul>
-        <li><a href="../legal/terms.html">Terms</a></li>
-        <li><a href="../legal/privacy.html">Privacy</a></li>
-        <li><a href="../legal/refunds.html">Refunds</a></li>
-        <li><a href="../legal/license.html">License</a></li>
-        <li><a href="../legal/credits.html">Credits</a></li>
+        <li><a href="../legal/terms">Terms</a></li>
+        <li><a href="../legal/privacy">Privacy</a></li>
+        <li><a href="../legal/refunds">Refunds</a></li>
+        <li><a href="../legal/license">License</a></li>
+        <li><a href="../legal/credits">Credits</a></li>
       </ul>
     </div>
   </div>

@@ -1,5 +1,7 @@
 // Toast notifications (CONTRACTS §12.4 actions.toast): polite live region, optional action button, auto-dismiss
 // (paused while hovered or focused), at most 3 stacked (the oldest goes first), identical messages merge.
+// A modal dialog covers the toasts and makes them unclickable, so a toast never runs out while one is open: it
+// waits, and gets its full time again once the dialog closes (an Undo shown behind My books stays usable).
 //
 //   const toaster = createToaster(document.getElementById('toasts'));
 //   const t = toaster.show('Deleted “Animals”', { kind: 'info', action: { label: 'Undo', run }, timeout: 8000 });
@@ -10,6 +12,8 @@ const KINDS = new Set(['info', 'ok', 'warn', 'err']);
 const KIND_ICON = { info: 'info', ok: 'check', warn: 'warn', err: 'error' };
 const DEFAULT_TIMEOUT = { info: 5000, ok: 4000, warn: 8000, err: 10000 };
 const ACTION_BONUS = 3000;
+const HOLD_POLL_MS = 400;
+const modalOpen = () => !!document.querySelector('dialog[open]');
 
 export function createToaster(container, { max = 3 } = {}) {
   if (!container) {
@@ -46,14 +50,20 @@ export function createToaster(container, { max = 3 } = {}) {
     }
     el.append(closeBtn);
 
-    let timer = 0, remaining = ms, startedAt = 0, paused = 0, gone = false;
+    let timer = 0, remaining = ms, startedAt = 0, paused = 0, gone = false, held = false;
     const rec = { text, kind: k, el };
 
     function arm() {
       clearTimeout(timer);
       if (!remaining || gone || paused) return;
       startedAt = performance.now();
-      timer = setTimeout(dismiss, remaining);
+      timer = setTimeout(expire, remaining);
+    }
+    function expire() {
+      if (gone) return;
+      if (modalOpen()) { held = true; timer = setTimeout(expire, HOLD_POLL_MS); return; }
+      if (held) { held = false; remaining = ms; arm(); return; }
+      dismiss();
     }
     function pause() {
       if (paused++ || !ms) return;

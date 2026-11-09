@@ -20,6 +20,10 @@ const TOL = 0.01;          // pt; floating-point slack for bounds checks
 /** Engines whose stats.notes describe problems worth a warning (word search: words that didn't fit the grid). */
 const NOTE_WARNING_TYPES = new Set(['wordsearch']);
 const MAX_LISTED = 12;     // per-page entries listed per problem before they are summarised
+/** Layout findings that only inform (the book is fine), and those that make it unfit to sell: text cut off
+ *  mid-sentence, or a puzzle drawing that can't be read as printed (an engine's draw() `errors`). */
+const LAYOUT_NOTES = new Set(['padded', 'printable-limit', 'answers-per-page-legible']);
+const LAYOUT_ERRORS = new Set(['title-overflow', 'copyright-overflow', 'thanks-overflow', 'draw-illegible']);
 
 const fmtIn = (v) => `${Math.round(v * 1000) / 1000} in`;
 const fmtPt = (v) => `${Math.round(v * 100) / 100}pt`;
@@ -196,6 +200,7 @@ function checkPage(F, page, ctx) {
 /** What to do about a word-search note (stats.notes), matched on the engine's wording. */
 function wordListAdvice(note) {
   if (/too short/.test(note)) return 'Use words with at least 3 letters.';
+  if (/no letters A-Z/.test(note)) return 'Use words spelled with the letters A to Z (accents are fine).';
   if (/longer than the|too long for this shape/.test(note)) return 'Use a bigger grid or a shorter word.';
   if (/backwards|hides inside/.test(note)) return 'Replace one of the two words.';
   if (/no room left|grid is full/.test(note)) return 'Use a bigger grid or fewer words.';
@@ -300,7 +305,7 @@ export function preflight(project, book, puzzles = {}, { pro = false, types = RE
   // --- Free edition ----------------------------------------------------------------------------------------------
   if (marked || meta.watermarked || !pro) {
     if (printable || meta.answersOnly) {
-      F.note({ code: 'free-printable', msg: 'Free exports carry a small footer and are for personal and classroom use. Unlock Pro for clean pages you can sell.' });
+      F.note({ code: 'free-printable', msg: `${printable ? 'Free printables carry a small footer' : 'Free answer keys carry a proof header and footer'} and are for personal and classroom use. Unlock Pro for clean pages you can sell.` });
     } else {
       F.error({ code: 'watermark', msg: 'Free proof: not publishable. Free exports print a proof header and footer on every page, which KDP rejects. Unlock Pro to export a clean interior.' });
     }
@@ -314,6 +319,7 @@ export function preflight(project, book, puzzles = {}, { pro = false, types = RE
   }
   let checked = 0;
   const notes = new Map();   // word-list notes grouped per section and wording: key -> { where, nums, pages, note }
+  const trivial = new Map(); // blank or solid nonogram pictures, grouped per section and kind
   for (const sec of sectionsOf(project)) {
     const type = types[sec.type];
     const name = (sec.title && String(sec.title).trim()) || type?.meta?.plural || sec.type;
@@ -360,7 +366,28 @@ export function preflight(project, book, puzzles = {}, { pro = false, types = RE
           if (!g.pages.includes(page)) g.pages.push(page);
         }
       }
+      // A blank or all-black picture solves itself (every clue 0, or every clue the whole line): nothing to solve.
+      const grid = sec.type === 'nonogram' && Array.isArray(p.solution?.grid) ? p.solution.grid : null;
+      if (grid && grid.length) {
+        let filled = 0;
+        for (const v of grid) if (v) filled++;
+        const kind = filled === 0 ? 'blank' : filled === grid.length ? 'solid' : null;
+        if (kind) {
+          const k = `${sec.id}|${kind}`;
+          let g = trivial.get(k);
+          if (!g) { g = { sectionId: sec.id, index: i, name, kind, nums: [], pages: [] }; trivial.set(k, g); }
+          g.nums.push(num);
+          if (!g.pages.includes(page)) g.pages.push(page);
+        }
+      }
     }
+  }
+  for (const g of trivial.values()) {
+    const who = g.nums.length === 1 ? `Puzzle ${g.nums[0]} (${g.name}, page ${g.pages[0]})`
+      : `${g.name}, ${g.nums.length} puzzles (pages ${pageList(g.pages)})`;
+    const what = g.kind === 'blank' ? 'the picture is blank, so every clue is 0' : 'every square of the picture is shaded';
+    F.warn({ code: 'nonogram-trivial', page: g.pages[0], pages: g.pages, sectionId: g.sectionId, index: g.index,
+      msg: `${who}: ${what} and there is nothing to solve. Use a picture with both shaded and white squares.` });
   }
   // One warning per distinct note per section (a theme that is short of words says so once, not on every puzzle).
   for (const g of notes.values()) {
@@ -373,7 +400,8 @@ export function preflight(project, book, puzzles = {}, { pro = false, types = RE
   // --- Layout warnings, spine text, file name ----------------------------------------------------------------------
   for (const w of meta.warnings || []) {
     if (w.code === 'too-many-pages' || w.code === 'empty') continue;    // reported above as errors
-    if (w.code === 'padded' || w.code === 'printable-limit') F.note({ ...w });
+    if (LAYOUT_NOTES.has(w.code)) F.note({ ...w });
+    else if (LAYOUT_ERRORS.has(w.code)) F.error({ ...w });
     else F.warn({ ...w });
   }
   const spineText = project.spineText ?? project.cover?.spineText;

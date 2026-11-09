@@ -9,6 +9,7 @@ import { THEMES } from '../../site/js/layout/themes.js';
 import { measure, vmetrics } from '../../site/js/core/fontmetrics.js';
 import { gutterFor, maxPages, TRIMS, MIN_OUTSIDE, inToPt, PRINTABLE_SIZES } from '../../site/js/kdp/specs.js';
 import { CONFIG } from '../../site/config.js';
+import { budget } from './timing.mjs';
 
 const TOL = 0.01;
 
@@ -432,6 +433,87 @@ test('answer key: at the end, after each section, or off; labels use answerTitle
   assert.ok(!all.includes('Puzzle 7'));
 });
 
+test('answer key at the end flows from one section to the next under a sub-heading; short rows are centred', () => {
+  // 25 + 25 answers at 6 per page (2 x 3 on 8.5x11): section-by-section pages would leave Alphas 25 alone on a page.
+  const sections = [{ id: 'a', type: 'alpha', title: 'Alphas', count: 25, perPage: 1 }, { id: 'b', type: 'beta', title: 'Betas', count: 25, perPage: 1 }];
+  const p = project({ trim: '8.5x11', sections, back: { thanks: false }, front: { title: false, copyright: false, howto: false },
+    answers: { perPage: 6, position: 'end' } });
+  const book = lay(p, { pro: true });
+  const ans = book.pages.filter((pg) => pg.kind === 'answers');
+  assert.equal(ans.length, 9, 'ceil(50 / 6) = 9 pages, not 5 + 5');
+  assert.ok(ans.every((pg, i) => pg.refs.length > 1 || i === ans.length - 1), `answers per page: ${ans.map((pg) => pg.refs.length)}`);
+  assert.deepEqual(ans.flatMap((pg) => pg.refs.map((r) => r.num)), Array.from({ length: 50 }, (_, i) => i + 1), 'every answer once, in order');
+  const shared = ans[4];
+  assert.deepEqual([...new Set(shared.refs.map((r) => r.sectionId))], ['a', 'b']);
+  assert.equal(shared.label, 'Answers 25–27 · Alphas, Betas');
+  const t = texts(shared);
+  assert.ok(t.some((o) => o.s === 'Answers: Alphas'), 'the page heading names the first section');
+  const sub = t.find((o) => o.s === 'Betas');
+  const a25 = shared.refs.find((r) => r.num === 25), b26 = shared.refs.find((r) => r.num === 26);
+  assert.ok(sub && sub.y > a25.box.y + a25.box.h && sub.y < b26.box.y, 'the "Betas" sub-heading sits between the two sections');
+  // Alphas 25 is alone in its row, so it is centred on the page; full rows still line up with the pages before.
+  const c = shared.contentBox;
+  assert.ok(Math.abs(a25.box.x + a25.box.w / 2 - (c.x + c.w / 2)) < 0.01, 'a short row is centred');
+  const first = ans[0].refs[0].box, again = ans[5].refs[0].box;
+  assert.ok(Math.abs(first.w - again.w) < 1e-9 && Math.abs(first.h - again.h) < 1e-9);
+  for (const pg of ans) for (const r of pg.refs) assert.ok(inside(r.box, pg.contentBox), `page ${pg.num}: mini ${r.num} inside the content box`);
+  // After each section, every section still starts its own answer pages.
+  const after = lay({ ...p, answers: { perPage: 6, position: 'after-section' } }, { pro: true });
+  assert.deepEqual(after.pages.filter((pg) => pg.kind === 'answers').map((pg) => new Set(pg.refs.map((r) => r.sectionId)).size), Array(10).fill(1));
+});
+
+test('a section never ends on an answer page holding one short row on its own: its last two pages split evenly', () => {
+  const sections = [{ id: 'a', type: 'alpha', title: 'Alphas', count: 25, perPage: 1 }, { id: 'b', type: 'beta', title: 'Betas', count: 13, perPage: 1 }];
+  const base = { trim: '8.5x11', back: { thanks: false }, front: { title: false, copyright: false, howto: false } };
+  const perPageOf = (book, sid) => book.pages.filter((pg) => pg.kind === 'answers' && pg.refs.some((r) => r.sectionId === sid))
+    .map((pg) => pg.refs.filter((r) => r.sectionId === sid).length);
+  // After each section (2 x 3 grid): 25 = 6 6 6 6 1 → 6 6 6 4 3; 13 = 6 6 1 → 6 4 3. Same page count.
+  const after = lay(project({ ...base, sections, answers: { perPage: 6, position: 'after-section' } }), { pro: true });
+  assert.deepEqual(perPageOf(after, 'a'), [6, 6, 6, 4, 3]);
+  assert.deepEqual(perPageOf(after, 'b'), [6, 4, 3]);
+  const ans = after.pages.filter((pg) => pg.kind === 'answers');
+  assert.equal(ans.length, 8);
+  assert.deepEqual(ans.flatMap((pg) => pg.refs.map((r) => r.num)), Array.from({ length: 38 }, (_, i) => i + 1), 'every answer once, in order');
+  assert.equal(ans[3].label, 'Answers 19–22 · Alphas');
+  for (const pg of ans) for (const r of pg.refs) assert.ok(inside(r.box, pg.contentBox), `page ${pg.num}: mini ${r.num} inside the content box`);
+  // The balanced pages keep the grid: same mini size, full rows line up with the pages before, a short row is centred.
+  const first = ans[0].refs, last = ans[4].refs;
+  assert.ok(last.every((r) => Math.abs(r.box.w - first[0].box.w) < 1e-9 && Math.abs(r.box.h - first[0].box.h) < 1e-9));
+  assert.deepEqual(ans[3].refs.map((r) => [r.box.x, r.box.y]), first.slice(0, 4).map((r) => [r.box.x, r.box.y]));
+  assert.deepEqual(last.slice(0, 2).map((r) => [r.box.x, r.box.y]), first.slice(0, 2).map((r) => [r.box.x, r.box.y]));
+  const c = ans[4].contentBox;
+  assert.ok(Math.abs(last[2].box.x + last[2].box.w / 2 - (c.x + c.w / 2)) < 0.01 && last[2].box.y > last[0].box.y);
+  // Answers at the end: Alphas' last row shares its page with the Betas, so nothing moves there; the Betas, last
+  // in the book, split their last two pages.
+  const end = lay(project({ ...base, sections: [sections[0], { ...sections[1], count: 9 }], answers: { perPage: 6, position: 'end' } }), { pro: true });
+  assert.deepEqual(perPageOf(end, 'a'), [6, 6, 6, 6, 1]);
+  assert.deepEqual(perPageOf(end, 'b'), [2, 4, 3]);   // 26–27 share Alphas 25's page; then 6 + 1 → 4 + 3
+  // Answers-only files use the same planner.
+  assert.deepEqual(perPageOf(lay(project({ ...base, sections: [sections[0]] }), { pro: true, answersOnly: true }), 'a'), [6, 6, 6, 4, 3]);
+  // A one-row grid (2 per page side by side) can't do better: 3 = 2 + 1, as on the puzzle pages.
+  const types = { ...TYPES, gamma: stubType('gamma', { meta: { answerPerPage: [2] } }) };
+  const g = [{ id: 'g', type: 'gamma', title: 'Gammas', count: 3, perPage: 1 }];
+  const wide = layoutBook(project({ ...base, trim: '8.25x6', sections: g, answers: { perPage: 2, position: 'end' } }), puzzlesFor({ sections: g }), { types, pro: true });
+  assert.deepEqual(perPageOf(wide, 'g'), [2, 1]);
+});
+
+test('printables with one or two puzzles get answers as big as the puzzles, not a mini in the corner', () => {
+  for (const count of [1, 2, 3]) {
+    const p = project({ sections: [{ id: 's1', type: 'alpha', title: 'Alphas', count, perPage: 1 }], answers: { perPage: 4, position: 'end' },
+      front: { title: false } });
+    const book = lay(p, { target: 'printable', pro: true });
+    const ans = book.pages.filter((pg) => pg.kind === 'answers');
+    assert.equal(ans.length, 1);
+    const c = ans[0].contentBox, boxes = ans[0].refs.map((r) => r.box);
+    if (count === 1) assert.ok(boxes[0].w > c.w * 0.95, `1 puzzle: a full-width answer (${boxes[0].w} of ${c.w})`);
+    if (count === 2) assert.ok(boxes.every((b) => b.h > c.h * 0.35), '2 puzzles: two half-page answers');
+    if (count === 3) {
+      assert.ok(boxes[0].w < c.w / 2, '3 puzzles: the usual grid');
+      assert.ok(Math.abs(boxes[2].x + boxes[2].w / 2 - (c.x + c.w / 2)) < 0.01, 'the third answer is centred under the first two');
+    }
+  }
+});
+
 test('front matter: title, copyright (default, override, credit), belongs, how-to per type, contents', () => {
   const p = project({
     front: { title: true, copyright: true, belongs: true, howto: true, contents: true },
@@ -443,22 +525,24 @@ test('front matter: title, copyright (default, override, credit), belongs, how-t
   });
   const book = lay(p, { pro: true });
   const kinds = book.pages.map((pg) => pg.kind);
-  assert.deepEqual(kinds.slice(0, 7), ['title', 'copyright', 'belongs', 'contents', 'howto', 'howto', 'divider']);
+  // Two short how-to texts share one page, each under its own sub-heading.
+  assert.deepEqual(kinds.slice(0, 6), ['title', 'copyright', 'belongs', 'contents', 'howto', 'divider']);
   const t = (i) => texts(book.pages[i]).map((o) => o.s).join('\n');
   assert.match(t(0), /Test Book/); assert.match(t(0), /For Testing/); assert.match(t(0), /Ann Author/);
   assert.match(t(1), /Copyright © 2026 Ann Author\. All rights reserved\./);
   assert.doesNotMatch(t(1), /Gridbook/);
   assert.match(t(2), /This book belongs to/);
-  assert.match(t(4), /How to solve Alpha/); assert.match(t(4), /How to play alpha/);
-  assert.match(t(5), /How to solve Beta/);
-  assert.match(t(6), /First/); assert.match(t(6), /Puzzles 1–4/);
+  assert.match(t(4), /^How to solve the puzzles\nAlphas\nHow to play alpha, paragraph one\.\nParagraph two\.\nBetas\nHow to play beta, paragraph one\./);
+  assert.equal(book.pages[4].label, 'How to solve: Alphas, Betas');
+  for (const o of texts(book.pages[4]).filter((x) => !/^\d+$/.test(x.s))) assert.ok(inside(bbox(o), book.pages[4].contentBox), `"${o.s}" inside the content box`);
+  assert.match(t(5), /First/); assert.match(t(5), /Puzzles 1–4/);
   // Contents lists sections with their real starting pages.
   const contents = texts(book.pages[3]);
   const pageOf = (label) => {
     const o = contents.find((x) => x.s === label);
     return Number(contents.find((x) => x.align === 'right' && Math.abs(x.y - o.y) < 1e-6).s);
   };
-  assert.equal(pageOf('First'), 7);
+  assert.equal(pageOf('First'), 6);
   assert.equal(book.pages[pageOf('Second') - 1].refs[0].sectionId, 'b');
   assert.equal(book.pages[pageOf('Answers') - 1].kind, 'answers');
   assert.equal(book.pages[pageOf('How to solve the puzzles') - 1].kind, 'howto');
@@ -659,20 +743,13 @@ test('pageGeometry: KDP margins follow the tier; printable sizes', () => {
   for (const t of TRIMS) assert.equal(pageGeometry(project({ trim: t.id })).w, inToPt(t.w));
 });
 
-// ---- real engines (only once they are implemented) ----------------------------------------------------------------
+// ---- real engines: an engine that throws here is a failure, never a skip ------------------------------------------
 
-test('integration: a small real book lays out cleanly', async (t) => {
+test('integration: a small real book lays out cleanly', async () => {
   const { TYPES: REAL, getType } = await import('../../site/js/puzzles/registry.js');
   const { makeRng, puzzleSeed } = await import('../../site/js/core/rng.js');
   const { preflight } = await import('../../site/js/kdp/preflight.js');
   const ids = ['wordsearch', 'sudoku', 'maze', 'nonogram'];
-  for (const id of ids) {
-    const T = getType(id);
-    try { T.generate(T.defaults('standard'), makeRng('probe'), { index: 0, count: 1, deadline: Infinity }); } catch (e) {
-      t.skip(`real ${id} engine not ready yet (${e.message}); integration test skipped`);
-      return;
-    }
-  }
   for (const theme of ['standard', 'large']) {
     const p = project({
       seed: 'integration', theme, trim: theme === 'large' ? '8.5x11' : '6x9', header: 'Integration',
@@ -901,8 +978,60 @@ test('divider kicker only when the section title differs from the type name; how
   const dividers = book.pages.filter((pg) => pg.kind === 'divider').map((pg) => texts(pg).map((o) => o.s));
   assert.ok(!dividers[0].includes('ALPHAS'), 'no "ALPHAS" kicker above "alphas"');
   assert.ok(dividers[1].includes('BETAS') && dividers[1].includes('Spring Fun'));
-  const how = book.pages.filter((pg) => pg.kind === 'howto').map((pg) => texts(pg)[0].s);
-  assert.deepEqual(how, ['How to solve Alphas', 'How to solve Betas']);
+  const how = book.pages.filter((pg) => pg.kind === 'howto').map((pg) => texts(pg).map((o) => o.s));
+  assert.equal(how.length, 1, 'both short how-to texts share one page');
+  assert.deepEqual([how[0][0], how[0][1]], ['How to solve the puzzles', 'Alphas']);
+  assert.ok(how[0].includes('Betas'));
+  // A type alone still gets "How to solve <plural>".
+  const one = lay(project({ front: { title: false, copyright: false, howto: true } }), { pro: true });
+  assert.equal(texts(one.pages.find((pg) => pg.kind === 'howto'))[0].s, 'How to solve Alphas');
+});
+
+test('how-to: types share a page while they fit; a long text keeps its own pages', () => {
+  const long = stubType('beta', { meta: { howTo: Array.from({ length: 40 }, (_, i) => `Rule ${i}: ` + 'words '.repeat(30)) } });
+  const p = project({ front: { title: false, copyright: false, howto: true },
+    sections: [{ id: 'a', type: 'alpha', count: 2 }, { id: 'b', type: 'beta', count: 2 }, { id: 'c', type: 'gamma', count: 2 }] });
+  const book = layoutBook(p, puzzlesFor(p), { types: { alpha: TYPES.alpha, beta: long, gamma: stubType('gamma') }, pro: true });
+  const how = book.pages.filter((pg) => pg.kind === 'howto');
+  assert.equal(texts(how[0])[0].s, 'How to solve Alphas', 'alpha alone: beta does not fit beside it');
+  assert.equal(texts(how[1])[0].s, 'How to solve Betas');
+  assert.match(texts(how[how.length - 1])[0].s, /^How to solve Gammas$/);
+  for (const pg of how) for (const o of texts(pg).filter((x) => !/^\d+$/.test(x.s))) assert.ok(inside(bbox(o), pg.contentBox), `page ${pg.num}: "${o.s.slice(0, 30)}"`);
+});
+
+test('how-to text covers only what the book contains (engine howToFor)', async () => {
+  const S = await import('../../site/js/puzzles/sudoku.js');
+  const W = await import('../../site/js/puzzles/wordsearch.js');
+  const N = await import('../../site/js/puzzles/nonogram.js');
+  // Kids book: easy 4x4 only. No 9x9 or 6x6 grids, no Hard/Expert, no pencil marks.
+  const kids = S.howToFor([{ size: 4, difficulty: 'easy' }]).join(' ');
+  assert.match(kids, /A 4×4 grid uses the digits 1 to 4 in 2×2 boxes\./);
+  assert.match(kids, /Easy puzzles need only two ideas/);
+  assert.doesNotMatch(kids, /9×9|6×6|Medium|Hard|Expert|pencil/);
+  // A 4x4 asked for Expert is made as the hardest 4x4 (Medium), so no pencil marks either.
+  assert.doesNotMatch(S.howToFor([{ size: 4, difficulty: 'expert' }]).join(' '), /pencil|Expert/);
+  const mixed = S.howToFor(['easy', 'medium', 'hard', 'expert'].map((difficulty) => ({ size: 9, difficulty }))).join(' ');
+  assert.match(mixed, /Easy and Medium puzzles need only two ideas/);
+  assert.match(mixed, /Hard puzzles also need pencil marks.*Expert puzzles go further still\./);
+  assert.doesNotMatch(mixed, /6×6|4×4/);
+  assert.match(S.howToFor([{ size: 6, difficulty: 'expert' }]).join(' '), /^(?!.*Hard).*Start with two ideas.*Expert puzzles also need pencil marks/);
+  // Word search: the directions sentence names only the difficulties in the book.
+  assert.equal(W.howToFor([{ difficulty: 'easy' }])[1], 'Words run across, from left to right, or down, from top to bottom.');
+  assert.doesNotMatch(W.howToFor([{ difficulty: 'medium' }]).join(' '), /hard|eight|easy/i);
+  assert.equal(W.howToFor(['easy', 'medium', 'hard'].map((difficulty) => ({ difficulty })))[1], W.meta.howTo[1]);
+  assert.equal(W.howToFor([{ difficulty: 'easy' }, { difficulty: 'hard' }])[1],
+    'In easy puzzles words run across or down. Hard puzzles hide words in all eight directions, including backwards.');
+  // Nonograms: random shapes have no names for the answer key to show.
+  assert.match(N.howToFor([{ source: 'library' }]).join(' '), /names each picture/);
+  assert.doesNotMatch(N.howToFor([{ source: 'random' }]).join(' '), /names each picture/);
+  // Layout uses it: a kids book's how-to page has no 9x9 text.
+  const { buildFromTemplate } = await import('../../site/js/ui/templates.js');
+  const kb = layoutBook(buildFromTemplate('kids-activity'), {}, { pro: true });
+  const howPages = kb.pages.filter((pg) => pg.kind === 'howto');
+  assert.equal(howPages.length, 1, 'three short texts on one page');
+  const all = howPages.flatMap((pg) => texts(pg).map((o) => o.s)).join(' ');
+  assert.match(all, /4×4/);
+  assert.doesNotMatch(all, /9×9|pencil marks|including backwards|forwards or backwards/);
 });
 
 test('how-to text: tighter leading keeps a near-full page on one page; continuation pages never hold 1-2 lines', () => {
@@ -942,25 +1071,19 @@ test('big books stay fast and KDP-clean (800 puzzles, 2 per page, after-section 
   const t0 = performance.now();
   const book = lay(p, { pro: false }, puzzlesFor(p, { titles: true }));
   const ms = performance.now() - t0;
-  assert.ok(ms < 3000, `layout took ${ms.toFixed(0)}ms`);
+  assert.ok(ms < budget(3000), `layout took ${ms.toFixed(0)}ms`);
   assert.equal(book.meta.puzzleCount, 800);
   assertKdpBook(book, p, { pro: false });
 });
 
-test('integration: real engines across trims, themes, per-page and answer layouts are KDP-clean', async (t) => {
+test('integration: real engines across trims, themes, per-page and answer layouts are KDP-clean', async () => {
   const { TYPES: REAL, getType } = await import('../../site/js/puzzles/registry.js');
   const { makeRng, puzzleSeed } = await import('../../site/js/core/rng.js');
   const { preflight } = await import('../../site/js/kdp/preflight.js');
   const ids = ['wordsearch', 'sudoku', 'maze', 'nonogram'];
-  for (const id of ids) {
-    const T = getType(id);
-    try { T.generate(T.defaults('standard'), makeRng('probe'), { index: 0, count: 1, deadline: Infinity }); } catch (e) {
-      t.skip(`real ${id} engine not ready yet (${e.message}); integration test skipped`);
-      return;
-    }
-  }
   const configs = [
-    { trim: '5x8', theme: 'large', perPage: 4, ap: 9, bleed: true, pageNumbers: 'center' },
+    // 15×15 nonogram clues run together four to a 5x8 page (a preflight error since they can't be read): use 10×10 there.
+    { trim: '5x8', theme: 'large', perPage: 4, ap: 9, bleed: true, pageNumbers: 'center', opts: { nonogram: { size: 10 } } },
     { trim: '8.25x6', theme: 'kids', perPage: 2, ap: 4 },
     { trim: '6x9', theme: 'standard', perPage: 6, ap: 9 },
     { trim: '8.5x11', theme: 'large', perPage: 1, ap: 4, bleed: true },
@@ -970,7 +1093,8 @@ test('integration: real engines across trims, themes, per-page and answer layout
     const p = project({
       seed: 'review', theme: c.theme, trim: c.trim, bleed: !!c.bleed, pageNumbers: c.pageNumbers ?? true, header: 'Review Book',
       front: { title: true, copyright: true, belongs: true, howto: true, contents: true },
-      sections: ids.map((id, k) => ({ id: `s${k}`, type: id, title: REAL[id].meta.plural, count: 3, perPage: c.perPage, divider: true, opts: getType(id).defaults(c.theme) })),
+      sections: ids.map((id, k) => ({ id: `s${k}`, type: id, title: REAL[id].meta.plural, count: 3, perPage: c.perPage, divider: true,
+        opts: { ...getType(id).defaults(c.theme), ...(c.opts?.[id] || {}) } })),
       answers: { perPage: c.ap, position: 'end' }, back: { thanks: true, notes: 1 },
     });
     const puzzles = {};

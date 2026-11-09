@@ -1,7 +1,7 @@
 // core/store.js (undo/redo, coalescing, subscriptions) and core/bus.js. CONTRACTS.md §12.2, §12.4.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, deepEqual } from '../../site/js/core/store.js';
+import { createStore, deepEqual, EARLIER_CHANGES } from '../../site/js/core/store.js';
 import { createBus } from '../../site/js/core/bus.js';
 
 function fakeClock(start = 0) {
@@ -101,6 +101,35 @@ describe('createStore', () => {
     while (s.undo()) undos++;
     assert.equal(undos, 3);
     assert.equal(s.get().n, 2);
+  });
+
+  test('keepBase: past the limit the oldest steps merge, so undoing all the way back reaches the start', () => {
+    const s = createStore({ n: 0 }, { history: 3, keepBase: true });
+    for (let i = 1; i <= 2; i++) s.update((d) => { d.n = i; }, { label: `Set ${i}` });
+    assert.equal(s.historyTrimmed(), false);
+    for (let i = 3; i <= 6; i++) s.update((d) => { d.n = i; }, { label: `Set ${i}` });
+    assert.equal(s.historyTrimmed(), true);
+    const seen = [];
+    while (s.canUndo()) { seen.push(s.undoLabel()); s.undo(); }
+    assert.deepEqual(seen, ['Set 6', 'Set 5', EARLIER_CHANGES]);
+    assert.deepEqual(s.get(), { n: 0 }, 'back to the state the store started with');
+    while (s.redo());
+    assert.deepEqual(s.get(), { n: 6 });
+    // A reset is a new start.
+    s.reset({ n: 10 });
+    assert.equal(s.historyTrimmed(), false);
+    for (let i = 11; i <= 20; i++) s.update((d) => { d.n = i; });
+    while (s.undo());
+    assert.deepEqual(s.get(), { n: 10 });
+  });
+
+  test('the Studio keeps the book as opened reachable after 150 edits (100-step history)', () => {
+    const s = createStore({ count: 20 }, { history: 100, keepBase: true });
+    for (let i = 1; i <= 150; i++) s.update((d) => { d.count = 20 + i; });
+    let undos = 0;
+    while (s.undo()) undos++;
+    assert.equal(undos, 100);
+    assert.deepEqual(s.get(), { count: 20 });
   });
 
   test('history: 0 is a plain observable store', () => {

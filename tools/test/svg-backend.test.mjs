@@ -175,4 +175,34 @@ test('gallery miniatures exist, are grayscale, well formed and match make-galler
     assert.match(svg, /viewBox="0 0 [\d.]+ [\d.]+" width="[\d.]+" height="[\d.]+"/);
     assert.ok(svg.length < 120_000, `${name} is ${svg.length} bytes`);
   }
+  // Showcase pictures fill their grid: no blank edge row or column, so no "0" clue on the border of the landing page's
+  // hero demo (10×10), "picture to puzzle" strip and nonogram type card (15×15).
+  const { STRIP_PICTURE, CARD_PICTURE, SHOWCASE_SIZE } = await import('../make-gallery.mjs');
+  const { DEMO_PICTURES } = await import('../../site/js/site/demo.js');
+  const { PICTURES } = await import('../../site/data/pictures.js');
+  const { b64ToBits } = await import('../../site/js/puzzles/common.js');
+  for (const [id, n] of [[STRIP_PICTURE, SHOWCASE_SIZE], [CARD_PICTURE, SHOWCASE_SIZE], [DEMO_PICTURES[0], 10]]) {
+    const pic = PICTURES.find((p) => p.id === id);
+    assert.ok(pic?.bits[n], `${id} is stored at ${n}×${n}`);
+    const bits = b64ToBits(pic.bits[n], n * n);
+    const lineFilled = (cells) => cells.some((i) => bits[i]);
+    const idx = [...Array(n).keys()];
+    assert.ok(lineFilled(idx.map((c) => c)), `${id}: top row is blank`);
+    assert.ok(lineFilled(idx.map((c) => (n - 1) * n + c)), `${id}: bottom row is blank`);
+    assert.ok(lineFilled(idx.map((r) => r * n)), `${id}: left column is blank`);
+    assert.ok(lineFilled(idx.map((r) => r * n + n - 1)), `${id}: right column is blank`);
+  }
+  // The strip's puzzle and solved panels keep a margin like the source icon's, so clues never touch the card edge.
+  const { unionBox } = await import('../../site/js/layout/displaylist.js');
+  for (const name of ['picture-puzzle.svg', 'picture-solved.svg']) {
+    const { w, h, ops } = built[name];
+    const b = unionBox(ops);
+    const margin = Math.min(b.x, b.y, w - (b.x + b.w), h - (b.y + b.h));
+    assert.ok(margin >= 0.06 * w, `${name}: drawing comes within ${margin.toFixed(1)} of the ${w}-pt panel edge`);
+  }
+  // The type cards print each puzzle's own subtitle, exactly as a book page does (no gallery-only text).
+  const nono = readFileSync(GALLERY + 'nonogram.svg', 'utf8');
+  assert.match(nono, />15×15 · (Easy|Medium|Hard|Expert)</);
+  assert.doesNotMatch(nono, /Picture puzzle/);
+  assert.doesNotMatch(readFileSync(GALLERY + 'sudoku.svg', 'utf8'), /Sudoku · /);
 });

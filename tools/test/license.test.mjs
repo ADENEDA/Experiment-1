@@ -15,6 +15,7 @@ import { validatePolar, isUuidV4, POLAR_VALIDATE_URL } from '../../site/js/licen
 import { verifyOfflineCode, b64uDecode, b64uEncode, expiryOf, looksLikeOfflineCode } from '../../site/js/license/offline-code.js';
 import { signOfflineCode } from '../sign-code.mjs';
 import { rawPublicKeyB64u } from '../keygen.mjs';
+import { budget } from './timing.mjs';
 import { pricingInfo, formatPrice, checkoutLinks } from '../../site/js/ui/buy-buttons.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -133,7 +134,7 @@ describe('gumroad.js', () => {
     const fetch = (url, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError'))));
     const t = performance.now();
     assert.deepEqual(await verifyGumroad({ productId: 'P', key: 'K', timeoutMs: 40, fetch }), { status: 'unreachable', reason: 'timeout' });
-    assert.ok(performance.now() - t < 2000);
+    assert.ok(performance.now() - t < budget(2000));
   });
 
   test('normalizeKey strips copy-paste whitespace only', () => {
@@ -205,15 +206,39 @@ describe('offline-code.js', () => {
     assert.equal(looksLikeOfflineCode('85DB562A-C11D4B06-A2335A6B-8C079166'), false);
   });
 
-  test('expiring codes work through the end of the exp day (UTC), then expire', async () => {
+  test('a --days code runs exactly that many days, then expires', async () => {
     const code = sign({ name: 'promo', type: 'pass', days: 7 });
-    const end = Date.parse('2026-11-20T00:00:00Z'); // exp = 2026-11-19
-    assert.equal(expiryOf('2026-11-19'), end);
+    const end = Date.parse('2026-11-19T00:00:00Z'); // iat 2026-11-12 (start of the UTC day) + 7 × 24 h
+    const payload = JSON.parse(Buffer.from(code.split('.')[1], 'base64url').toString('utf8'));
+    assert.deepEqual(payload, { t: 'pass', n: 'promo', iat: '2026-11-12', exp: '2026-11-19T00:00:00.000Z' });
     assert.equal((await verifyOfflineCode(code, { publicKey, now: end - 1 })).status, 'valid');
     const r = await verifyOfflineCode(code, { publicKey, now: end });
     assert.equal(r.status, 'expired');
     assert.equal(r.expiresAt, end);
     assert.equal(r.tier, 'pass');
+    // Without --iat the days count from the moment of signing.
+    const signedAt = Date.parse('2026-11-09T13:30:00Z');
+    const now = signOfflineCode({ privateKey, name: 'promo', type: 'pass', days: 7, now: signedAt }).payload;
+    assert.deepEqual(now, { t: 'pass', n: 'promo', iat: '2026-11-09', exp: '2026-11-16T13:30:00.000Z' });
+    // A replacement for a Gumroad pass starts at its sale_timestamp, so it ends when the bought pass does (a date
+    // alone would start at 00:00 UTC and end up to a day early).
+    const sale = '2026-11-09T20:00:00Z';
+    const replace = signOfflineCode({ privateKey, name: 'buyer', type: 'pass', days: 7, iat: sale, now: signedAt + 5 * DAY }).payload;
+    assert.deepEqual(replace, { t: 'pass', n: 'buyer', iat: '2026-11-09', exp: '2026-11-16T20:00:00.000Z' });
+    assert.equal(Date.parse(replace.exp), Date.parse(sale) + 7 * DAY, 'the same end as license.js gives the Gumroad pass');
+    assert.equal(signOfflineCode({ privateKey, name: 'b', type: 'pass', days: 7, iat: '2026-11-09T21:00:00+01:00' }).payload.exp, '2026-11-16T20:00:00.000Z');
+    for (const bad of ['2026-11-09T20:00:00', '2026-11-09 20:00Z', '2026-02-30', '2026-02-30T10:00Z', '2026-11-09T25:00Z']) {
+      assert.throws(() => signOfflineCode({ privateKey, name: 'b', type: 'pass', days: 7, iat: bad }), /--iat must be/, bad);
+    }
+  });
+
+  test('older codes with a date-only exp still work through the end of that UTC day', async () => {
+    const p = Buffer.from(JSON.stringify({ t: 'pass', n: 'old', iat: '2026-11-12', exp: '2026-11-19' })).toString('base64url');
+    const code = `GBS1.${p}.${edSign(null, Buffer.from(p), privateKey).toString('base64url')}`;
+    const end = Date.parse('2026-11-20T00:00:00Z');
+    assert.equal(expiryOf('2026-11-19'), end);
+    assert.equal((await verifyOfflineCode(code, { publicKey, now: end - 1 })).status, 'valid');
+    assert.equal((await verifyOfflineCode(code, { publicKey, now: end })).status, 'expired');
   });
 
   test('tampered, foreign-signed and malformed codes are invalid', async () => {
@@ -607,13 +632,20 @@ describe('license.js: Gumroad activation', () => {
   test('re-check follows a product-ID change in config.js', async () => {
     const ctx = setup({ keys: { LIFEKEY: { product: 'LIFE_ID' } } });
     await L.activate('LIFEKEY');
-    // The owner swaps the two IDs by mistake; the stored product still validates first.
+    // The owner swaps the two IDs: the stored product is still asked first (one call, the buyer isn't stranded), but
+    // its tier comes from config.js, not from the cache (CONTRACTS §11: the cached record is never its own proof).
     ctx.config = cfg((c) => { c.gumroad.lifetime.productId = 'PASS_ID'; c.gumroad.pass.productId = 'LIFE_ID'; });
     ctx.clock.t = T0 + 8 * DAY;
     ctx.reload();
+    const before = ctx.server.calls.length;
     const lic = await L.initLicense({ waitForRecheck: true });
-    assert.equal(lic.status, 'pro-lifetime');
-    assert.equal(ctx.server.calls.at(-1).product, 'LIFE_ID');
+    assert.deepEqual(ctx.server.calls.slice(before).map((c) => c.product), ['LIFE_ID']);
+    assert.equal(cached(ctx).tier, 'pass', 'LIFE_ID is the pass product now');
+    assert.equal(lic.status, 'pass-expired');
+    // Swapped back, the same key is Lifetime again at the next check.
+    ctx.config = cfg();
+    ctx.reload();
+    assert.equal((await L.recheckLicense()).status, 'pro-lifetime');
   });
 
   test('deactivate during an activation cancels it', async () => {
@@ -805,8 +837,9 @@ describe('license.js: offline codes', () => {
 
     const ok = await L.activateOfflineCode(code);
     assert.equal(ok.status, 'pro-pass');
-    assert.equal(L.getLicense().expiresAt, Date.parse('2026-11-13T00:00:00Z'));
-    ctx.clock.t = Date.parse('2026-11-13T00:00:00Z');
+    // iat 2026-11-09 (start of the UTC day) + 3 × 24 h
+    assert.equal(L.getLicense().expiresAt, Date.parse('2026-11-12T00:00:00Z'));
+    ctx.clock.t = Date.parse('2026-11-12T00:00:00Z');
     assert.equal(L.getLicense().status, 'pass-expired');
     assert.match(L.getLicense().message, /offline code expired/);
 
@@ -866,18 +899,25 @@ describe('tools: keygen + sign-code CLIs', () => {
       assert.equal(s.status, 0, s.stderr);
       const code = s.stdout.trim();
       assert.match(code, /^GBS1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-      assert.match(s.stderr, /valid through 2026-12-09/);
+      // 30 days from the start of 2026-11-09 (UTC): the last full day is 2026-12-08.
+      assert.match(s.stderr, /valid through 2026-12-08 \(UTC\)/);
       const r = await verifyOfflineCode(code, { publicKey: pub, now: T0 });
       assert.equal(r.status, 'valid');
       assert.equal(r.tier, 'lifetime');
-      assert.equal(r.expiresAt, Date.parse('2026-12-10T00:00:00Z'));
+      assert.equal(r.expiresAt, Date.parse('2026-12-09T00:00:00Z'));
 
+      const before = Date.now();
       const pass = spawnSync(process.execPath, ['tools/sign-code.mjs', '--name', 'promo', '--type', 'pass', '--key', keyPath],
         { cwd: ROOT, encoding: 'utf8' });
+      const after = Date.now();
       assert.equal(pass.status, 0, pass.stderr);
+      assert.match(pass.stderr, /valid until \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/);
       const pp = JSON.parse(Buffer.from(pass.stdout.trim().split('.')[1], 'base64url').toString());
       assert.equal(pp.t, 'pass');
-      assert.equal(Date.parse(pp.exp) - Date.parse(pp.iat), (CONFIG.gumroad.pass.days ?? 7) * DAY);
+      // A pass runs exactly its days from the moment it was signed, like a Gumroad pass from its sale time.
+      const ran = Date.parse(pp.exp) - (CONFIG.gumroad.pass.days ?? 7) * DAY;
+      assert.ok(ran >= before - 1000 && ran <= after + 1000, `exp ${pp.exp} is ${CONFIG.gumroad.pass.days ?? 7} days after signing`);
+      assert.equal(pp.iat, new Date(ran).toISOString().slice(0, 10));
 
       const bad = spawnSync(process.execPath, ['tools/sign-code.mjs', '--type', 'gold', '--name', 'x', '--key', keyPath], { cwd: ROOT, encoding: 'utf8' });
       assert.equal(bad.status, 2);
@@ -1262,14 +1302,34 @@ describe('review: offline codes and CLIs', () => {
     const r = await L.activate(`  ${code.toLowerCase().slice(0, 4)}${code.slice(4)}  `);
     assert.equal(r.status, 'pro-lifetime');
     let lic = L.getLicense();
-    // Valid through 2026-12-09 (UTC): the message names the last day of access, not the day after.
-    const lastDay = new Date(Date.parse('2026-12-10T00:00:00Z') - 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // 30 days from 2026-11-09 00:00 UTC, so through 2026-12-08: the message names the last day of access.
+    const lastDay = new Date(Date.parse('2026-12-09T00:00:00Z') - 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     assert.equal(lic.message, `Pro is active until ${lastDay} (offline code for reviewer-jane).`);
     assert.equal(lic.badge, 'Pro');
-    ctx.clock.t = Date.parse('2026-12-10T00:00:00Z');
+    ctx.clock.t = Date.parse('2026-12-09T00:00:00Z');
     lic = L.getLicense();
     assert.equal(lic.status, 'pass-expired');
     assert.match(lic.message, /offline code expired/);
+  });
+
+  test('a 7-day offline pass signed now reads exactly like a Gumroad pass bought now: 7 days, same end time', async () => {
+    const now = Date.parse('2026-11-09T13:30:00Z');
+    const offline = setup({ config: cfg((c) => { c.offlineCodes.publicKey = publicKey; }), now });
+    const code = signOfflineCode({ privateKey, name: 'promo', type: 'pass', days: 7, now }).code;
+    assert.equal((await L.activate(code)).status, 'pro-pass');
+    const a = L.getLicense();
+    const online = setup({ keys: { PASSKEY: { product: 'PASS_ID', uses: 0, sale: new Date(now).toISOString() } }, now });
+    assert.equal((await L.activate('PASSKEY')).status, 'pro-pass');
+    const b = L.getLicense();
+    assert.equal(a.badge, 'Pass: 7 days left');
+    assert.equal(b.badge, 'Pass: 7 days left');
+    assert.equal(a.expiresAt, b.expiresAt);
+    assert.equal(a.expiresAt, now + 7 * DAY);
+    online.clock.t = now + 7 * DAY - 1;
+    assert.equal(L.isPro(), true);
+    online.clock.t = now + 7 * DAY;
+    assert.equal(L.isPro(), false);
+    void offline;
   });
 
   test('keygen --force tightens an existing world-readable file to 600', () => {
@@ -1292,7 +1352,7 @@ describe('review: offline codes and CLIs', () => {
     try {
       const keyPath = join(dir, 'k');
       assert.equal(spawnSync(process.execPath, ['tools/keygen.mjs', '--out', keyPath], { cwd: ROOT }).status, 0);
-      for (const extra of [['--days', '0'], ['--days', '-3'], ['--days', '1.5'], ['--days', '4000'], ['--iat', '2026-13-45'], ['--iat', 'tomorrow'], ['--name']]) {
+      for (const extra of [['--days', '0'], ['--days', '-3'], ['--days', '1.5'], ['--days', '4000'], ['--iat', '2026-13-45'], ['--iat', 'tomorrow'], ['--iat', '2026-11-09T20:00'], ['--name']]) {
         const s = spawnSync(process.execPath, ['tools/sign-code.mjs', '--name', 'x', '--key', keyPath, ...extra], { cwd: ROOT, encoding: 'utf8' });
         assert.equal(s.status, 2, `${extra.join(' ')}: ${s.stderr}`);
         assert.equal(s.stdout, '', extra.join(' '));
@@ -1319,5 +1379,170 @@ describe('review: Polar benefit matching', () => {
     ctx.config = cfg((c) => { c.provider = 'polar'; c.polar.organizationId = ORG; });
     ctx.reload();
     assert.equal((await L.activate('EBOOK')).status, 'pro-lifetime');
+  });
+});
+
+describe('review: a hand-edited cache never unlocks Pro by itself', () => {
+  const { privateKey, publicKey } = makeKeys();
+  const withKey = (mut) => cfg((c) => { c.offlineCodes.publicKey = publicKey; if (mut) mut(c); });
+  const sign = (o) => signOfflineCode({ privateKey, iat: '2026-11-09', ...o }).code;
+  const forge = (ctx, r) => { ctx.storage.setItem(L.STORAGE_KEY, JSON.stringify({ v: 1, validatedAt: 1, status: 'ok', ...r })); ctx.reload(); };
+  const unsupported = { importKey: async () => { throw new DOMException('no', 'NotSupportedError'); }, verify: async () => false };
+
+  test('an offline record unlocks nothing while config.js has no (valid) public key', async () => {
+    // The shipped config.js: offline codes off. A record typed into localStorage must not survive the first check.
+    const ctx = setup({ config: structuredClone(CONFIG) });
+    forge(ctx, { provider: 'offline', key: 'x', tier: 'lifetime', name: 'me' });
+    let lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.pro, false);
+    assert.equal(lic.status, 'invalid');
+    assert.equal(lic.reason, 'offline-disabled');
+    assert.match(lic.message, /no longer accepted/);
+    assert.equal(cached(ctx).status, 'invalid');
+
+    // A genuine code stops working when the owner removes (or garbles) the key, and works again once it is back.
+    for (const off of ['', 'not-a-key']) {
+      const g = setup({ config: withKey() });
+      await L.activateOfflineCode(sign({ name: 'reviewer-jane', type: 'lifetime' }));
+      g.config = withKey((c) => { c.offlineCodes.publicKey = off; });
+      g.reload();
+      g.listen();
+      lic = await L.initLicense({ waitForRecheck: true });
+      assert.equal(lic.reason, 'offline-disabled', JSON.stringify(off));
+      assert.equal(L.isPro(), false);
+      assert.match(g.events.at(-1).info.notice, /no longer accepted/, 'the downgrade is announced');
+      g.config = withKey();
+      g.reload();
+      lic = await L.initLicense({ waitForRecheck: true });
+      assert.equal(lic.status, 'pro-lifetime');
+      assert.equal(cached(g).status, 'ok');
+    }
+  });
+
+  test('a browser that cannot check Ed25519 does not keep an offline record as Pro', async () => {
+    const ctx = setup({ config: withKey() });
+    await L.activateOfflineCode(sign({ name: 'reviewer-jane', type: 'lifetime' }));
+    assert.equal(L.isPro(), true);
+    ctx.subtle = unsupported;
+    ctx.reload();
+    let lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.pro, false);
+    assert.equal(lic.reason, 'offline-unsupported');
+    assert.match(lic.message, /can't check offline codes/);
+    ctx.subtle = undefined; // a browser update later: the same stored code checks out again
+    ctx.reload();
+    lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.status, 'pro-lifetime');
+  });
+
+  test('a stored product ID that is not one of ours is never asked about', async () => {
+    const ctx = setup({ keys: { MINE: { product: 'SOMEONE_ELSES_PRODUCT' } } });
+    forge(ctx, { provider: 'gumroad', key: 'MINE', productId: 'SOMEONE_ELSES_PRODUCT', tier: 'lifetime' });
+    const lic = await L.initLicense({ waitForRecheck: true });
+    assert.deepEqual(ctx.server.calls.map((c) => c.product), ['LIFE_ID', 'PASS_ID']);
+    assert.equal(lic.status, 'invalid');
+    assert.equal(L.isPro(), false);
+    assert.equal(cached(ctx).validatedAt, 1, 'no fresh validation was recorded');
+
+    // Nor is the hidden $0 test product, for a record that does not say it is a test key (test keys retire with it).
+    const t = setup({ keys: { FREEBIE: { product: 'TEST_ID' } } });
+    forge(t, { provider: 'gumroad', key: 'FREEBIE', productId: 'TEST_ID', tier: 'lifetime' });
+    assert.equal((await L.initLicense({ waitForRecheck: true })).status, 'invalid');
+    assert.ok(!t.server.calls.some((c) => c.product === 'TEST_ID'));
+  });
+
+  test('a re-check takes the tier from the configured product, not from an edited cache', async () => {
+    const sale = '2026-11-09T10:00:00Z';
+    const ctx = setup({ keys: { PASSKEY: { product: 'PASS_ID', sale } } });
+    assert.equal((await L.activate('PASSKEY')).status, 'pro-pass');
+    // The pass record edited into a lifetime one, then the weekly re-check after the pass has ended.
+    const edited = { ...cached(ctx), tier: 'lifetime', expiresAt: null };
+    ctx.storage.setItem(L.STORAGE_KEY, JSON.stringify(edited));
+    ctx.clock.t = T0 + 30 * DAY;
+    ctx.reload();
+    const lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(ctx.server.calls.at(-1).product, 'PASS_ID');
+    assert.equal(lic.status, 'pass-expired');
+    assert.equal(L.isPro(), false);
+    assert.equal(cached(ctx).tier, 'pass');
+    assert.equal(cached(ctx).expiresAt, Date.parse(sale) + 7 * DAY);
+    // And the other way: a lifetime key whose cache says "pass" is still Lifetime after the re-check.
+    const life = setup({ keys: { LIFEKEY: { product: 'LIFE_ID' } } });
+    await L.activate('LIFEKEY');
+    life.storage.setItem(L.STORAGE_KEY, JSON.stringify({ ...cached(life), tier: 'pass', expiresAt: T0 + 10 * DAY }));
+    life.clock.t = T0 + 8 * DAY;
+    life.reload();
+    assert.equal((await L.initLicense({ waitForRecheck: true })).status, 'pro-lifetime');
+    assert.equal(cached(life).expiresAt, null);
+  });
+
+  test('gumroad.legacyProductIds keeps buyers of a replaced product verified', async () => {
+    const ctx = setup({ keys: { OLDKEY: { product: 'OLD_LIFE_ID' } }, config: cfg((c) => { c.gumroad.lifetime.productId = 'OLD_LIFE_ID'; }) });
+    assert.equal((await L.activate('OLDKEY')).status, 'pro-lifetime');
+    // The owner replaces the product. Without the old ID listed, the next weekly check can't find the key ...
+    ctx.config = cfg();
+    ctx.clock.t = T0 + 8 * DAY;
+    ctx.reload();
+    let lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.status, 'invalid');
+    // ... with it listed, it is asked first and the buyer keeps Lifetime.
+    L.deactivate();
+    ctx.config = cfg((c) => { c.gumroad.lifetime.productId = 'OLD_LIFE_ID'; });
+    ctx.reload();
+    await L.activate('OLDKEY');
+    ctx.config = cfg((c) => { c.gumroad.legacyProductIds = [' OLD_LIFE_ID ']; });
+    ctx.clock.t = T0 + 16 * DAY;
+    ctx.reload();
+    lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.status, 'pro-lifetime');
+    assert.equal(ctx.server.calls.at(-1).product, 'OLD_LIFE_ID');
+  });
+
+  test('a validatedAt far in the future earns no offline grace', async () => {
+    const ctx = setup();
+    ctx.server.mode = 'offline'; // e.g. api.gumroad.com blocked on purpose
+    forge(ctx, { provider: 'gumroad', key: 'K', tier: 'lifetime', validatedAt: 1e15 });
+    const lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.pro, false);
+    assert.equal(lic.reason, 'reconnect');
+    // A clock that is merely a few days behind still gets the normal grace (see "a validatedAt in the future").
+    const ok = setup();
+    ok.server.mode = 'offline';
+    forge(ok, { provider: 'gumroad', key: 'K', tier: 'lifetime', validatedAt: T0 + 3 * DAY });
+    assert.equal((await L.initLicense({ waitForRecheck: true })).status, 'pro-offline-grace');
+  });
+
+  test('offlineCodes.revoked withdraws one code by name, without touching the others', async () => {
+    const jane = sign({ name: 'reviewer-jane', type: 'lifetime' });
+    const bob = sign({ name: 'reviewer-bob', type: 'lifetime' });
+    assert.equal((await verifyOfflineCode(jane, { publicKey, now: T0, revoked: [' Reviewer-JANE '] })).status, 'revoked');
+    assert.equal((await verifyOfflineCode(bob, { publicKey, now: T0, revoked: ['reviewer-jane'] })).status, 'valid');
+
+    const ctx = setup({ config: withKey() });
+    await L.activateOfflineCode(jane);
+    ctx.config = withKey((c) => { c.offlineCodes.revoked = ['reviewer-jane']; });
+    ctx.reload();
+    ctx.listen();
+    let lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.status, 'revoked');
+    assert.equal(lic.reason, 'offline-revoked');
+    assert.match(ctx.events.at(-1).info.notice, /withdrawn this offline code/);
+    const again = await L.activateOfflineCode(jane);
+    assert.equal(again.ok, false);
+    assert.equal(again.status, 'revoked');
+    assert.match(again.message, /withdrawn/);
+    assert.equal((await L.activateOfflineCode(bob)).status, 'pro-lifetime', 'other codes keep working');
+    // Taking the name off the list restores Jane's code on her next load.
+    L.deactivate();
+    ctx.config = withKey();
+    ctx.reload();
+    await L.activateOfflineCode(jane);
+    ctx.config = withKey((c) => { c.offlineCodes.revoked = ['reviewer-jane']; });
+    ctx.reload();
+    await L.initLicense({ waitForRecheck: true });
+    ctx.config = withKey((c) => { c.offlineCodes.revoked = []; });
+    ctx.reload();
+    lic = await L.initLicense({ waitForRecheck: true });
+    assert.equal(lic.status, 'pro-lifetime');
   });
 });

@@ -9,7 +9,8 @@
 // Files (site/img/gallery/):
 //   wordsearch.svg, sudoku.svg, maze.svg, nonogram.svg      puzzle-type gallery cards (320 x 400 pt mini pages)
 //   picture-source.svg, picture-puzzle.svg, picture-solved.svg   "picture to puzzle" strip (300 x 300 pt panels)
-//   demo-cat.svg                                            no-JS / pre-load stand-in for the hero demo canvas
+//   demo-house.svg                                          no-JS / pre-load stand-in for the hero demo canvas
+//                                                           (named after DEMO_PICTURES[0] in js/site/demo.js)
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,8 +31,16 @@ const OUT = fileURLToPath(new URL('../site/img/gallery/', import.meta.url));
 const FONT_URLS = { regular: '../../fonts/AtkinsonHyperlegible-Regular.ttf', bold: '../../fonts/AtkinsonHyperlegible-Bold.ttf' };
 const STYLE = themeById('standard');
 
-/** The picture used in the "picture to puzzle" strip. */
-export const STRIP_PICTURE = 'sailboat';
+/**
+ * Library pictures shown off on the landing page, all at 15×15. Each one fills its grid (no blank edge row or column,
+ * so no "0" clue on the border): the "picture to puzzle" strip, and the nonogram type card (also the no-JS stand-in on
+ * the nonogram tool page). tools/test/svg-backend.test.mjs checks this.
+ */
+export const STRIP_PICTURE = 'tree';
+export const CARD_PICTURE = 'castle-turret';
+export const SHOWCASE_SIZE = 15;
+/** Inset of the strip's puzzle and solved panels (pt of 300), close to the margin around the source icon. */
+const STRIP_INSET = 20;
 
 function make(engine, opts, seed, index = 0) {
   const p = engine.generate(opts, makeRng(seed), { index, count: 1 });
@@ -44,8 +53,12 @@ function svgOf(ops, w, h, title) {
   return opsToSvg(ops, w, h, { title, fontUrls: FONT_URLS, background: 1 });
 }
 
-/** A 320 x 400 pt mini book page: "Puzzle N" heading, a subtitle, the puzzle, and a page number. */
-function miniPage(engine, puzzle, { num, subtitle, page }) {
+/**
+ * A 320 x 400 pt mini book page: "Puzzle N" heading, the puzzle's own subtitle (puzzle.title, exactly what a book page
+ * prints under the heading), the puzzle, and a page number.
+ */
+function miniPage(engine, puzzle, { num, page }) {
+  const subtitle = puzzle.title;
   const W = 320, H = 400;
   const ops = [
     text(W / 2, 34, `Puzzle ${num}`, { size: 15, weight: 'bold', align: 'center', gray: 0 }),
@@ -69,41 +82,41 @@ function sourcePanel(id) {
 }
 
 /**
- * Build every gallery file in memory.
- * @returns {Record<string, {svg: string, w: number, h: number, title: string}>}
+ * Build every gallery file in memory. `ops` is the display list a file was drawn from (absent for picture-source.svg).
+ * @returns {Record<string, {svg: string, w: number, h: number, title: string, ops?: object[]}>}
  */
 export function buildGallery() {
   const files = {};
-  const put = (name, w, h, title, ops) => { files[name] = { svg: svgOf(ops, w, h, title), w, h, title }; };
+  const put = (name, w, h, title, ops) => { files[name] = { svg: svgOf(ops, w, h, title), w, h, title, ops }; };
 
   // Word search: 12×12, diagonals, ocean theme.
   const ws = make(wordsearch, {
     ...wordsearch.defaults('standard'), size: 12, difficulty: 'medium', wordCount: 12,
     wordSource: { mode: 'themes', themes: ['ocean-life'] },
   }, 'gallery:wordsearch:1');
-  let pg = miniPage(wordsearch, ws, { num: 1, subtitle: `${ws.title} · ${ws.stats.grade}`, page: 7 });
+  let pg = miniPage(wordsearch, ws, { num: 1, page: 7 });
   put('wordsearch.svg', pg.w, pg.h, `A 12 by 12 word search, ${ws.title}, with its word list`, pg.ops);
 
   // Sudoku: classic 9×9, medium.
   const sd = make(sudoku, { size: 9, difficulty: 'medium', symmetry: 'rotational' }, 'gallery:sudoku:4');
-  pg = miniPage(sudoku, sd, { num: 24, subtitle: `Sudoku · ${sd.stats.grade}`, page: 30 });
+  pg = miniPage(sudoku, sd, { num: 24, page: 30 });
   put('sudoku.svg', pg.w, pg.h, `A 9 by 9 sudoku, ${sd.stats.grade.toLowerCase()}`, pg.ops);
 
   // Maze: winding, 14×15 cells.
   const mz = make(maze, { ...maze.defaults('standard'), size: 'custom', cols: 14, rows: 15 }, 'gallery:maze:2');
-  pg = miniPage(maze, mz, { num: 41, subtitle: `Maze · ${mz.stats.grade}`, page: 47 });
+  pg = miniPage(maze, mz, { num: 41, page: 47 });
   put('maze.svg', pg.w, pg.h, 'A 14 by 15 maze with START and FINISH arrows', pg.ops);
 
-  // Nonogram: a 15×15 library picture.
-  const ng = make(nonogram, { ...nonogram.defaults('standard'), size: 15, library: { pictures: ['lighthouse'], category: '' } },
+  // Nonogram: a 15×15 library picture that fills its grid (see CARD_PICTURE).
+  const ng = make(nonogram, { ...nonogram.defaults('standard'), size: SHOWCASE_SIZE, library: { pictures: [CARD_PICTURE], category: '' } },
     'gallery:nonogram:3');
-  pg = miniPage(nonogram, ng, { num: 12, subtitle: `Picture puzzle · 15×15 · ${ng.stats.grade}`, page: 18 });
+  pg = miniPage(nonogram, ng, { num: 12, page: 18 });
   put('nonogram.svg', pg.w, pg.h, 'A 15 by 15 picture nonogram with number clues', pg.ops);
 
   // Picture strip: source icon, the puzzle, and the solved picture in the same box so the reveal lines up.
-  const strip = make(nonogram, { ...nonogram.defaults('standard'), size: 15, library: { pictures: [STRIP_PICTURE], category: '' } },
+  const strip = make(nonogram, { ...nonogram.defaults('standard'), size: SHOWCASE_SIZE, library: { pictures: [STRIP_PICTURE], category: '' } },
     'gallery:strip');
-  const S = 300, box = { x: 10, y: 10, w: S - 20, h: S - 20 };
+  const S = 300, box = { x: STRIP_INSET, y: STRIP_INSET, w: S - 2 * STRIP_INSET, h: S - 2 * STRIP_INSET };
   const name = strip.answerTitle || STRIP_PICTURE;
   files['picture-source.svg'] = { svg: sourcePanel(STRIP_PICTURE), w: S, h: S, title: `${name}, the original picture` };
   const puz = nonogram.draw(strip, box, STYLE, 'puzzle');

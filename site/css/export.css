@@ -133,7 +133,7 @@
 }
 .ex-radio:first-of-type span { border-radius: var(--r-sm) 0 0 var(--r-sm); }
 .ex-radio:last-of-type span { border-radius: 0 var(--r-sm) var(--r-sm) 0; }
-.ex-radio input:checked + span { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong)); position: relative; z-index: 1; }
+.ex-radio input:checked + span { background: var(--accent-soft); color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong)); position: relative; z-index: 1; }
 .ex-radio input:focus-visible + span { box-shadow: var(--focus); position: relative; z-index: 2; }
 
 /* Status line under a format: progress, done, cancelled, error. */

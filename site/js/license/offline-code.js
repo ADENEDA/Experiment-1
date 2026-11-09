@@ -66,19 +66,36 @@ function decodePayload(payloadPart) {
   }
 }
 
+/** The raw 32-byte Ed25519 public key from config (base64url), or null when it is missing or malformed. */
+export function publicKeyBytes(publicKey) {
+  if (!publicKey || typeof publicKey !== 'string') return null;
+  try {
+    const pub = b64uDecode(publicKey.trim());
+    return pub.length === 32 ? pub : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True when `name` (a code's n field) is on the seller's revoked list (names, compared trimmed and case-insensitively). */
+export function isRevokedName(name, revoked) {
+  if (typeof name !== 'string' || !Array.isArray(revoked)) return false;
+  const n = name.trim().toLowerCase();
+  return revoked.some((x) => typeof x === 'string' && x.trim().toLowerCase() === n);
+}
+
 /**
  * Verify an offline code.
  * @param {string} code
- * @param {{publicKey:string, now?:number, subtle?:SubtleCrypto}} opts
- * @returns {Promise<{status:'valid'|'expired', tier:'lifetime'|'pass', name:string, iat:any, expiresAt:number|null}
+ * @param {{publicKey:string, now?:number, subtle?:SubtleCrypto, revoked?:string[]}} opts  revoked: names of withdrawn codes
+ * @returns {Promise<{status:'valid'|'expired'|'revoked', tier:'lifetime'|'pass', name:string, iat:any, expiresAt:number|null}
  *                 | {status:'invalid', reason:'format'|'signature'|'payload'}
  *                 | {status:'unsupported', reason?:string} | {status:'not-configured', reason?:string}>}
  */
-export async function verifyOfflineCode(code, { publicKey, now = Date.now(), subtle } = {}) {
+export async function verifyOfflineCode(code, { publicKey, now = Date.now(), subtle, revoked = [] } = {}) {
   if (!publicKey || typeof publicKey !== 'string') return { status: 'not-configured', reason: 'no-public-key' };
-  let pub;
-  try { pub = b64uDecode(publicKey.trim()); } catch { return { status: 'not-configured', reason: 'bad-public-key' }; }
-  if (pub.length !== 32) return { status: 'not-configured', reason: 'bad-public-key' };
+  const pub = publicKeyBytes(publicKey);
+  if (!pub) return { status: 'not-configured', reason: 'bad-public-key' };
 
   const parts = splitOfflineCode(code);
   if (!parts) return { status: 'invalid', reason: 'format' };
@@ -108,6 +125,7 @@ export async function verifyOfflineCode(code, { publicKey, now = Date.now(), sub
   // Only trust the payload after the signature checks out.
   const p = decodePayload(parts.payloadPart);
   if (!p) return { status: 'invalid', reason: 'payload' };
+  if (isRevokedName(p.name, revoked)) return { status: 'revoked', ...p };
   if (p.expiresAt !== null && now >= p.expiresAt) return { status: 'expired', ...p };
   return { status: 'valid', ...p };
 }

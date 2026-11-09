@@ -4,6 +4,7 @@
 // horizontal scroll with 44px touch targets at 360px. Serves site/ in-process. Skipped without Playwright/Chromium.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional, popplerSkip } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -18,14 +19,13 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser, origin;
-let pdftotext = false;
-try { execFileSync('pdftotext', ['-v'], { stdio: 'ignore' }); pdftotext = true; } catch { /* optional */ }
+const pdftotext = !popplerSkip('pdftotext'); // text checks need poppler (required with GBS_REQUIRE_TOOLS=1)
 
 before(async () => {
   if (skip) return;
-  try { browser = await chromium.launch(); } catch (e) { skip = `chromium unavailable: ${e.message.split('\n')[0]}`; return; }
+  try { browser = await chromium.launch(); } catch (e) { skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`); return; }
   server = createServer(async (req, res) => {
     try {
       const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');

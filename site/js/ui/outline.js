@@ -11,7 +11,7 @@ const FRONT_ITEMS = [
   { key: 'title', label: 'Title page', sub: 'Title, subtitle, author' },
   { key: 'copyright', label: 'Copyright page', sub: 'Rights notice' },
   { key: 'belongs', label: '“This book belongs to”', sub: 'A line for a name' },
-  { key: 'howto', label: 'How to solve', sub: 'One per puzzle type' },
+  { key: 'howto', label: 'How to solve', sub: 'Rules for each puzzle type' },
   { key: 'contents', label: 'Contents', sub: 'With page numbers' },
 ];
 const BACK_ITEMS = [

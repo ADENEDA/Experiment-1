@@ -97,12 +97,14 @@ Prices were taken from competitor pages or from the provided research. "n/v" mea
 
 | | **Gridbook Studio** | Book Bolt | PuzzleBindery | KDP Builder | Sudoku Maker |
 |---|---|---|---|---|---|
-| Price | Free / $9 7-day pass / $29 lifetime at launch, then $39 | $9.97–19.97/mo; puzzles only on the higher tier | $49 at launch, then $79, once | ~$10.99 per book in credits, 75 free credits | "$197 regular, 71% off" (about $57), desktop |
-| Runs | Browser, works offline, nothing uploaded | Web app (server) | Browser | Web app | Windows/Mac app |
-| Picture nonograms | **Yes** (library, upload or draw; no-guess) | n/v | Not among its 9 listed types | n/v | No |
-| Kakuro / calcudoku / futoshiki | **Yes** (P1) | n/v | Not listed | n/v | No |
+| Price | Free / $9 7-day pass / $29 lifetime at launch, then $39 | Monthly or yearly subscription; puzzle tools only on the higher plan; prices n/v | $49 at launch, then $79, once | Credit packs from $8.99 for 100, or plans from $16/mo; it estimates 100–150 credits per puzzle book | "Regular Price $197", "You Save 71%" (about $57), desktop |
+| Runs | Browser; keep editing if the connection drops; nothing uploaded | Web app (server) | Browser | Web app | Windows/Mac app |
+| Picture nonograms | **Yes** (library, upload or draw; no-guess) | n/v | Not among its 9 listed types | Not among its listed puzzle types | No |
+| Kakuro / calcudoku / futoshiki | **Yes** (P1) | n/v | Not listed | Not listed | No |
 | Word search / sudoku / maze | Yes | Yes | Yes | Yes | Sudoku only |
-| KDP gutter by page count, preflight | Yes | n/v | Yes | n/v | Claims "KDP-ready" |
+| KDP gutter by page count, preflight | Yes | n/v | Yes | Lists bleed, trim and safe-zone checks; gutter n/v | Claims "KDP-ready" |
+
+Checked 2026-11-09. Book Bolt's pricing page blocked the check and reviews give different prices, so no Book Bolt price is quoted anywhere on the site; `site/book-bolt-alternative/` is the dated, sourced version of this table and the landing and pricing tables follow it.
 
 **Positioning statement:** "The cheapest one-time puzzle-book studio, and the only one that turns pictures into no-guess nonogram books. Book Bolt rents you a puzzle generator by the month; Gridbook Studio sells it to you once."
 
@@ -123,7 +125,7 @@ Prices were taken from competitor pages or from the provided research. "n/v" mea
 
 ### Pro (identical feature set in both forms)
 - Clean exports with no footer or header: interior PDF, printables (unlimited puzzles), and PNG at 300 DPI per puzzle (P1).
-- A commercial-use licence: publish on KDP, sell printables on Etsy or Gumroad, use in paid newsletters. Selling the bundled word lists or quotes as standalone lists is not allowed.
+- A commercial-use license: publish on KDP, sell printables on Etsy or Gumroad, use in paid newsletters. Selling the bundled word lists or quotes as standalone lists is not allowed.
 - ZIP bundle (P1): interior, cover guide, separate answers PDF, project JSON, and a README with the exact KDP upload settings.
 - An optional credit line on the copyright page (default **off**, see Section 7).
 - Priority email support, and the "KDP rejected it" refund promise.
@@ -132,20 +134,20 @@ Prices were taken from competitor pages or from the provided research. "n/v" mea
 
 | Product | Price | Gumroad net per sale\* |
 |---|---|---|
-| 7-Day Sprint Pass (one-time; Pro for 7 days from purchase) | **$9** | $7.04 |
-| Lifetime (launch price for the first 100 buyers or until 2027-01-31, whichever comes first) | **$29** | $24.46 |
+| 7-Day Pass (one-time; Pro for 7 days from purchase) | **$9** | $7.04 |
+| Lifetime (launch price until 2027-01-31; by date only, no buyer limit) | **$29** | $24.46 |
 | Lifetime (regular price) | **$39** | $33.17 |
 
 \*Gumroad direct sales cost 10% + $0.50, plus card processing of 2.9% + $0.30 (https://gumroad.com/help/article/66-gumroads-fees). Sales through its Discover marketplace cost 30% flat, so a $29 sale nets $20.30. On Polar's Starter plan (5% + 50¢), the same $29 sale would net $27.05.
 
 **Why these prices**
 - **$29 and $39 lifetime** are 40–63% below PuzzleBindery and below Sudoku Maker's sale price.
-  - That is about 1.5–2 months of Book Bolt's higher tier.
+  - That is about the price of one or two months of a typical KDP-tool subscription (Book Bolt's own prices are not verified; don't quote a figure for it).
   - It stays above the under-$10 dead zone: on Gumroad, products under $10 are about 35% of listings but only 0.8% of modeled revenue (InsightRaider).
   - A one-time price suits a buyer whose output KDP now caps at 2 titles per format per week. Per-book credits look worse when you make 8 books a month for years.
-- **$9 Sprint Pass** copies the format with the best verified fast first sales: AppLaunchFlow's €9 7-day pass ($27.7k verified) and Captioner's $7 week pass. It catches one-off seasonal publishers who will never buy lifetime.
-- **Launch scarcity** (first 100 buyers) gives Facebook-group and YouTube posts a reason to act now. Keep the promise: buyers at $29 keep every future update.
-- **Tests to run on days 11–12:** $24 vs $29 for lifetime. Do not test the pass price before day 30.
+- **$9 7-Day Pass** copies the format with the best verified fast first sales: AppLaunchFlow's €9 7-day pass ($27.7k verified) and Captioner's $7 week pass. It catches one-off seasonal publishers who will never buy lifetime.
+- **A dated launch price** (until 2027-01-31) gives Facebook-group and YouTube posts a reason to act now. Nothing counts sales, so never claim a buyer limit. Keep the promise: buyers at $29 keep every future update.
+- **Tests to run on days 11–12:** $24 vs $29 for lifetime, as a Gumroad discount code with its own end date (not a `config.js` change, which would make the site claim $24 until 2027-01-31). Do not test the pass price before day 30.
 - **Refund promise:** "If KDP rejects your interior for a technical-spec reason, email us within 30 days for a full refund."
 
 ---
@@ -164,7 +166,7 @@ Prices were taken from competitor pages or from the provided research. "n/v" mea
 
 ### Gumroad setup (owner, about 20 minutes)
 1. Create product **"Gridbook Studio Lifetime"** ($29). On the product's content page choose Insert, then License key. Copy the **product_id** shown in that block.
-2. Create product **"Gridbook Studio 7-Day Sprint Pass"** ($9) the same way, with its own product_id.
+2. Create product **"Gridbook Studio 7-Day Pass"** ($9) the same way, with its own product_id.
 3. Create a hidden **$0 test product** with a license key, to test verification end to end. Gumroad's own doc example shows `"price": 0`, so $0 products get keys.
 4. Enable affiliates on both paid products at 40%. Create 100%-off discount codes for reviewer keys.
 5. Paste the IDs and URLs into `config.js`.
@@ -173,7 +175,7 @@ Prices were taken from competitor pages or from the provided research. "n/v" mea
 ```html
 <script src="https://gumroad.com/js/gumroad.js" defer></script>
 <a class="gumroad-button" href="https://YOURNAME.gumroad.com/l/gridbook-lifetime">Get Lifetime, $29</a>
-<a class="gumroad-button" href="https://YOURNAME.gumroad.com/l/gridbook-sprint">7-Day Pass, $9</a>
+<a class="gumroad-button" href="https://YOURNAME.gumroad.com/l/gridbook-sprint">Get the 7-Day Pass, $9</a>
 ```
 - `gumroad.js` returned HTTP 200 on 2026-11-09.
 - Buttons are rendered from `CONFIG` by `js/ui/buy-buttons.js`. If the overlay script fails to load, the plain link still opens Gumroad's hosted checkout in a new tab.
@@ -257,7 +259,7 @@ const res = await fetch('https://api.polar.sh/v1/customer-portal/license-keys/va
 
 **Offline signed codes** (`js/license/offline-code.js`)
 - Purpose: a fallback if Gumroad is down or blocked, and comp keys for reviewers.
-- Format: `GBS1.<base64url(payloadJSON)>.<base64url(signature)>`, where the payload is `{"t":"lifetime","n":"reviewer-jane","iat":"2026-11-12","exp":null}`.
+- Format: `GBS1.<base64url(payloadJSON)>.<base64url(signature)>`, where the payload is `{"t":"lifetime","n":"reviewer-jane","iat":"2026-11-12","exp":null}`. `exp` is `null` or the ISO date-time the code stops working; `sign-code.mjs --days N` sets it to exactly N × 24 h after signing (or after `--iat`: that moment for a date-time such as a Gumroad `sale_timestamp`, or the start of that UTC day for a date), so a 7-day code reads like a 7-day Gumroad pass. Older codes with a `YYYY-MM-DD` exp work through the end of that UTC day.
 - Verification uses WebCrypto Ed25519 (Chrome 137+, Firefox 129+, Safari 17+). If the browser lacks it, show "Use online activation instead":
   ```js
   const pub = await crypto.subtle.importKey('raw', b64uDecode(CONFIG.offlineCodes.publicKey), { name: 'Ed25519' }, false, ['verify']);
@@ -292,8 +294,8 @@ const res = await fetch('https://api.polar.sh/v1/customer-portal/license-keys/va
 - Anyone can unlock Pro by editing localStorage or patching `isPro()` in DevTools. The watermark is drawn by code the user downloads.
 - Do not obfuscate. It costs time and fools no one.
 - What actually sells:
-  - convenience (unlimited clean books at less than one month of Book Bolt);
-  - the commercial licence, which KDP businesses care about;
+  - convenience (unlimited clean books for one payment, instead of a subscription);
+  - the commercial license, which KDP businesses care about;
   - the refund promise;
   - updates.
 - The Gumroad "uses" count is a soft deterrent to key sharing, not DRM.
@@ -311,7 +313,7 @@ const res = await fetch('https://api.polar.sh/v1/customer-portal/license-keys/va
 | `/play/` | (P1) Solve a shared nonogram or sudoku online; the puzzle is encoded in the URL hash |
 | `/kdp-spine-width-calculator/`, `/kdp-margin-calculator/`, `/nonogram-puzzle-book-maker/`, `/large-print-word-search-maker/`, `/sudoku-book-generator/`, `/book-bolt-alternative/` | SEO tool pages (Section 6) |
 | `/pricing/` | Pricing, FAQ and refund promise (also included on the landing page) |
-| `/legal/terms.html`, `privacy.html`, `refunds.html`, `license.html`, `credits.html` | Legal pages; `credits.html` lists third-party licences |
+| `/legal/terms.html`, `privacy.html`, `refunds.html`, `license.html`, `credits.html` | Legal pages; `credits.html` lists third-party licenses |
 | `/404.html` | Not-found page with links to the tools |
 
 ### 4.2 Studio layout (`/app/`)
@@ -325,9 +327,9 @@ const res = await fetch('https://api.polar.sh/v1/customer-portal/license-keys/va
   - license badge ("Free" or "Pro"); clicking it opens the Unlock dialog;
   - Help (?) menu.
 - **Left: Book outline** (drag to reorder; Alt+Up/Down moves the selected item):
-  - **Front matter:** Title page, Copyright page, "This book belongs to", How to solve (auto-generated for each puzzle type in the book), optional Contents.
+  - **Front matter:** Title page, Copyright page, "This book belongs to", How to solve (auto-generated for each puzzle type in the book, covering only the grid sizes and levels the book contains; short texts share one page), optional Contents.
   - **Sections:** each has a type icon, name, count and a per-page setting. A "+ Add section" menu lists the puzzle types.
-  - **Answer key:** automatic, with a layout of 4, 6 or 9 mini solutions per page, placed at the end or after each section.
+  - **Answer key:** automatic, with a layout of 4, 6 or 9 mini solutions per page, placed at the end or after each section. At the end, a section's answers continue on the same page as the previous section's last ones, under a sub-heading.
   - **Back matter:** "Thank you" page (a plain review request; no incentives, per Amazon policy), "More books by…" page (optional), and lined Notes pages used to pad to an even page count.
 - **Centre: Preview.**
   - Spread view shows left and right pages as printed. Single-page view is also available.
@@ -354,7 +356,7 @@ const res = await fetch('https://api.polar.sh/v1/customer-portal/license-keys/va
 ### 4.3 Per-type controls
 | Type | Controls | Quality guarantee |
 |---|---|---|
-| **Word search** (P0) | Grid 10–25; shape mask (square, circle, heart, star, tree, house); directions: Easy (→↓), Medium (+↘↗), Hard (all 8 including backwards); words per puzzle (automatic maximum); theme picker or paste a list; word-list position (below or right) and sort (A–Z or length); letter case | Every word placed exactly once. Filler letters drawn from the puzzle's own letters. A blocklist scan in all 8 directions re-fills any accidental offensive word |
+| **Word search** (P0) | Grid 10–25; shape mask (square, circle, heart, star, tree, house); directions: Easy (→↓), Medium (+↘↗), Hard (all 8 including backwards); words per puzzle (automatic maximum); theme picker or paste a list; word-list position (automatic: right of the grid on wide pages such as 8.25×6 or 2 per page, otherwise below; or fixed below or right) and sort (A–Z or length); letter case | Every word placed exactly once. Filler letters drawn from the puzzle's own letters. A blocklist scan in all 8 directions re-fills any accidental offensive word |
 | **Sudoku** (P0) | Size 4×4, 6×6 (2×3 boxes), 9×9; difficulty Easy, Medium, Hard, Expert; symmetry rotational or none | Exactly one solution (solver counts to 2). Graded by a logical solver |
 | **Maze** (P0) | Columns × rows; algorithm Winding (recursive backtracker) or Branchy (Wilson's); wall weight 1–3pt (minimum 0.75pt); start and end markers | Perfect maze: exactly one path. Solution drawn in the answer key |
 | **Nonogram** (P0) | Size 5×5 to 30×30 (bold rule every 5 cells); source: Random shapes, Picture library, Upload image, or Draw (pixel editor); threshold slider, invert, crop, fit; "show givens" toggle (only if repair needs them) | **Line-solvable**: solvable row by row with no guessing, which implies a unique solution. The picture name stays hidden until the answer key ("Puzzle 12" on the page, "Puzzle 12: Cat" in the answers) |
@@ -438,10 +440,10 @@ A "Try the 32-page sample" link builds template 3 at 32 pages.
 - **No sections:** "Add your first section" with six type buttons and the template link.
 - **Empty word list:** "Pick a theme, paste words (one per line), or copy the AI prompt."
 - **Picture upload area:** "Drop an image. High-contrast silhouettes make the best puzzles."
-- **Free edition banner** (dismissible, shown once per session): "Everything works. Exports carry a small footer. Remove it with a $9 pass or $29 lifetime."
+- **Free edition banner** (dismissible, shown once per session): "Build and preview everything free. Book exports carry a proof header and footer. Remove them, and add PNG and ZIP exports, with a $9 pass or $29 lifetime."
 - **Generation timeout:** "Couldn't make a unique 12×12 kakuro in 3s. Try 10×10, or Retry." Partial batches are kept.
 - **Over the page limit:** red preflight message: "590 pages is the maximum for 8.5×11 on white paper. Remove 14 pages or choose a smaller trim."
-- **Offline:** "You're offline. Everything still works. Your license will be re-checked when you reconnect."
+- **Offline:** "You're offline. You can keep editing, but exporting may need the connection. Don't reload the page until you're back online." Once the export tools have loaded (in the background, a moment after the Studio opens): "You're offline. You can keep editing and exporting. Don't reload the page until you're back online." (No service worker: a reload offline fails, so the copy never promises more.)
 - **localStorage unavailable** (private mode or blocked): "Autosave is off in this browser. Use Save project (Ctrl+S) to keep your work."
 
 ### 4.11 Mobile behaviour
@@ -463,7 +465,7 @@ A "Try the 32-page sample" link builds template 3 at 32 pages.
 | Library | Version | Notes |
 |---|---|---|
 | jsPDF | **4.2.1** (2026-03-17), `jspdf.umd.min.js` | The ES build has bare imports (`fflate`, `fast-png`, `@babel/runtime`), so use the UMD build in a classic worker |
-| fflate | **0.8.2** (2024-02-07), `esm/browser.js` | MIT. 0.8.3 is also over two weeks old; either works |
+| fflate | **0.8.3** (2026-05-16), `esm/browser.js` | MIT. Not 0.8.2: it has a published advisory (GHSA-px8p-9vwx-vf98, `unzipSync`) |
 | lz-string | **1.5.0** | MIT; share links |
 | qrcode-generator | **1.4.4** | MIT; P1 printable QR codes |
 | Fonts | Atkinson Hyperlegible Regular and Bold TTF (OFL, from google/fonts) | Vendor with `OFL.txt` |
@@ -486,10 +488,10 @@ A "Try the 32-page sample" link builds template 3 at 32 pages.
 ├─ og/{home,spine,margin,nonogram,wordsearch,sudoku,bookbolt}.png      1200×630, made with the tool
 ├─ samples/{picture-logic-32p.pdf, large-print-word-search-24p.pdf, sudoku-sampler-24p.pdf}
 ├─ config.js
-├─ sw.js                           (P1) service worker
+├─ (no sw.js: the service worker was dropped, §5.9)
 ├─ css/{tokens.css, site.css, app.css, print-preview.css}
 ├─ fonts/{AtkinsonHyperlegible-Regular.ttf, AtkinsonHyperlegible-Bold.ttf, OFL.txt}
-├─ vendor/{jspdf-4.2.1.umd.min.js, fflate-0.8.2.browser.js, lz-string-1.5.0.min.js, qrcode-1.4.4.js}
+├─ vendor/{jspdf-4.2.1.umd.min.js, fflate-0.8.3.browser.js, lz-string-1.5.0.min.js, qrcode-1.4.4.js}
 ├─ data/{wordlists.json, quotes.json, pictures.json, blocklist.json, howto.json}
 ├─ js/
 │  ├─ core/{rng.js, store.js, bus.js, units.js, undo.js, dom.js}
@@ -682,6 +684,7 @@ Errors (red) block "KDP-ready"; warnings (amber) do not.
 ```
 /*
   X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
 /vendor/*
@@ -689,18 +692,25 @@ Errors (red) block "KDP-ready"; warnings (amber) do not.
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 /data/*
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=0, must-revalidate
+/css/*
+  Cache-Control: public, max-age=0, must-revalidate
+/js/*
+  Cache-Control: public, max-age=0, must-revalidate
 ```
-- **CSP:** optional, and only after testing that the Gumroad overlay still works. If used:
-  `script-src 'self' https://gumroad.com https://static.cloudflareinsights.com; connect-src 'self' https://api.gumroad.com https://api.polar.sh https://cloudflareinsights.com; frame-src https://gumroad.com https://*.gumroad.com; worker-src 'self'; img-src 'self' data: blob:`.
-  Drop it if the overlay breaks.
-- **`_redirects`:** `/studio /app/ 301` and `/buy /pricing/ 302`.
+  `/data/*`, `/css/*` and `/js/*` are ES modules and styles without a version in their names, so they revalidate on
+  every visit: a fresh-cached old module next to a new one breaks the module graph after a deploy.
+- **CSP:** optional, and only after testing that the Gumroad overlay still works. Use the tested policy that is
+  commented in `site/_headers` (it allows `https://assets.gumroad.com` for the overlay's scripts, styles, fonts and
+  images, the Studio's inline boot script by hash, and sets `frame-ancestors 'none'`); a shorter policy breaks the
+  overlay. Drop it if the overlay breaks.
+- **`_redirects`:** `/studio /app/ 301` and `/buy /pricing/ 302`, plus `/buy/lifetime` and `/buy/pass` (the static
+  href of the buy buttons before `site.js` runs; `/pricing/` until the owner points them at the products).
 - **Analytics:** turn on Cloudflare Web Analytics in the Pages dashboard (free and cookieless, so no banner is needed). Gumroad's product analytics shows views, sales and referrers.
-- **Service worker** (P1, `sw.js`):
-  - The app shell is precached under a versioned cache name.
-  - HTML is fetched network-first; vendor, fonts and data are served cache-first.
-  - When a new version is available, show a "New version available, reload" toast.
-  - The "works with Wi-Fi off" demo depends on it.
+- **Service worker:** dropped. The site ships without one (no `sw.js`, no offline install), so no copy may claim it
+  works with Wi-Fi off: the most it says is that you can keep editing if your connection drops (§4.10 offline toast).
+  The original P1 plan (a precached app shell, network-first HTML, a "New version available" toast and a "works
+  with Wi-Fi off" demo) is not built.
 
 ### 5.10 Browser support
 - Supported: Chrome and Edge 120+, Firefox 128+, Safari 17+ (OffscreenCanvas and module workers).
@@ -722,7 +732,7 @@ Errors (red) block "KDP-ready"; warnings (amber) do not.
 **P1: same session if time allows, otherwise days 2–3**
 - Kakuro, calcudoku, futoshiki, cryptogram, word scramble.
 - `/play/` share pages.
-- Service worker.
+- Service worker: dropped (§5.9), not built.
 - ZIP bundle and PNG export.
 - QR code on printables.
 - Simple cover designer (title, author, pattern made from the book's own grids, CMYK only).
@@ -759,9 +769,9 @@ Errors (red) block "KDP-ready"; warnings (amber) do not.
 1. **Hero.**
    - H1: "Make a print-ready puzzle book in your browser."
    - Subhead: "Word search, sudoku, mazes and picture nonograms, with answer keys and the KDP gutter, spine and margins worked out for you. Nothing is uploaded. Free to try; $29 once."
-   - A **live mini demo** sits beside the text: tap a picture chip (cat, owl, heart) to get a 10×10 nonogram, or switch to word search.
+   - A **live mini demo** sits beside the text: tap a picture chip (house, heart, rabbit) to get a 10×10 nonogram, or switch to word search.
    - CTAs: "Open the Studio (free)" and "Download a 32-page sample PDF."
-2. **Proof strip** (four checkable claims): "Exactly one solution, verified", "Gutter set from your final page count", "Fonts embedded, grayscale only", "0 uploads: works with Wi-Fi off."
+2. **Proof strip** (four checkable claims): "Exactly one solution, verified", "Gutter set from your final page count", "Fonts embedded, grayscale only", "Zero uploads: made on your device."
 3. **Puzzle-type gallery:** real SVG miniatures drawn by the engine, each labelled with its guarantee.
 4. **Picture puzzles:** "Turn any picture into a no-guess nonogram." Show the original image, the grid, and the solved reveal.
 5. **How it works in 3 steps:** pick a template, generate and tweak, export interior plus cover template.
@@ -795,7 +805,7 @@ Errors (red) block "KDP-ready"; warnings (amber) do not.
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Gridbook Studio",
 "url":"https://gridbookstudio.com/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
 "offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free edition"},
-          {"@type":"Offer","price":"9","priceCurrency":"USD","name":"7-Day Sprint Pass"},
+          {"@type":"Offer","price":"9","priceCurrency":"USD","name":"7-Day Pass"},
           {"@type":"Offer","price":"29","priceCurrency":"USD","name":"Lifetime"}]}</script>
 ```
 
@@ -931,7 +941,7 @@ Confidence is marked. Re-read every rule before posting.
 | Scenario | Visits | Conversion | Sales (lifetime / pass; affiliate-referred) | Net to owner |
 |---|---|---|---|---|
 | **Month 1, conservative** | 500 (posts removed, few Facebook approvals) | 0.3% | 1 / 1; 0 | **≈ $31**. Below Gumroad's $100 payout minimum, so no payout yet |
-| **Month 1, base** | 2,000 (2 Facebook posts land, r/SideProject, Product Hunt about 300, directories about 200, 2–3 small YouTube mentions) | 0.8% | 10 / 6; 4 | 10×24.46 + 6×7.04 − 4×11.60 = **≈ $240** |
+| **Month 1, base** | 1,750 (2 Facebook posts land, r/SideProject, Product Hunt a few dozen, directories about 200, 2–3 small YouTube mentions) | 0.8% | 9 / 5; 4 | 9×24.46 + 5×7.04 − 4×11.60 = **≈ $210** |
 | **Month 1, optimistic** | 6,000 (one 20k-subscriber KDP YouTuber covers it, or one Facebook post goes viral) | 1.5% | 60 / 30; 25 | 1,467.60 + 211.20 − 290 = **≈ $1,390** |
 | **Month 6, conservative** (per month, lifetime at $39) | 1,200 (SEO slow, outreach stopped) | 0.3% | 2 / 2; 0 | **≈ $80/mo** |
 | **Month 6, base** | 6,000 (about 15 pages ranking on long-tail terms, calculators bringing most visits, steady affiliates) | 0.6% (calculator traffic converts worse) | 20 / 16; 5 | 663.40 + 112.64 − 78 = **≈ $700/mo** |
@@ -951,7 +961,7 @@ Confidence is marked. Re-read every rule before posting.
 | **Direct competition.** PuzzleBindery ($49/$79, 3 months older, with SEO pages already up), Sudoku Maker, WordSearchKDP, Book Bolt. A rival could add nonograms quickly | Lead with picture and logic puzzles plus the no-guess guarantee; undercut on price; offer the $9 pass; ship P1 engines in week 1; plant SEO on day 1; compete on visible quality (sample PDFs, the printed proof photo) |
 | **KDP's cap of 2 new titles per format per week** shrinks volume publishers; Amazon keeps tightening on low-effort books | Sell on per-book quality and distinctiveness (picture puzzles, graded difficulty, large print), not volume. Seeds guarantee no two books match. Custom themes and word lists |
 | **KDP rejects a file** (fonts, margins, line weight, watermark) | `putOnlyUsedFonts:true` and TTF-only fonts; DeviceGray only; 0.75pt minimum lines; 7pt minimum text; gutter from final page count; preflight; owner's draft upload and proof copy before launch; refund promise |
-| **License bypass** in DevTools | Accept it. Low price, a licence that businesses respect, no DRM time sink. Polar's server-enforced quotas are available later |
+| **License bypass** in DevTools | Accept it. Low price, a license that businesses respect, no DRM time sink. Polar's server-enforced quotas are available later |
 | **Gumroad**: fees of about 15.7% on a $29 sale, $100 payout minimum, policy changes, and blockers that stop `api.gumroad.com` | Polar adapter ready (`provider:'polar'`); Ed25519 offline codes; 30-day offline grace; clear "couldn't reach Gumroad" message |
 | **Trademarks and naming** | Knockout searches before buying the domain; no Amazon, KDP, Kindle or puzzle brand names in brand, domain or titles; generic puzzle names (calcudoku, nonogram); two backup names ready |
 | **Image rights in picture nonograms** | Built-in library from MIT-licensed Phosphor icons (listed on the credits page; whether MIT notice applies to printed derivative grids is low-risk but unverified); upload notice that the user must own the rights |

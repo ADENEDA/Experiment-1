@@ -517,3 +517,33 @@ test('cover: odd inputs (no page count, unknown paper, emoji title) still give a
     assert.match(coverTexts(c).join('\n'), /on white paper/);
   }
 });
+
+test('nonogram pictures with nothing to solve (blank or solid) are warned about, once per section and kind', () => {
+  const ng = { nonogram: { ...stubType('nonogram'), meta: { ...stubType('nonogram').meta, id: 'nonogram' } } };
+  const np = project({ sections: [{ id: 'n', type: 'nonogram', title: 'Pictures', count: 6, perPage: 1 }] });
+  const npz = puzzlesFor(np);
+  const grid = (fill) => Array.from({ length: 25 }, (_, i) => (fill === 'mix' ? i % 3 === 0 : fill) ? 1 : 0);
+  npz.n.forEach((pz, i) => { pz.solution = { grid: grid(i === 1 || i === 4 ? 0 : i === 2 ? 1 : 'mix') }; });
+  const book = layoutBook(np, npz, { types: ng, pro: true });
+  const res = preflight(np, book, npz, { pro: true, types: ng });
+  const w = res.warnings.filter((x) => x.code === 'nonogram-trivial');
+  assert.equal(w.length, 2);
+  assert.match(w[0].msg, /^Pictures, 2 puzzles \(pages \d+, \d+\): the picture is blank, so every clue is 0 and there is nothing to solve\. Use a picture with both shaded and white squares\.$/);
+  assert.match(w[1].msg, /^Puzzle 3 \(Pictures, page \d+\): every square of the picture is shaded and there is nothing to solve\./);
+  assert.equal(w[1].index, 2);
+  assertMessages(res);
+  // Other engines' solutions are never read this way.
+  const ap = project();
+  const apz = puzzlesFor(ap);
+  apz.s1.forEach((pz) => { pz.solution = { grid: grid(0) }; });
+  assert.ok(!preflight(ap, layoutBook(ap, apz, { types: TYPES, pro: true }), apz, { pro: true, types: TYPES }).warnings.some((x) => x.code === 'nonogram-trivial'));
+});
+
+test('word-list advice for words with no letters A-Z', () => {
+  const ws = { wordsearch: { ...stubType('wordsearch'), meta: { ...stubType('wordsearch').meta, id: 'wordsearch' } } };
+  const wp = project({ sections: [{ id: 'w', type: 'wordsearch', title: 'Words', count: 1, perPage: 1 }] });
+  const wpz = puzzlesFor(wp);
+  wpz.w[0].stats.notes = ['КОШКА: has no letters A-Z, so it was left out'];
+  const res = preflight(wp, layoutBook(wp, wpz, { types: ws, pro: true }), wpz, { pro: true, types: ws });
+  assert.match(res.warnings.find((x) => x.code === 'word-list').msg, /КОШКА: has no letters A-Z, so it was left out\. Use words spelled with the letters A to Z \(accents are fine\)\.$/);
+});

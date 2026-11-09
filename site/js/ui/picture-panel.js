@@ -44,12 +44,24 @@ export function solvability(puzzle) {
   const num = (re) => { for (const n of notes) { const m = re.exec(n); if (m) return Number(m[1]); } return null; };
   const adjusted = num(/(\d+)\s+cells?\s+adjusted/i) ?? (Number(puzzle.stats?.adjusted) || 0);
   const givens = num(/(\d+)\s+givens?\b/i) ?? (Number(puzzle.stats?.givens) || 0);
+  // Trivially "solvable", but there is nothing to solve (nonogram.js notes these).
+  if (notes.some((n) => /picture is blank/i.test(n))) return { ok: false, adjusted, givens, text: 'Blank picture: nothing to solve' };
+  if (notes.some((n) => /picture is solid/i.test(n))) return { ok: false, adjusted, givens, text: 'Solid picture: nothing to solve' };
   const adj = adjusted ? ` (${plural(adjusted, 'cell')} adjusted)` : '';
   if (givens > 0) return { ok: false, adjusted, givens, text: `Needs ${plural(givens, 'given')}${adj}` };
   return { ok: true, adjusted, givens, text: `Logic-solvable${adj}` };
 }
 
+/** 'blank' (no square shaded), 'solid' (every square shaded) or null: either way the puzzle has nothing to solve. */
+export function trivialPicture(bits) {
+  if (!bits || !bits.length) return 'blank';
+  let filled = 0;
+  for (const v of bits) if (v) filled++;
+  return filled === 0 ? 'blank' : filled === bits.length ? 'solid' : null;
+}
+
 /** "my_cat-photo.final.PNG" -> "My cat photo final" (font-safe, at most 40 characters). */
+
 export function niceName(fileName) {
   const base = String(fileName ?? '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim();
   const s = pictureName(base);
@@ -272,7 +284,7 @@ export function createPicturePanel({ app, sectionId, control }) {
   const addUploadBtn = h('button', { type: 'button', class: 'btn btn-primary btn-sm', 'data-fk': `pp:${sectionId}:add-upload` }, svgIcon('plus', { size: 16 }), h('span', { text: 'Add to this section' }));
   const discardBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Discard', 'data-fk': `pp:${sectionId}:discard` });
   addUploadBtn.addEventListener('click', () => {
-    if (!upload?.bits) return;
+    if (!upload?.bits || trivialPicture(upload.bits)) return;
     const n = gridSize(opts);
     const name = pictureName(upload.name) || upload.fallbackName;
     if (addPicture({ name, w: n, h: n, bits: upload.bits })) { clearUpload(); renderUpload(); }
@@ -350,9 +362,15 @@ export function createPicturePanel({ app, sectionId, control }) {
     for (const v of upload.bits) filled += v;
     const pct = Math.round((100 * filled) / (n * n));
     let msg = `${filled} of ${n * n} squares shaded (${pct}%).`;
-    if (pct < 12) msg += ' That’s very few: raise the threshold or turn on Invert.';
+    // A blank or solid grid has nothing to solve (every clue 0, or every clue the full line): don't add it.
+    const trivial = trivialPicture(upload.bits);
+    if (trivial === 'blank') msg += ' A puzzle needs some shaded squares: raise the threshold, turn on Invert, or choose another image.';
+    else if (trivial === 'solid') msg += ' A puzzle needs some white squares: lower the threshold, turn on Invert, or choose another image.';
+    else if (pct < 12) msg += ' That’s very few: raise the threshold or turn on Invert.';
     else if (pct > 88) msg += ' That’s nearly all of them: lower the threshold or turn on Invert.';
     shadeInfo.textContent = msg;
+    addUploadBtn.disabled = !!trivial;
+    addUploadBtn.title = trivial ? 'There’s nothing to solve in a blank or solid picture' : '';
   }
 
   function renderUpload() {
@@ -377,6 +395,10 @@ export function createPicturePanel({ app, sectionId, control }) {
       return;
     }
     const bits = editor.getBits();
+    if (trivialPicture(bits) === 'solid') {
+      drawNote.replaceChildren(note('Leave some squares white: with every square shaded there is nothing to solve.', { kind: 'warn' }));
+      return;
+    }
     const n = editor.w;
     if (editing) {
       const id = editing.id;

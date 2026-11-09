@@ -113,7 +113,7 @@
   background: color-mix(in srgb, var(--gbs-hl) 88%, #000); color: var(--gbs-hl-ink);
 }
 .gbs-buy a.gbs-buy-btn:active, .gbs-buy a.gumroad-button.gbs-buy-btn:active { transform: translateY(1px); box-shadow: none; }
-.gbs-buy .gbs-buy-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--gbs-accent) 35%, transparent); }
+.gbs-buy .gbs-buy-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface, #fff), 0 0 0 4px var(--gbs-accent); }
 .gbs-buy .gbs-buy-btn[disabled] { opacity: .5; cursor: not-allowed; }
 /* The overlay appends a Gumroad wordmark to each link; our label already names the price. */
 .gbs-buy a.gumroad-button .logo-full { display: none; }

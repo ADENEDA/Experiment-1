@@ -87,6 +87,18 @@ export function openShortcutHelp() {
   return dlg;
 }
 
+/** Controls that use Delete/Backspace themselves or must ignore it; the section's own row, puzzles and pages don't. */
+const CONTROL_SEL = 'input, select, textarea, button, a[href], label, [contenteditable], [role="button"], [role="switch"], [role="checkbox"], [role="menuitem"], [role="option"]';
+const SECTION_KEYS_SEL = '.ol-section .ol-main, .ol-section .ol-grip, .pv-hit, .pv-thumb';
+
+/** True if Delete/Backspace pressed with focus on `target` may remove the selected section. */
+export function deleteKeyTarget(target) {
+  if (!target || target.nodeType !== 1) return true; // the document itself
+  if (target.closest('#inspector, #topbar, #statusbar, #mobile-tabs, .toasts')) return false;
+  if (target.closest(SECTION_KEYS_SEL)) return true;
+  return !target.closest(CONTROL_SEL);
+}
+
 /**
  * Install the global keydown handler. Returns an uninstall function.
  * Pass `isBlocked()` to suspend shortcuts (e.g. while a modal dialog is open; checked by default).
@@ -193,9 +205,9 @@ export function installShortcuts(app) {
     }
     if (key === 'Delete' || key === 'Backspace') {
       const s = selectedSection();
-      // Only from the outline, the preview or the page itself: a stray Backspace on a settings switch or button
-      // must not delete a whole section.
-      if (!s || target?.closest?.('#inspector, #topbar, #statusbar, #mobile-tabs, .toasts')) return;
+      // Only from a section row in the outline, the preview or the page itself: a stray Backspace on a switch,
+      // checkbox or other button (the outline's front- and back-matter switches too) must not delete a section.
+      if (!s || !deleteKeyTarget(target)) return;
       e.preventDefault();
       actions.removeSection(s.id);
     }

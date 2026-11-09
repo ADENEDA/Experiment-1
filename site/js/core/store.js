@@ -10,6 +10,9 @@
 // - Updates with the same `coalesce` key inside `coalesceMs` of each other merge into ONE undo step (typing,
 //   sliders). Any undo/redo/set/reset, or an update with a different key, ends the run.
 // - `history: 0` gives a plain observable store (used for UI state): canUndo() is always false.
+// - When the history is full the oldest step is dropped, or, with `keepBase: true`, the two oldest steps merge into
+//   one labelled "Earlier changes", so undoing all the way back always reaches the state the store started from
+//   (or was last reset to). historyTrimmed() says whether that has happened.
 // - The state is not frozen; treat get() as read-only and change it only through update()/set().
 import { now as defaultClock } from '../puzzles/common.js';
 
@@ -54,8 +57,11 @@ function reportError(e) {
  * @param {any} initial
  * @param {{history?: number, coalesceMs?: number, clock?: () => number}} [opts]
  */
-export function createStore(initial, { history = 100, coalesceMs = 1000, clock = defaultClock } = {}) {
+export const EARLIER_CHANGES = 'Earlier changes';
+
+export function createStore(initial, { history = 100, coalesceMs = 1000, clock = defaultClock, keepBase = false } = {}) {
   const maxHistory = Math.max(0, Math.floor(Number(history) || 0));
+  let trimmed = false;
   let state = initial;
   /** @type {{state:any, label:string}[]} entries hold the state BEFORE the change they describe */
   let past = [];
@@ -73,7 +79,14 @@ export function createStore(initial, { history = 100, coalesceMs = 1000, clock =
   function push(prev, label) {
     if (!maxHistory) return;
     past.push({ state: prev, label });
-    if (past.length > maxHistory) past.splice(0, past.length - maxHistory);
+    if (past.length > maxHistory) {
+      trimmed = true;
+      // keepBase: past[0] holds the starting state; drop the step after it, so its undo covers both changes.
+      if (keepBase && maxHistory >= 2) {
+        past.splice(1, past.length - maxHistory);
+        past[0].label = EARLIER_CHANGES;
+      } else past.splice(0, past.length - maxHistory);
+    }
     future = [];
   }
 
@@ -113,6 +126,7 @@ export function createStore(initial, { history = 100, coalesceMs = 1000, clock =
       past = [];
       future = [];
       run = null;
+      trimmed = false;
       notify(prev, { source: 'reset', label: '' });
       return state;
     },
@@ -143,6 +157,8 @@ export function createStore(initial, { history = 100, coalesceMs = 1000, clock =
     canRedo: () => future.length > 0,
     undoLabel: () => (past.length ? past[past.length - 1].label : ''),
     redoLabel: () => (future.length ? future[future.length - 1].label : ''),
+    /** True once the history limit was reached (since the start or the last reset). */
+    historyTrimmed: () => trimmed,
     /** Ends the current coalescing run, so the next update starts a new undo step. */
     breakCoalesce() { run = null; },
 

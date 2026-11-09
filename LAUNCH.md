@@ -72,9 +72,12 @@ Edit the wording to sound like you. Anything in `{curly braces}` must be replace
 1. **"I turned my cat into a puzzle."** First frame: the solved cat nonogram. Then: photo dropped into the picture
    panel → the 15×15 grid appears with "No guessing needed" → time-lapse of solving it on paper → the cat appears.
    End card: "Make a whole book of these. gridbookstudio.com".
-2. **"A 100-page large-print word search book in 60 seconds, with no subscription."** Screen recording with an
-   on-screen timer: Large Print Word Search template → export → scroll through the PDF. *Time it for real;* if it
-   takes longer on your computer, change the number in the hook.
+2. **"Large-print word search your readers can actually see."** First frame: a printed large-print page next to a
+   regular one. Then: Large Print Word Search template (100 puzzles, one per page, 18 pt letters) → scroll the
+   preview → the answer key → export. End card: "Free to try in your browser. gridbookstudio.com". Sell the quality
+   and the care for the reader, not speed or volume: KDP's content guidelines push back on rushed, look-alike books,
+   and "a book in 60 seconds" invites exactly that. If you mention numbers, say "100 puzzles", not "a 100-page book"
+   (with the front matter and answer key the template is 132 pages).
 3. **"KDP rejected my puzzle book for the gutter. Here's the fix."** Margin overlay on, add puzzles until the page
    count passes 150, the gutter steps up automatically, preflight turns green. End card: "Free gutter calculator:
    gridbookstudio.com/kdp-margin-calculator/".
@@ -102,8 +105,8 @@ Caption template: `Free to try in your browser, nothing uploaded. Link in bio.` 
   > The part I'm proudest of is picture nonograms: give it any image and it checks that the puzzle can be solved
   > line by line, with no guessing. If it can't, it adjusts the picture until it can.
   >
-  > The free edition does everything and exports watermarked proofs. Pro is $9 for 7 days or $29 once. I'd love
-  > feedback on what puzzle type to add next.
+  > The free edition builds and previews everything and exports proof PDFs with a proof header and footer. Pro is $9
+  > for 7 days or $29 once at launch. I'd love feedback on what puzzle type to add next.
 
 ### 3.3 Show HN (D10)
 
@@ -126,7 +129,7 @@ Only with an eligible account. Link to the working nonogram tool, not the landin
   > count, and a preflight check (fonts embedded, grayscale only, no line under 0.75 pt). PDFs are built client-side
   > with jsPDF in a worker.
   >
-  > Free to use; exports are watermarked until you buy Pro. The license check is client-side and I say so on the site:
+  > Free to use; book exports carry a proof header and footer until you buy Pro. The license check is client-side, so
   > it's bypassable, and I chose not to fight that. Happy to answer questions about the solver or the layout engine.
 
 ### 3.4 r/SideProject (D6)
@@ -136,7 +139,8 @@ Only with an eligible account. Link to the working nonogram tool, not the landin
 
   > Gridbook Studio makes print-ready puzzle book interiors for Amazon KDP (word search, sudoku, mazes and picture
   > nonograms) with answer keys, margins and the gutter worked out. Everything runs in the browser and nothing is
-  > uploaded. Free to use with watermarked exports; $29 once for clean files and a commercial license.
+  > uploaded. Free to use, with a proof header and footer on book exports; $29 once for clean files and a commercial
+  > license.
   >
   > I'd really like feedback on the first five minutes: was it obvious what to do?
 
@@ -152,20 +156,24 @@ Comment in the weekly thread only:
 
 ### 3.6 Facebook group value post (D5, promo days only)
 
-Make the pack first: in the Studio, build a large-print book of 50 mixed puzzles (word search and sudoku with a New
-Year theme), export it as **five free printables of 10 puzzles each** (the footer is the advertisement), and put the
-five PDFs in one ZIP. Host it as a free ($0) Gumroad product so people who download it can hear about future packs.
+Make the pack first. A free printable always holds the **first** 10 puzzles of a book, so build five small books
+rather than one big one: in the Studio, start each from a blank book with the Large Print theme and add 10 puzzles,
+for example 5 word searches and 5 sudoku. Use a different word list for each book's word search (Winter, Winter
+Holidays, Winter Sports, or your own list), or reseed the sudoku section, so no two books repeat. Export each book as a
+**free printable** (US Letter; the footer is the advertisement) and put the five PDFs in one ZIP. Host it as a free
+($0) Gumroad product so people who download it can hear about future packs.
 
-> **Free for the group: 50 large-print New Year brain games (word search + sudoku), with answer keys.**
+> **Free for the group: 50 large-print winter brain games (word search + sudoku), with answer keys.**
 >
-> US Letter, big 18 pt letters, made for seniors and activity directors. Print as many copies as you like for your
-> family, class or care home. {link, or attach the ZIP if the group allows files}
+> US Letter, big letters (18 pt or more on the puzzle pages), made for seniors and activity directors. Print as many
+> copies as you like for your family, class or care home. {link, or attach the ZIP if the group allows files}
 >
 > I made it with a free tool I built for puzzle books. If anyone wants it, the link is in the comments.
 
 Comment (only where allowed): `The tool is https://gridbookstudio.com/ (free to build and preview; a one-time Pro license is needed to publish).`
 
-For the D12 post, repeat with a Valentine's theme pack.
+For the D12 post, repeat with another pack: there is no built-in Valentine's word list, so type your own words into
+the word list panel, or pick another theme from the 68 built in.
 
 ### 3.7 Direct replies (D7)
 
@@ -204,9 +212,13 @@ their own pages on the day.
 >
 > {your name}, gridbookstudio.com
 
-Give each affiliate the link from Gumroad's Affiliates page; that is the link Gumroad tracks. (The site also passes an
-`?a=` or `?affiliate_id=` value on to its checkout links, but whether Gumroad credits an affiliate that way has not been
-verified, so don't rely on it.)
+Give each affiliate the link from Gumroad's Affiliates page (it has `/a/` in it): Gumroad tracks it with a 30-day
+cookie. An affiliate who would rather send people to your site can link to your pricing page with their affiliate ID:
+`https://gridbookstudio.com/pricing/?affiliate_id={their ID}`. The site adds `?affiliate_id=` to its Gumroad checkout
+links, which is the "sticky" affiliate URL format in Gumroad's affiliate help article (it credits the sale even when
+the buyer's browser blocks cookies). The ID is not carried from one page of the site to the next, so the link must
+point at a page with buy buttons: `/pricing/` (best) or the home page. Test one affiliate link yourself with your
+100%-off code before you hand them out.
 
 ### 3.9 Directory listings (D3)
 
@@ -251,19 +263,23 @@ community values.
 
 ## 4. Pricing experiments
 
-**Prices at launch:** Free · $9 7-Day Sprint Pass · $29 Lifetime until January 31, 2027 or the first 100 buyers
-(whichever comes first), then $39.
+**Prices at launch:** Free · $9 7-Day Pass · $29 Lifetime until January 31, 2027, then $39. The change is by
+date only; there is no limit on the number of buyers.
 
-**The one test in the first 30 days (D12):** if visits-to-sales is under 0.3% on D11, run Lifetime at **$24 for 7
-days** (November 20–26), then compare with the 7 days before.
+**The one test in the first 30 days (D12):** if visits-to-sales is under 0.3% on D11, offer Lifetime at **$24 for 7
+days** (November 20–26) with a Gumroad discount code, then compare with the 7 days before.
 
-- Change the Gumroad price to $24, and set `pricing.lifetime: 24` in `site/config.js` so the site matches. Put both
-  back to $29 after 7 days.
+- Make a **$5-off discount code** for Lifetime in Gumroad (for example `LAUNCH24`), and give it an end date of
+  November 26 if Gumroad's discount settings offer one; otherwise delete it that evening. Share it in that week's
+  posts and replies with its real end date: "$24 with code LAUNCH24 until November 26".
+- Don't change the Gumroad price or `site/config.js`. The site keeps saying "$29 until January 31, 2027", which stays
+  true; changing `pricing.lifetime` would make every page claim $24 until January 31, which would be false.
 - At $24 a direct sale nets about $20.10 instead of $24.46, so $24 must bring at least 22% more sales to earn more.
+  Compare that week's Lifetime sales with the week before.
 - With only a handful of sales a week, the result is a hint, not proof. Don't over-read one sale either way.
 - Be fair to recent buyers: consider refunding the $5 difference to anyone who paid $29 in the previous 7 days.
 - **Don't test the pass price before day 30.**
-- Don't fake scarcity: if the launch price runs out (100 buyers or January 31), it really ends.
+- Don't fake urgency: the launch price ends on January 31, 2027 and not before, and a code ends when you said it would.
 
 **Other levers, later:** Gumroad Discover (30% fee, but buyers search there); switching to Polar (about $2.60 more per
 $29 sale; `SETUP.md` §9); a Black Friday code ([section 6](#6-after-day-14)).
@@ -280,7 +296,7 @@ Check once a day (it takes 5 minutes) and write it down:
 
 - **Visit → Studio** under 1.5%: the home page isn't convincing. Rewrite the headline, move the demo higher.
 - **Studio → Gumroad view** low: people try it but don't see why to pay. Check that the export dialog explains the
-  watermark clearly.
+  proof header and footer clearly.
 - **Gumroad view → sale** low: the price or the Gumroad page is the problem.
 - After 3–4 weeks, check Search Console impressions for the tool pages and re-target their titles.
 
@@ -300,7 +316,9 @@ Check once a day (it takes 5 minutes) and write it down:
 ## 7. What to expect: revenue estimates
 
 These are **estimates from the spec's model, not promises.** The spec calls the conservative case "the single most
-likely outcome". The base case needs the daily distribution work above.
+likely outcome". The base case needs the daily distribution work above. The month-1 base case counts Product Hunt at
+only a few dozen visits, because a launch with no audience usually gets only a handful of upvotes
+([section 2](#2-where-to-post-and-the-rules-we-know)).
 
 **Assumptions**
 - Gumroad direct sales: 10% + $0.50, plus 2.9% + $0.30 card processing. Net per sale: **$24.46** at $29, **$33.17**
@@ -312,7 +330,7 @@ likely outcome". The base case needs the daily distribution work above.
 | Scenario (estimate) | Visits | Conversion | Sales: Lifetime / Pass; via affiliates | Net to you |
 |---|---|---|---|---|
 | **Month 1, conservative** | 500 (posts removed, few Facebook approvals) | 0.3% | 1 / 1; 0 | **about $31** |
-| **Month 1, base** | 2,000 (2 Facebook posts land, r/SideProject, Product Hunt ~300, directories ~200, 2–3 small YouTube mentions) | 0.8% | 10 / 6; 4 | 10×24.46 + 6×7.04 − 4×11.60 = **about $240** |
+| **Month 1, base** | 1,750 (2 Facebook posts land, r/SideProject, Product Hunt a few dozen, directories ~200, 2–3 small YouTube mentions) | 0.8% | 9 / 5; 4 | 9×24.46 + 5×7.04 − 4×11.60 = **about $210** |
 | **Month 6, conservative** (per month, Lifetime at $39) | 1,200 (SEO slow, outreach stopped) | 0.3% | 2 / 2; 0 | **about $80 a month** |
 | **Month 6, base** (per month) | 6,000 (about 15 pages ranking on long-tail terms, calculators bringing most visits, steady affiliates) | 0.6% | 20 / 16; 5 | 663.40 + 112.64 − 78 = **about $700 a month** |
 

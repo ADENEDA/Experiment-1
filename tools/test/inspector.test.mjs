@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { matchOption, roundToStep, coerceRange, useSegmented, undoLabel, shortLabel, stepDecimals } from '../../site/js/ui/controls.js';
 import { themeDefaultsPatch, sectionFindings, statRows, pageNumberStyle, puzzleRefs } from '../../site/js/ui/inspector.js';
 import { themeGroups, toggleTheme, toggleCategory, wordsFromJsonPaste, displayIssues, KDP_AI_URL, EMPTY_WORDS_TEXT } from '../../site/js/ui/wordlist-panel.js';
-import { solvability, niceName, gridSize, librarySummary, solvabilitySummary, RIGHTS_NOTICE } from '../../site/js/ui/picture-panel.js';
+import { solvability, niceName, gridSize, librarySummary, solvabilitySummary, RIGHTS_NOTICE, trivialPicture } from '../../site/js/ui/picture-panel.js';
 import { lineCells, mirrorTargets, floodFill } from '../../site/js/ui/pixel-editor.js';
 import { TYPES } from '../../site/js/puzzles/registry.js';
 import { THEMES, CATEGORIES } from '../../site/data/wordlists.js';
@@ -155,6 +155,13 @@ test('picture panel helpers', () => {
   assert.equal(solvability({ stats: { notes: ['1 cell adjusted', '1 given'] } }).text, 'Needs 1 given (1 cell adjusted)');
   assert.equal(solvability({ stats: { notes: [] } }).text, 'Logic-solvable');
   assert.equal(solvability({ error: 'x' }), null);
+  // A blank or solid picture is trivially solvable, but there is nothing to solve: never "Logic-solvable".
+  assert.deepEqual(solvability({ stats: { notes: ['The picture is blank'] } }), { ok: false, adjusted: 0, givens: 0, text: 'Blank picture: nothing to solve' });
+  assert.equal(solvability({ stats: { notes: ['The picture is solid black'] } }).text, 'Solid picture: nothing to solve');
+  assert.equal(trivialPicture(new Uint8Array(225)), 'blank');
+  assert.equal(trivialPicture(new Uint8Array(225).fill(1)), 'solid');
+  assert.equal(trivialPicture(Uint8Array.from({ length: 225 }, (_, i) => i % 2)), null);
+  assert.equal(trivialPicture(null), 'blank');
   assert.equal(solvability(null), null);
   assert.equal(niceName('my_cat-photo.final.PNG'), 'My cat photo final');
   assert.equal(niceName('😀.png'), '');

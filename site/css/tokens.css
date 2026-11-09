@@ -25,8 +25,9 @@
   --border-strong: #c9c2b4;
   --text: #1c1b19;
   --text-2: #57534b;
-  --text-3: #858077;
-  --accent: #0e7c66;
+  --text-3: #68635a;          /* ≥ 4.5:1 on every light surface, so it is fine for 11–12 px text */
+  --accent: #0e7c66;          /* brand colour: fills, icons, buttons (white text on it is 5.1:1) */
+  --accent-text: #0b715d;     /* accent for text and links: ≥ 4.5:1 on surface-2, surface-3 and accent-soft too */
   --accent-hover: #0a6a57;
   --accent-ink: #ffffff;
   --accent-soft: #dcf1eb;
@@ -40,7 +41,10 @@
   --shadow-1: 0 1px 2px rgba(28, 27, 25, .06), 0 1px 1px rgba(28, 27, 25, .04);
   --shadow-2: 0 4px 14px rgba(28, 27, 25, .10), 0 1px 3px rgba(28, 27, 25, .06);
   --shadow-3: 0 18px 50px rgba(28, 27, 25, .18), 0 2px 8px rgba(28, 27, 25, .08);
-  --focus: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  /* Focus ring: a 2px solid accent ring (≥ 3:1 against every surface) with a 2px gap, so it also shows on accent
+     buttons. --focus-inset is for elements whose outside ring would be clipped (tabs, scroll areas). */
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  --focus-inset: inset 0 0 0 2px var(--accent);
 
   --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
@@ -56,8 +60,8 @@
     color-scheme: dark;
     --bg: #141413; --surface: #1d1c1a; --surface-2: #262522; --surface-3: #302e2a;
     --border: #35332e; --border-strong: #4a4740;
-    --text: #f2efe8; --text-2: #bdb8ad; --text-3: #8d887e;
-    --accent: #3cc7a6; --accent-hover: #5fd6b9; --accent-ink: #062a22; --accent-soft: #143a31;
+    --text: #f2efe8; --text-2: #bdb8ad; --text-3: #a29d93;
+    --accent: #3cc7a6; --accent-text: #3cc7a6; --accent-hover: #5fd6b9; --accent-ink: #062a22; --accent-soft: #143a31;
     --highlight: #e8c93a; --highlight-ink: #1c1b19;
     --ok: #4ade80; --ok-soft: #12301d; --warn: #fbbf24; --warn-soft: #36280b; --err: #fb923c; --err-soft: #3a1f0e;
     --paper-shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45);
@@ -68,8 +72,8 @@
   color-scheme: dark;
   --bg: #141413; --surface: #1d1c1a; --surface-2: #262522; --surface-3: #302e2a;
   --border: #35332e; --border-strong: #4a4740;
-  --text: #f2efe8; --text-2: #bdb8ad; --text-3: #8d887e;
-  --accent: #3cc7a6; --accent-hover: #5fd6b9; --accent-ink: #062a22; --accent-soft: #143a31;
+  --text: #f2efe8; --text-2: #bdb8ad; --text-3: #a29d93;
+  --accent: #3cc7a6; --accent-text: #3cc7a6; --accent-hover: #5fd6b9; --accent-ink: #062a22; --accent-soft: #143a31;
   --highlight: #e8c93a; --highlight-ink: #1c1b19;
   --ok: #4ade80; --ok-soft: #12301d; --warn: #fbbf24; --warn-soft: #36280b; --err: #fb923c; --err-soft: #3a1f0e;
   --paper-shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45);
@@ -84,7 +88,7 @@ body {
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 img, svg, canvas { display: block; max-width: 100%; }
-a { color: var(--accent); text-underline-offset: 2px; }
+a { color: var(--accent-text); text-underline-offset: 2px; }
 a:hover { color: var(--accent-hover); }
 h1, h2, h3, h4 { line-height: 1.15; margin: 0 0 var(--s-3); letter-spacing: -0.01em; }
 p { margin: 0 0 var(--s-4); }
@@ -152,7 +156,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
 .badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 700; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
 .badge-pro { background: var(--highlight); color: var(--highlight-ink); border-color: transparent; }
-.badge-accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.badge-accent { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
 .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
 .pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .pill-ok { background: var(--ok-soft); color: var(--ok); }

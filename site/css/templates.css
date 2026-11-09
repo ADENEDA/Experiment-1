@@ -56,7 +56,7 @@
   justify-self: start; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-pill);
   font-size: 11px; font-weight: 700; letter-spacing: .02em; background: var(--surface-2); color: var(--text-2);
 }
-.tpl-card.is-hero .tpl-tag { background: var(--accent-soft); color: var(--accent); }
+.tpl-card.is-hero .tpl-tag { background: var(--accent-soft); color: var(--accent-text); }
 .tpl-name { font-size: var(--fs-md); font-weight: 700; line-height: 1.25; }
 .tpl-blurb { font-size: var(--fs-xs); color: var(--text-2); line-height: 1.45; }
 .tpl-facts { display: grid; gap: 1px; margin-top: var(--s-1); font-size: var(--fs-xs); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }

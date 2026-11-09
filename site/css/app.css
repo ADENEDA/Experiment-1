@@ -257,11 +257,11 @@ body.studio { overflow: hidden; overscroll-behavior: none; background: var(--bg)
   min-height: 56px; padding: 6px 4px; border: 0; background: transparent; color: var(--text-3);
   font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
 }
-.tab-btn[aria-current="page"] { color: var(--accent); }
+.tab-btn[aria-current="page"] { color: var(--accent-text); }
 .tab-btn[aria-current="page"]::before {
   content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent);
 }
-.tab-btn:focus-visible { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); border-radius: var(--r-md); }
+.tab-btn:focus-visible { box-shadow: var(--focus-inset); border-radius: var(--r-md); }
 
 /* ---------------------------------------------------------------------------------------------------------------
    Menus (dom.js attachMenu)
@@ -340,6 +340,16 @@ body.studio { overflow: hidden; overscroll-behavior: none; background: var(--bg)
 .mybooks-title { font-weight: 700; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mybooks-meta { font-size: var(--fs-xs); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mybooks-actions { flex: none; display: flex; align-items: center; gap: var(--s-1); }
+.mybooks-item.is-unsaved .mybooks-meta { color: var(--warn); font-weight: 700; }
+/* Asking before deleting the open book: the question and its buttons move under the title when they don't fit. */
+.mybooks-item.is-confirming { flex-wrap: wrap; }
+.mybooks-confirming { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.mybooks-ask { font-size: var(--fs-xs); font-weight: 700; color: var(--err); margin-right: var(--s-1); }
+.mybooks-item.is-deleted { border-style: dashed; background: transparent; }
+.mybooks-item.is-deleted .mybooks-meta { color: var(--text-2); font-size: var(--fs-sm); }
+.leave-dialog { width: min(520px, calc(100vw - 32px)); }
+.leave-dialog .dialog-body p { margin: 0 0 var(--s-3); line-height: 1.5; }
+.leave-dialog .dialog-foot { flex-wrap: wrap; }
 .mybooks-empty { padding: var(--s-5); text-align: center; color: var(--text-3); font-size: var(--fs-sm); }
 .mybooks-empty[hidden] { display: none; }
 .mybooks-dialog .dialog-foot { flex-wrap: wrap; justify-content: flex-start; }
@@ -364,6 +374,8 @@ body.studio { overflow: hidden; overscroll-behavior: none; background: var(--bg)
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: var(--shadow-2);
 }
 .boot-error h1, .noscript h1 { font-size: var(--fs-xl); }
+/* The boot watchdog's message (inline script in app/index.html) in place of the "Loading the Studio…" spinner. */
+.pane-loading.boot-stalled { flex-direction: column; max-width: 440px; margin: auto; text-align: center; color: var(--text-2); }
 .boot-error p, .noscript p { color: var(--text-2); }
 .noscript { position: fixed; inset: 0; z-index: 3000; height: fit-content; margin: 12vh auto; width: min(520px, calc(100vw - 32px)); }
 
@@ -443,12 +455,14 @@ body.studio { overflow: hidden; overscroll-behavior: none; background: var(--bg)
 
 /* Touch: 44px targets everywhere in the shell. */
 @media (pointer: coarse) {
+  .skip-link { display: inline-flex; align-items: center; min-height: 44px; }
   .studio .btn { min-height: 44px; }
   .studio .btn-icon { width: 44px; }
   .studio .btn-sm { min-height: 44px; }
   .studio .btn-icon.btn-sm { width: 44px; }
+  /* The license badge and print-check pill stay 28px tall but take taps 44px tall (centred on them). */
   .tb-badge, .gbs-pill { position: relative; }
-  .tb-badge::after, .gbs-pill::after { content: ''; position: absolute; inset: -8px -4px; }
+  .tb-badge::after, .gbs-pill::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
   .tb-title { height: 44px; }
   .gbs-menu-item { min-height: 44px; }
   .ol-main { min-height: 48px; }
@@ -459,6 +473,11 @@ body.studio { overflow: hidden; overscroll-behavior: none; background: var(--bg)
   .tab-btn { min-height: 56px; }
   .toast .btn { min-height: 44px; }
   .toast .btn-icon { width: 44px; }
+}
+
+/* Phone + touch: the status bar is tall enough for the print-check pill's 44px tap area (the tab bar sits below). */
+@media (pointer: coarse) and (max-width: 767.98px) {
+  .app-status { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

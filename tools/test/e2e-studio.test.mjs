@@ -7,6 +7,7 @@
 // Skips cleanly when Playwright or its Chromium is missing. Budget: well under 60 s.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { optional, popplerSkip } from './optional-tools.mjs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -26,11 +27,10 @@ const TYPES = {
 
 let chromium = null;
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { /* not installed */ }
-let skip = chromium ? false : 'playwright not installed';
+let skip = chromium ? false : optional('playwright not installed');
 let server, browser, dir, BASE;
 
-const hasTool = (t) => { try { execFileSync(t, ['-v'], { stdio: 'ignore' }); return true; } catch (e) { return e.code !== 'ENOENT'; } };
-const PDFTOOLS = hasTool('pdfinfo') && hasTool('pdftotext') && hasTool('pdffonts');
+const PDF_SKIP = popplerSkip('pdfinfo', 'pdftotext', 'pdffonts'); // the PDF checks are a subtest: listed as SKIP without poppler
 
 /** Static file server for site/ on an ephemeral port (resolves with the port). */
 function serveSite() {
@@ -78,7 +78,7 @@ before(async () => {
   try {
     browser = await chromium.launch();
   } catch (e) {
-    skip = `chromium unavailable: ${e.message.split('\n')[0]}`;
+    skip = optional(`chromium unavailable: ${e.message.split('\n')[0]}`);
     return;
   }
   dir = mkdtempSync(join(tmpdir(), 'gbs-e2e-'));
@@ -153,7 +153,7 @@ test('first run -> sample book -> puzzle edits -> interior PDF -> reload', { tim
     await dl.saveAs(pdf);
     const bytes = readFileSync(pdf);
     assert.equal(bytes.subarray(0, 5).toString('latin1'), '%PDF-');
-    if (PDFTOOLS) {
+    await t.test('interior PDF: pages, size, title, embedded fonts, proof footer on every page', { skip: PDF_SKIP }, () => {
       const info = execFileSync('pdfinfo', [pdf]).toString();
       assert.match(info, /Pages:\s+32\b/);
       assert.match(info, /Page size:\s+612 x 792 pts/);
@@ -164,7 +164,7 @@ test('first run -> sample book -> puzzle edits -> interior PDF -> reload', { tim
       const text = execFileSync('pdftotext', [pdf, '-']).toString();
       assert.equal(text.match(/FREE PROOF · made with Gridbook Studio/g)?.length, 32, 'proof footer on every page');
       assert.match(text, /Picture Logic Puzzles/);
-    }
+    });
     await page.waitForFunction(() => /Downloaded/.test(document.querySelector('[data-kind="interior"] .ex-status')?.textContent || ''));
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.export-dialog[open]'));

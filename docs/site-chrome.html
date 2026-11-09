@@ -1,7 +1,8 @@
 <!--
   Shared chrome for every marketing page (CONTRACTS.md §13). Copy VERBATIM; replace {R} with the relative
   path to the site root: "./" for site/index.html, "../" for pricing/, tool pages and legal/*.html.
-  404.html uses <base href="/"> and {R} = "" (it is served at arbitrary paths).
+  404.html uses {R} = "/" (it is served at arbitrary paths, so its URLs are root-absolute; no <base>, which would
+  also send the "#main" skip link to the home page).
   Mark the current page's nav link with aria-current="page" in the static HTML (site.js also does it at runtime).
 -->
 
@@ -34,6 +35,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <a href="{R}nonogram-puzzle-book-maker/">Nonograms</a>
       <a href="{R}large-print-word-search-maker/">Word search</a>
+      <a href="{R}sudoku-book-generator/">Sudoku</a>
       <a href="{R}kdp-spine-width-calculator/">Spine calculator</a>
       <a href="{R}kdp-margin-calculator/">Margin calculator</a>
       <a href="{R}pricing/">Pricing</a>
@@ -77,11 +79,11 @@
     <div>
       <h2 class="footer-h">Legal</h2>
       <ul>
-        <li><a href="{R}legal/terms.html">Terms</a></li>
-        <li><a href="{R}legal/privacy.html">Privacy</a></li>
-        <li><a href="{R}legal/refunds.html">Refunds</a></li>
-        <li><a href="{R}legal/license.html">License</a></li>
-        <li><a href="{R}legal/credits.html">Credits</a></li>
+        <li><a href="{R}legal/terms">Terms</a></li>
+        <li><a href="{R}legal/privacy">Privacy</a></li>
+        <li><a href="{R}legal/refunds">Refunds</a></li>
+        <li><a href="{R}legal/license">License</a></li>
+        <li><a href="{R}legal/credits">Credits</a></li>
       </ul>
     </div>
   </div>

@@ -11,6 +11,9 @@
 <meta property="og:title" content="Gridbook Studio privacy policy: your books stay on your device">
 <meta property="og:description" content="Gridbook Studio has no accounts and sets no cookies, and your books never leave your device. Exactly what is stored, what is sent, and to whom.">
 <meta property="og:image" content="https://gridbookstudio.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Print-ready puzzle books, built in your browser: three pages from Gridbook Studio sample books">
 <meta property="og:url" content="https://gridbookstudio.com/legal/privacy">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
@@ -19,6 +22,8 @@
 <meta name="theme-color" content="#0e7c66">
 <link rel="stylesheet" href="../css/tokens.css">
 <link rel="stylesheet" href="../css/site.css">
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -41,6 +46,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
       <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../sudoku-book-generator/">Sudoku</a>
       <a href="../kdp-spine-width-calculator/">Spine calculator</a>
       <a href="../kdp-margin-calculator/">Margin calculator</a>
       <a href="../pricing/">Pricing</a>
@@ -58,11 +64,11 @@
     <p class="lead">Gridbook Studio is a static website that does its work in your browser, and your books never leave your device. This page lists everything that is stored, everything that is sent, and who receives it.</p>
     <p class="prose-meta">Last updated November 9, 2026</p>
     <nav class="btn-row" aria-label="Legal documents">
-      <a class="btn btn-sm" href="terms.html">Terms</a>
-      <a class="btn btn-sm btn-primary" href="privacy.html" aria-current="page">Privacy</a>
-      <a class="btn btn-sm" href="refunds.html">Refunds</a>
-      <a class="btn btn-sm" href="license.html">License</a>
-      <a class="btn btn-sm" href="credits.html">Credits</a>
+      <a class="btn btn-sm" href="terms">Terms</a>
+      <a class="btn btn-sm btn-primary" href="privacy" aria-current="page">Privacy</a>
+      <a class="btn btn-sm" href="refunds">Refunds</a>
+      <a class="btn btn-sm" href="license">License</a>
+      <a class="btn btn-sm" href="credits">Credits</a>
     </nav>
   </div>
 </section>
@@ -98,14 +104,14 @@
         <dt><code>gbs.prefs</code> (local storage)</dt>
         <dd>Studio preferences, such as the last open book, the view, the zoom level and the printable paper size. Removed when you clear this site’s data.</dd>
         <dt><code>gbs.license</code> (local storage)</dt>
-        <dd>Your license key or offline code, the plan (Lifetime or 7-Day Pass), when it was last checked, when a pass ends, and the device count reported by the payment provider. No name, email address or payment details. Removed when you press “Deactivate on this device” in the Unlock dialog, or clear this site’s data.</dd>
+        <dd>Your license key or offline code, the plan (Lifetime or 7-Day Pass), when it was last checked, when a pass ends, and the device count reported by the payment provider. For an offline code, also the label it was made for (for example a reviewer’s name), which is part of the code. No email address or payment details. Removed when you press “Deactivate on this device” in the Unlock dialog, or clear this site’s data.</dd>
         <dt><code>gbs.license.counted</code> (local storage)</dt>
         <dd>Short scrambled tags (hashes) of keys that this browser has already counted as a device, so activating again doesn’t use up another device. Not the keys themselves. Removed when you clear this site’s data.</dd>
         <dt><code>gbs.session.freeBanner</code> (session storage)</dt>
         <dd>Whether the free-edition banner has already been shown in this tab. Removed when you close the tab.</dd>
       </dl>
       <p>The Studio also writes and immediately removes a test entry (<code>gbs.__probe</code>) to check that storage works. If your browser blocks storage, the Studio still works but cannot autosave; use Save project instead.</p>
-      <p>Pictures you turn into nonograms are read and converted in your browser; only the resulting grid is kept, inside your book. PDFs, PNGs, ZIP bundles and project files (<code>.gridbook.json</code>) are saved straight to your device as downloads.</p>
+      <p>Pictures you turn into nonograms are read and converted in your browser. Only the resulting grid and a picture name (taken from the file name, and yours to change) are kept, inside your book and in project files you save; the name is printed in the answer key. PDFs, PNGs, ZIP bundles and project files (<code>.gridbook.json</code>) are saved straight to your device as downloads.</p>
 
       <h2 id="sent">What is sent, and to whom</h2>
 
@@ -127,7 +133,7 @@
       <p>If we sell through Polar instead of Gumroad, the same check goes to Polar (<code>api.polar.sh</code>) with your key and our organization ID. Offline unlock codes are checked on your device and send nothing. Like any web request, these checks reach Gumroad or Polar with your IP address and browser details, and their own privacy policies apply.</p>
 
       <h3 id="checkout">Checkout</h3>
-      <p>Where you can buy (the Pricing page, the pricing section of the home page and the Studio’s Unlock dialog), your browser loads Gumroad’s checkout script from <code>gumroad.com</code>, which in turn loads files from <code>assets.gumroad.com</code>, so that checkout can open on the page. On the home page it loads only when the buy buttons come near the screen, or when you point at or focus one. Other pages, including this one, and the rest of the Studio do not load it.</p>
+      <p>Where you can buy (the Pricing page, the pricing section of the home page and the Studio’s Unlock dialog), your browser loads Gumroad’s checkout script from <code>gumroad.com</code>, which in turn loads files from <code>assets.gumroad.com</code>, so that checkout can open on the page. On the home page it loads only when the buy buttons come near the screen, or when you point at or focus one. Other pages, including this one, and the rest of the Studio do not load it. The checkout window that opens when you press a buy button is Gumroad’s own page, not ours: it may load Gumroad’s analytics (for example Google Analytics), under Gumroad’s privacy policy.</p>
       <p>When you buy, you give your payment details to Gumroad, not to us, and Gumroad processes the payment under its own terms and privacy policy. Gumroad then gives us what any seller receives: your email address, your name if you gave one, your country, what you bought and when, and your license key. We never see your full card number.</p>
       <p>We use buyers’ email addresses to deliver and support purchases (for example, to reset a key) and for important notices about Gridbook Studio, such as a change to these policies. Any product news we send has an unsubscribe link.</p>
 
@@ -137,7 +143,7 @@
       <h2 id="never">What we don’t do</h2>
       <ul>
         <li>No ads, and no selling, renting or trading of personal data.</li>
-        <li>No third-party trackers, social widgets or fingerprinting.</li>
+        <li>No third-party trackers, social widgets or fingerprinting on our pages (Gumroad’s checkout window is Gumroad’s page; see <a href="#checkout">Checkout</a>).</li>
         <li>No fonts or libraries from third-party servers: everything the site needs is served from this site.</li>
         <li>We never receive your books, puzzles, pictures or word lists.</li>
       </ul>
@@ -209,11 +215,11 @@
     <div>
       <h2 class="footer-h">Legal</h2>
       <ul>
-        <li><a href="../legal/terms.html">Terms</a></li>
-        <li><a href="../legal/privacy.html">Privacy</a></li>
-        <li><a href="../legal/refunds.html">Refunds</a></li>
-        <li><a href="../legal/license.html">License</a></li>
-        <li><a href="../legal/credits.html">Credits</a></li>
+        <li><a href="../legal/terms">Terms</a></li>
+        <li><a href="../legal/privacy">Privacy</a></li>
+        <li><a href="../legal/refunds">Refunds</a></li>
+        <li><a href="../legal/license">License</a></li>
+        <li><a href="../legal/credits">Credits</a></li>
       </ul>
     </div>
   </div>

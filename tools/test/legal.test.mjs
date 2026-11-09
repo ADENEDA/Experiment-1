@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { CONFIG } from '../../site/config.js';
 import { DEFAULT_KEY_PATH } from '../keygen.mjs';
 
@@ -78,13 +79,16 @@ for (const slug of SLUGS) {
       }
       assert.ok(!u.startsWith('/'), `root-relative URL ${u}`);
       const [path, hash] = u.split('#');
-      const target = path ? new URL(path, 'http://x/legal/').pathname.slice(1) : `legal/${slug}.html`;
-      const onDisk = join(SITE, target.endsWith('/') || target === '' ? join(target, 'index.html') : target);
+      // Legal pages are linked extensionless (/legal/terms), the canonical URL: Cloudflare Pages serves terms.html there
+      // and 308-redirects terms.html to it.
+      assert.ok(!/(^|\/)(terms|privacy|refunds|license|credits)\.html$/.test(path), `link the canonical URL, not ${u}`);
+      const target = path ? new URL(path, 'http://x/legal/').pathname.slice(1) : `legal/${slug}`;
+      const onDisk = join(SITE, target.endsWith('/') || target === '' ? join(target, 'index.html') : /\.\w+$/.test(target) ? target : `${target}.html`);
       assert.ok(existsSync(onDisk), `broken link ${u} -> ${target}`);
       if (hash) {
-        const other = target.startsWith('legal/') && target.endsWith('.html') ? pages[target.slice(6, -5)] : null;
-        assert.ok((target === `legal/${slug}.html` ? html : other) !== undefined, `cannot check anchor in ${target}`);
-        assert.ok(ids(target === `legal/${slug}.html` ? html : other).includes(hash), `missing anchor #${hash} in ${target}`);
+        const other = target.startsWith('legal/') ? pages[target.slice(6)] : null;
+        assert.ok((target === `legal/${slug}` ? html : other) !== undefined, `cannot check anchor in ${target}`);
+        assert.ok(ids(target === `legal/${slug}` ? html : other).includes(hash), `missing anchor #${hash} in ${target}`);
       }
     }
   });
@@ -99,10 +103,10 @@ for (const slug of SLUGS) {
     const nav = /<nav class="btn-row" aria-label="Legal documents">([\s\S]*?)<\/nav>/.exec(html);
     assert.ok(nav, 'legal documents nav');
     const links = tags(nav[1], 'a');
-    assert.deepEqual(links.map((a) => a.href), SLUGS.map((s) => `${s}.html`));
+    assert.deepEqual(links.map((a) => a.href), SLUGS);
     const current = links.filter((a) => a['aria-current'] === 'page');
     assert.equal(current.length, 1);
-    assert.equal(current[0].href, `${slug}.html`);
+    assert.equal(current[0].href, slug);
     assert.match(nav[1], new RegExp(`aria-current="page">${LABELS[slug]}</a>`));
   });
 
@@ -148,6 +152,13 @@ test('legal pages: the promises match the product', () => {
   for (const host of ['api.gumroad.com', 'api.polar.sh', 'gumroad.com', 'assets.gumroad.com', 'static.cloudflareinsights.com']) {
     assert.ok(t.privacy.includes(host), `privacy policy should name ${host}`);
   }
+  // What is kept, exactly: an offline code's record keeps its name (license.js sanitizeRecord), an uploaded picture
+  // keeps a name made from its file name (picture-panel.js niceName), and Gumroad's checkout window is Gumroad's page.
+  assert.doesNotMatch(t.privacy, /No name, email/);
+  assert.match(t.privacy, /For an offline code, also the label it was made for/);
+  assert.match(read('site/js/license/license.js'), /name: typeof r\.name === 'string'/);
+  assert.match(t.privacy, /a picture name \(taken from the file name/);
+  assert.match(t.privacy, /checkout window that opens[^.]*is Gumroad’s own page/);
   // …and the code really uses those keys.
   const persist = read('site/js/ui/persist.js') + read('site/js/license/license.js') + read('site/js/ui/app.js');
   for (const k of ["'gbs.prefs'", "'gbs.license'", "'gbs.license.counted'", "'gbs.session.freeBanner'", "'gbs.__probe'", "'gbs.projects.index'"]) {
@@ -159,14 +170,19 @@ test('credits: full Phosphor and fflate MIT notices; license files linked', () =
   const t = text(pages.credits);
   const phosphor = readFileSync(join(ROOT, 'tools/vendor/phosphor-LICENSE'), 'utf8').replace(/\s+/g, ' ').trim();
   assert.ok(t.includes(phosphor), 'the Phosphor MIT notice is reproduced in full');
-  assert.ok(t.includes('Copyright (c) 2023 Arjun Barrett'));
+  assert.ok(t.includes('Copyright (c) 2026 Arjun Barrett')); // fflate 0.8.3's LICENSE
   assert.ok(t.includes('Copyright 2020 Braille Institute of America, Inc.'));
   assert.ok(readFileSync(join(SITE, 'fonts/OFL.txt'), 'utf8').includes('Copyright 2020 Braille Institute of America, Inc.'));
   assert.ok(readFileSync(join(SITE, 'vendor/jspdf-LICENSE.txt'), 'utf8').includes('James Hall'));
   assert.ok(pages.credits.includes('href="../fonts/OFL.txt"'));
   assert.ok(pages.credits.includes('href="../vendor/jspdf-LICENSE.txt"'));
-  assert.ok(existsSync(join(SITE, 'vendor/jspdf-4.2.1.umd.min.js')) && existsSync(join(SITE, 'vendor/fflate-0.8.2.browser.js')),
+  assert.ok(existsSync(join(SITE, 'vendor/jspdf-4.2.1.umd.min.js')) && existsSync(join(SITE, 'vendor/fflate-0.8.3.browser.js')),
     'credited versions match the vendored files');
+  // fflate up to 0.8.2 has a published advisory (GHSA-px8p-9vwx-vf98, unzipSync); keep the credits, the import and the
+  // vendored file on the same fixed version.
+  assert.ok(t.includes('fflate 0.8.3 packs the ZIP files'));
+  assert.match(read('site/js/ui/export-jobs.js'), /vendor\/fflate-0\.8\.3\.browser\.js/);
+  assert.deepEqual(readdirSync(join(SITE, 'vendor')).filter((f) => f.startsWith('fflate-')), ['fflate-0.8.3.browser.js']);
 });
 
 test('robots.txt and sitemap.xml', () => {
@@ -212,6 +228,7 @@ test('_headers: SPEC 5.9 security and cache rules, no live CSP', () => {
   const rules = parseHeaders(src);
   assert.deepEqual(rules['/*'], {
     'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY', // nothing frames the site; no other site may frame the Studio
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   }, 'no Cache-Control under /*: Cloudflare would join it with the path rules');
@@ -219,14 +236,17 @@ test('_headers: SPEC 5.9 security and cache rules, no live CSP', () => {
   assert.deepEqual(cache, {
     '/vendor/*': 'public, max-age=31536000, immutable',
     '/fonts/*': 'public, max-age=31536000, immutable',
-    '/data/*': 'public, max-age=86400',
-    '/css/*': 'public, max-age=3600',
-    '/js/*': 'public, max-age=3600',
+    '/data/*': 'public, max-age=0, must-revalidate',
+    '/css/*': 'public, max-age=0, must-revalidate',
+    '/js/*': 'public, max-age=0, must-revalidate',
     '/samples/*': 'public, max-age=86400',
     '/og/*': 'public, max-age=86400',
     '/img/*': 'public, max-age=86400',
   });
   for (const p of Object.keys(cache)) assert.ok(statSync(join(SITE, p.slice(1, -2))).isDirectory(), `${p} matches a folder`);
+  // ES modules and styles have no version in their names: a fresh-cached copy of one file after a deploy mixes old and
+  // new modules in one graph and the Studio never starts (a normal reload serves fresh subresources from cache).
+  for (const p of ['/js/*', '/css/*', '/data/*']) assert.match(cache[p], /max-age=0, must-revalidate$/, `${p} revalidates`);
   // Vendored files must carry their version in the name, since they are cached as immutable.
   for (const f of readdirSync(join(SITE, 'vendor')).filter((x) => x.endsWith('.js'))) assert.match(f, /-\d+\.\d+\.\d+\./, f);
   assert.ok(!Object.values(rules).some((h) => 'Content-Security-Policy' in h), 'CSP stays a commented suggestion');
@@ -236,12 +256,31 @@ test('_headers: SPEC 5.9 security and cache rules, no live CSP', () => {
     'https://static.cloudflareinsights.com', 'https://cloudflareinsights.com']) {
     assert.ok(csp[1].includes(host), `CSP suggestion allows ${host}`);
   }
+  // Gumroad's overlay needs assets.gumroad.com for scripts, styles, fonts and images alike.
+  for (const d of ['script-src', 'style-src', 'img-src', 'font-src']) {
+    assert.match(csp[1], new RegExp(`${d} [^;]*https://assets\\.gumroad\\.com`), `CSP suggestion: ${d} allows assets.gumroad.com`);
+  }
+  for (const d of ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'"]) {
+    assert.ok(csp[1].split(/;\s*/).includes(d), `CSP suggestion has ${d}`);
+  }
+  // Inline scripts (the Studio's boot watchdog) must be allowed by hash, or enabling the CSP would silently drop them.
+  const scriptSrc = /script-src ([^;]+)/.exec(csp[1])[1].split(/\s+/);
+  for (const f of ['site/app/index.html', 'site/index.html', 'site/pricing/index.html', 'site/404.html']) {
+    for (const m of read(f).matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+      const hash = `'sha256-${createHash('sha256').update(m[1], 'utf8').digest('base64')}'`;
+      assert.ok(scriptSrc.includes(hash), `CSP suggestion lists ${hash} for the inline script in ${f}`);
+    }
+  }
 });
 
 test('_redirects: /studio and /buy (SPEC 5.9)', () => {
   const rules = read('site/_redirects').split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.trim().split(/\s+/));
-  assert.deepEqual(rules, [['/studio', '/app/', '301'], ['/studio/', '/app/', '301'], ['/buy', '/pricing/', '302'], ['/buy/', '/pricing/', '302']]);
+  assert.deepEqual(rules, [['/studio', '/app/', '301'], ['/studio/', '/app/', '301'], ['/buy', '/pricing/', '302'], ['/buy/', '/pricing/', '302'],
+    ['/buy/lifetime', '/pricing/', '302'], ['/buy/pass', '/pricing/', '302']]);
   for (const [, to] of rules) assert.ok(existsSync(join(SITE, to, 'index.html')), to);
+  // The static buy-button fallback (/buy/lifetime, /buy/pass) ships pointing at our own pricing page, never at a
+  // placeholder store: https://yourname.gumroad.com is a real third-party seller.
+  assert.ok(!/YOURNAME/i.test(read('site/_redirects')), 'no placeholder store in _redirects');
 });
 
 const slug = (h) => h.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
@@ -319,4 +358,47 @@ test('SETUP.md: the domain-replace command works on a copy of the text files', (
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+test('tools/serve.mjs behaves like Cloudflare Pages: extensionless pages and the _redirects rules', { timeout: 20000 }, async () => {
+  // Port 0 = any free port; the server prints the one it got.
+  const { spawn } = await import('node:child_process');
+  const srv = spawn(process.execPath, [join(ROOT, 'tools/serve.mjs'), String(Number(process.env.SERVE_TEST_PORT) || 0), SITE], { stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    const port = await new Promise((resolve, reject) => {
+      let out = '';
+      srv.stdout.on('data', (d) => { out += d; const m = /localhost:(\d+)/.exec(out); if (m) resolve(Number(m[1])); });
+      srv.on('exit', () => reject(new Error('serve.mjs exited')));
+    });
+    const get = (p) => fetch(`http://localhost:${port}${p}`, { redirect: 'manual' });
+    for (const s of SLUGS) {
+      const r = await get(`/legal/${s}`);
+      assert.equal(r.status, 200, `/legal/${s}`);
+      assert.match(r.headers.get('content-type'), /text\/html/);
+      assert.equal(await r.text(), pages[s]);
+    }
+    assert.equal((await get('/legal/terms.html')).status, 200);
+    assert.equal((await get('/legal/nope')).status, 404);
+    for (const [from, to, status] of [['/studio', '/app/', 301], ['/buy', '/pricing/', 302], ['/buy/lifetime', '/pricing/', 302], ['/buy/pass', '/pricing/', 302]]) {
+      const r = await get(from);
+      assert.equal(r.status, status, from);
+      assert.equal(r.headers.get('location'), to, from);
+    }
+  } finally { srv.kill(); }
+});
+
+test('tools/serve.mjs: a taken port is an error, never a silent run against another server', { timeout: 20000 }, async () => {
+  // The browser suites start this server in-process; before, a second run on the same port quietly tested the first
+  // run's server (its own child died with EADDRINUSE unseen) and then failed with "connection refused".
+  const { startServer } = await import('../serve.mjs');
+  const first = await startServer(SITE);
+  try {
+    assert.match(first.origin, /^http:\/\/127\.0\.0\.1:\d+$/, 'loopback, free port by default');
+    assert.ok((await fetch(`${first.origin}/app/`)).ok);
+    await assert.rejects(startServer(SITE, { port: first.port }), { code: 'EADDRINUSE' });
+    const { spawnSync } = await import('node:child_process');
+    const cli = spawnSync(process.execPath, [join(ROOT, 'tools/serve.mjs'), String(first.port), SITE], { encoding: 'utf8', timeout: 10000 });
+    assert.equal(cli.status, 1, 'the CLI exits non-zero');
+    assert.match(cli.stderr, /already in use/);
+  } finally { first.server.close(); }
 });

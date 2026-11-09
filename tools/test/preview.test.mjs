@@ -100,6 +100,13 @@ describe('layout', () => {
     const zs = G.fitZoom(pages, 'single', 1000, 700, opts);
     assert.ok(zs > z);
     assert.ok(G.fitZoom(pages, 'spread', 200, 150, opts) >= 0.1, 'never below 0.1');
+    // A floating navigator over the bottom (padBottom): the fitted page and caption stay above it, and the content
+    // ends that far below the last caption.
+    const zb = G.fitZoom(pages, 'single', 400, 600, { ...opts, padBottom: 80 });
+    assert.ok(30 + 792 * zb * G.PX_PER_PT + 24 <= 600 - 80 + 1);
+    const L = G.layoutRows(pagesOf(3), 'single', 0.5, { viewportW: 400, pad: 12, padTop: 36, padBottom: 80, gap: 36, captionH: 24 });
+    const last = L.rows[L.rows.length - 1];
+    assert.equal(L.contentH, Math.ceil(last.top + last.height + 24 + 80));
   });
 
   test('zoom anchoring keeps the point under the cursor still', () => {
@@ -117,6 +124,33 @@ describe('layout', () => {
     assert.ok(Math.abs(yPtA - yPtB) < 1e-6);
     const xPtA = (0 + 450 - A.contentW / 2) / A.scale, xPtB = (pos.left + 450 - B.contentW / 2) / B.scale;
     assert.ok(Math.abs(xPtA - xPtB) < 1e-6);
+  });
+
+  test('zooming in from a view where the page fits keeps that page centred, not the gutter or the empty slot', () => {
+    const pages = pagesOf(30);
+    const o = { viewportW: 900, pad: 20, gap: 30, captionH: 24 };
+    const viewW = 900, viewH = 700;
+    const fit = G.fitZoom(pages, 'spread', viewW, viewH, o);
+    const A = G.layoutRows(pages, 'spread', fit * G.PX_PER_PT, o);
+    // Page 1 is a lone recto: the viewport centre is the spine, the left edge of the page.
+    const a = G.zoomAnchor(A, 0, 0, 0, viewW, viewH);
+    assert.equal(a.centred, true);
+    const B = G.layoutRows(pages, 'spread', 4 * G.PX_PER_PT, o);
+    const pos = G.scrollForAnchor(B, a, 'spread');
+    const slot = B.rows[0].slots[0];
+    assert.ok(Math.abs(pos.left + viewW / 2 - (slot.x + slot.w / 2)) < 1e-6, 'page 1 centred across');
+    assert.ok(Math.abs(pos.top + viewH / 2 - (B.rows[0].top + slot.h / 2)) < 1e-6, 'and down');
+    // On a spread, the current page (the left one here) is the one kept in view.
+    const r1 = A.rows[1];
+    const left = G.zoomAnchor(A, 1, 0, r1.top - 10, viewW, viewH);
+    const p2 = G.scrollForAnchor(B, left, 'spread');
+    const s1 = B.rows[1].slots.find((s) => s.index === 1);
+    assert.ok(Math.abs(p2.left + viewW / 2 - (s1.x + s1.w / 2)) < 1e-6);
+    // Once the page no longer fits (the user may have panned), the viewport centre stays still as before.
+    const C = G.layoutRows(pages, 'spread', 2 * G.PX_PER_PT, o);
+    const free = G.zoomAnchor(C, 0, 300, 400, viewW, viewH);
+    assert.equal(free.centred, undefined);
+    assert.deepEqual(free, G.anchorAt(C, 300, 400, viewW / 2, viewH / 2));
   });
 
   test('zoom helpers', () => {
