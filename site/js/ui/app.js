@@ -98,8 +98,10 @@ export async function boot() {
   const toaster = createToaster(document.getElementById('toasts'));
   const toast = (message, opts) => toaster.show(message, opts);
 
-  // Fonts (canvas preview must use the print font) and the cached license, in parallel. Neither may block boot.
-  const [fontRes] = await Promise.allSettled([ensureFonts(), initLicense()]);
+  // Fonts (canvas preview must use the print font) and the cached license, in parallel. Neither may block boot:
+  // a font request that hangs gives up waiting after 12 s (the preview re-awaits ensureFonts() before drawing).
+  const fontWait = Promise.race([ensureFonts(), new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 12000))]);
+  const [fontRes] = await Promise.allSettled([fontWait, initLicense()]);
   if (fontRes.status === 'rejected') {
     console.error('Gridbook Studio: fonts failed to load', fontRes.reason);
     toast('Couldn’t load the book font, so previews may not match the printed page. Reload when you’re online.', { kind: 'warn' });
@@ -129,6 +131,7 @@ export async function boot() {
   let autosave;
   let projectLoads = 0;
   let pendingJump = null;
+  let pendingPuzzle = null;
 
   // ------------------------------------------------------------------ helpers
   const findSection = (id) => store.get().sections.find((s) => s.id === id) || null;
@@ -218,13 +221,31 @@ export async function boot() {
     if (!id || id === 'blank') return P.newProject();
     try {
       const m = await loadTemplates();
-      const p = typeof m.buildFromTemplate === 'function' ? m.buildFromTemplate(id, { sample }) : null;
+      const p = typeof m.buildFromTemplate === 'function' ? await m.buildFromTemplate(id, { sample }) : null;
       if (p && typeof p === 'object') return p;
       throw new Error('buildFromTemplate returned nothing');
     } catch (e) {
       console.warn('Gridbook Studio: templates unavailable, using a simple fallback', e);
       return fallbackTemplate(id);
     }
+  }
+
+  /**
+   * A new or duplicated picture-list nonogram section would take turns through the same pictures, in the same order,
+   * as the book's other picture sections (identical puzzles): give it pictures the others don't show. Mutates draft.
+   */
+  function freshPictures(draft, sec) {
+    if (!P.usesPictureList(sec)) return;
+    const avoid = P.otherSectionPictures(draft, sec.id);
+    if (P.sectionPictures(sec, draft.seed).some((id) => avoid.has(id))) P.regenerateSectionPictures(sec, draft.seed, Math.random, avoid);
+  }
+
+  /** Regenerate can't change a picture nonogram whose section has a single picture: say so, and where to add more. */
+  function onePictureToast(sectionId) {
+    toast('This section has one picture, so its puzzles can’t change. Add more pictures in the section settings.', {
+      kind: 'info', timeout: 6000,
+      action: { label: 'Section settings', run: () => { actions.select({ kind: 'section', id: sectionId }); ui.update((d) => { d.mobileTab = 'settings'; }); } },
+    });
   }
 
   // ------------------------------------------------------------------ actions
@@ -234,7 +255,7 @@ export async function boot() {
     addSection(type) {
       if (!Object.prototype.hasOwnProperty.call(TYPES, type)) return null;
       const sec = P.newSection(type, store.get().theme);
-      store.update((d) => { d.sections.push(sec); }, { label: `Add ${TYPES[type].meta.name.toLowerCase()} section` });
+      store.update((d) => { d.sections.push(sec); freshPictures(d, sec); }, { label: `Add ${TYPES[type].meta.name.toLowerCase()} section` });
       actions.select({ kind: 'section', id: sec.id });
       pendingJump = sec.id; // show its first page once the new layout arrives
       return sec.id;
@@ -274,6 +295,7 @@ export async function boot() {
       store.update((d) => {
         const i = d.sections.findIndex((s) => s.id === id);
         d.sections.splice(i + 1, 0, copy);
+        freshPictures(d, copy);
       }, { label: `Duplicate ${P.sectionName(src)}` });
       actions.select({ kind: 'section', id: copy.id });
       pendingJump = copy.id;
@@ -309,6 +331,8 @@ export async function boot() {
       actions.select({ kind: 'section', id: sectionId, index });
       const page = actions.pageOfPuzzle(sectionId, index);
       if (page >= 0) actions.goToPage(page);
+      // A change is still waiting for its layout: find the puzzle again in the next up-to-date book.
+      pendingPuzzle = app.getBook()?.project !== store.get() ? { sectionId, index } : null;
     },
 
     goToPage(pageIndex) {
@@ -344,8 +368,19 @@ export async function boot() {
         return false;
       }
       const num = puzzleNum(sectionId, index);
-      actions.updateSection(sectionId, (sec) => { P.regeneratePuzzle(sec, index); }, { label: `Regenerate puzzle ${num}` });
-      announce(`Regenerating puzzle ${num}`);
+      // Picture nonograms take turns through a picture list: a new seed alone would bring the same picture back.
+      const pictures = P.usesPictureList(s);
+      if (pictures === 1) {
+        onePictureToast(sectionId);
+        return false;
+      }
+      const seed = store.get().seed;
+      const avoid = pictures ? P.otherSectionPictures(store.get(), sectionId) : null;
+      actions.updateSection(sectionId, (sec) => {
+        if (pictures) P.regeneratePicture(sec, index, seed, Math.random, avoid);
+        else P.regeneratePuzzle(sec, index);
+      }, { label: `Regenerate puzzle ${num}` });
+      announce(pictures ? `Puzzle ${num} gets a new picture` : `Regenerating puzzle ${num}`);
       return true;
     },
 
@@ -360,8 +395,16 @@ export async function boot() {
       }
       const seed = store.get().seed;
       const name = P.sectionName(s);
+      const pictures = P.usesPictureList(s);
+      if (pictures === 1) {
+        onePictureToast(sectionId);
+        return 0;
+      }
       let changed = 0;
-      actions.updateSection(sectionId, (sec) => { changed = P.regenerateSectionSeeds(sec, seed); }, { label: `Regenerate ${name}` });
+      const avoid = pictures ? P.otherSectionPictures(store.get(), sectionId) : null;
+      actions.updateSection(sectionId, (sec) => {
+        changed = pictures ? P.regenerateSectionPictures(sec, seed, Math.random, avoid) : P.regenerateSectionSeeds(sec, seed);
+      }, { label: `Regenerate ${name}` });
       const after = store.get();
       toast(`Making ${changed} new puzzle${changed === 1 ? '' : 's'} for “${name}”${locked ? ` (${locked} locked kept)` : ''}.`, {
         kind: 'info',
@@ -591,6 +634,14 @@ export async function boot() {
 
   pipeline.start();
 
+  // Tab title follows the book title.
+  const setDocTitle = () => {
+    const t = (store.get().title || '').trim();
+    document.title = t ? `${t} · Gridbook Studio` : 'Gridbook Studio · Puzzle book builder';
+  };
+  store.subscribe(setDocTitle);
+  setDocTitle();
+
   // Keep the selection valid and the current page inside the book.
   store.subscribe(() => {
     const sel = ui.get().selection;
@@ -600,6 +651,12 @@ export async function boot() {
   bus.on('book', (book) => {
     const n = book.pages.length;
     if (ui.get().page > n - 1) actions.goToPage(n - 1);
+    if (pendingPuzzle && book.project === store.get()) {
+      const { sectionId, index } = pendingPuzzle;
+      pendingPuzzle = null;
+      const i = actions.pageOfPuzzle(sectionId, index);
+      if (i >= 0) actions.goToPage(i);
+    }
     if (pendingJump) {
       const id = pendingJump;
       const i = book.pages.findIndex((pg) => pg.sectionId === id && pg.kind !== 'answers');
@@ -626,6 +683,7 @@ export async function boot() {
   mountTopbar(document.getElementById('topbar'), app);
   mountOutline(document.getElementById('outline'), app);
   mountStatusbar(document.getElementById('statusbar'), app);
+  bus.emit('autosave', autosave.status()); // the first status went out before the top bar listened
   wireLayout(app, appEl);
   installShortcuts(app);
   wireFileDrop(app);

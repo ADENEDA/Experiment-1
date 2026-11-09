@@ -266,7 +266,6 @@ export function createAutosave({ store, bus, toast, delayMs = 800, onOpenMyBooks
   const onHide = () => { if (dirty) flush(); };
   const onVis = () => { if (document.visibilityState === 'hidden') onHide(); };
   window.addEventListener('pagehide', onHide);
-  window.addEventListener('beforeunload', onHide);
   document.addEventListener('visibilitychange', onVis);
 
   const onStorage = (e) => {
@@ -301,7 +300,6 @@ export function createAutosave({ store, bus, toast, delayMs = 800, onOpenMyBooks
       flush();
       unsub();
       window.removeEventListener('pagehide', onHide);
-      window.removeEventListener('beforeunload', onHide);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('storage', onStorage);
     },

@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KDP Margin Calculator: gutter size by page count · Gridbook Studio</title>
+<meta name="description" content="Find the KDP inside (gutter) and outside margins for any paperback trim, page count and bleed setting, with the numbers to type into Word, Affinity and InDesign.">
+<link rel="canonical" href="https://gridbookstudio.com/kdp-margin-calculator/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="KDP margin and gutter calculator">
+<meta property="og:description" content="KDP's minimum inside and outside margins for your trim, page count and bleed, a page diagram, and settings for Word, Affinity Publisher and InDesign.">
+<meta property="og:image" content="https://gridbookstudio.com/og/margin.png">
+<meta property="og:url" content="https://gridbookstudio.com/kdp-margin-calculator/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/site.css">
+<link rel="stylesheet" href="../css/tools.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"KDP margin and gutter calculator",
+"url":"https://gridbookstudio.com/kdp-margin-calculator/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
+"description":"Works out KDP's minimum inside (gutter) and outside margins for any paperback trim size, page count and bleed setting, shows the margins Gridbook Studio uses, draws the page, and lists the settings for Word, Affinity Publisher and InDesign.",
+"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free calculator"},
+"publisher":{"@type":"Organization","name":"Gridbook Studio","url":"https://gridbookstudio.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to set KDP paperback margins","step":[{"@type":"HowToStep","position":1,"name":"Choose the trim size","text":"Choose the trim size you will select in KDP."},{"@type":"HowToStep","position":2,"name":"Enter the page count","text":"Enter the final page count, including blank pages, notes pages and the answer key."},{"@type":"HowToStep","position":3,"name":"Choose bleed","text":"Choose Bleed only if something on your pages prints right to the edge."},{"@type":"HowToStep","position":4,"name":"Enter the settings","text":"Type the settings for your layout app, and check again if the page count crosses 151, 301, 501 or 701."}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="../kdp-margin-calculator/" aria-current="page">Margin calculator</a>
+      <a href="../pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="../app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-hero tool-hero" aria-labelledby="page-h">
+  <div class="wrap">
+    <p class="eyebrow">Free KDP tool</p>
+    <h1 id="page-h">KDP margin and gutter calculator</h1>
+    <p class="lead">Enter your trim size and page count to get KDP’s minimum margins, the roomier margins Gridbook uses, and the exact numbers to type into Word, Affinity Publisher or InDesign.</p>
+  </div>
+</section>
+
+<section class="tool-section" aria-labelledby="tool-h">
+  <div class="wrap">
+    <div class="tool-panel calc" id="margin-calc" data-margin-calc>
+      <div class="tool-panel-head">
+        <h2 id="tool-h">Your interior</h2>
+        <p class="tool-panel-sub">Updates as you type. Runs in your browser.</p>
+      </div>
+      <div class="calc-layout">
+        <div class="calc-main">
+          <form class="calc-form" id="mc-form" novalidate>
+            <div class="field">
+              <label for="mc-trim">Trim size</label>
+              <select class="select" id="mc-trim" name="trim">
+                <option value="5x8">5 × 8 in</option>
+                <option value="5.06x7.81">5.06 × 7.81 in</option>
+                <option value="5.25x8">5.25 × 8 in</option>
+                <option value="5.5x8.5">5.5 × 8.5 in</option>
+                <option value="6x9" selected>6 × 9 in</option>
+                <option value="6.14x9.21">6.14 × 9.21 in</option>
+                <option value="6.69x9.61">6.69 × 9.61 in</option>
+                <option value="7x10">7 × 10 in</option>
+                <option value="7.44x9.69">7.44 × 9.69 in</option>
+                <option value="7.5x9.25">7.5 × 9.25 in</option>
+                <option value="8x10">8 × 10 in</option>
+                <option value="8.25x6">8.25 × 6 in</option>
+                <option value="8.25x8.25">8.25 × 8.25 in</option>
+                <option value="8.5x8.5">8.5 × 8.5 in</option>
+                <option value="8.5x11">8.5 × 11 in</option>
+                <option value="8.27x11.69">8.27 × 11.69 in (A4)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="mc-pages">Page count</label>
+              <input class="input" id="mc-pages" name="pages" type="number" inputmode="numeric" min="24" max="828" step="1" value="120" autocomplete="off" aria-describedby="mc-pages-hint mc-msg">
+              <span class="hint" id="mc-pages-hint">The final count, blank pages and answers included.</span>
+            </div>
+            <fieldset class="field calc-choices">
+              <legend class="label">Bleed</legend>
+              <div class="calc-opts">
+                <label class="calc-opt"><input type="radio" name="bleed" value="0" checked><span>No bleed</span></label>
+                <label class="calc-opt"><input type="radio" name="bleed" value="1"><span>Bleed</span></label>
+              </div>
+            </fieldset>
+          </form>
+          <p class="calc-msg" id="mc-msg" role="status" aria-live="polite"></p>
+
+          <div class="result-grid calc-results calc-results-lead" id="mc-results">
+            <div class="result result-primary result-wide"><span class="result-label">Minimum inside margin (gutter)</span><span class="result-value" data-out="gutter">0.375 in</span><span class="result-sub" data-out="gutterSub">9.6 mm · KDP’s minimum for 24 to 150 pages</span></div>
+            <div class="result"><span class="result-label">Minimum outside, top, bottom</span><span class="result-value" data-out="outside">0.25 in</span><span class="result-sub" data-out="outsideSub">6.4 mm from the page edge</span></div>
+            <div class="result"><span class="result-label">PDF page size</span><span class="result-value" data-out="page">6 × 9 in</span><span class="result-sub" data-out="pageSub">No bleed: the page is the trim size</span></div>
+            <div class="result"><span class="result-label">Gridbook inside margin</span><span class="result-value" data-out="recInside">0.5 in</span><span class="result-sub" data-out="recInsideSub">The gutter plus 0.125 in, clear of the fold</span></div>
+            <div class="result"><span class="result-label">Content area</span><span class="result-value" data-out="content">5 × 7.8 in</span><span class="result-sub" data-out="contentSub">Inside Gridbook’s margins</span></div>
+          </div>
+          <p class="calc-note" id="mc-next" data-out="next">At 151 pages, 31 more than this book, the minimum inside margin becomes 0.5 in.</p>
+          <p class="visually-hidden" id="mc-live" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="calc-side">
+          <figure class="calc-figure">
+            <div class="calc-diagram" id="mc-diagram"><!-- static:spread --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 498" width="600" height="498" role="img" aria-labelledby="mc-diagram-title" focusable="false"><title id="mc-diagram-title">Left and right pages of a 6 × 9 in book, 120 pages</title><desc>Inside margin 0.5 inches next to the spine (KDP minimum 0.375), outside 0.5, top 0.6 and bottom 0.6 inches.</desc><rect class="dg-panel" x="8" y="31" width="292" height="438"/><rect class="dg-min" x="20.2" y="43.2" width="261.6" height="413.7"/><rect class="dg-content" x="32.3" y="60.2" width="243.3" height="379.6"/><rect class="dg-trim" x="8" y="31" width="292" height="438"/><text class="dg-note" x="154" y="248" text-anchor="middle" font-size="13">Content area</text><text class="dg-dim-label" x="154" y="265" text-anchor="middle" font-size="13">5 × 7.8 in</text><line class="dg-dim" x1="275.7" y1="120.2" x2="300" y2="120.2"/><line class="dg-dim" x1="275.7" y1="116.2" x2="275.7" y2="124.2"/><line class="dg-dim" x1="300" y1="116.2" x2="300" y2="124.2"/><line class="dg-dim" x1="8" y1="120.2" x2="32.3" y2="120.2"/><line class="dg-dim" x1="8" y1="116.2" x2="8" y2="124.2"/><line class="dg-dim" x1="32.3" y1="116.2" x2="32.3" y2="124.2"/><text class="dg-dim-label" x="36.3" y="137.2" text-anchor="start" font-size="13">0.5 in</text><text class="dg-dim-label" x="271.7" y="137.2" text-anchor="end" font-size="13">0.5 in</text><text class="dg-note" x="154" y="490" text-anchor="middle" font-size="13">Left page (even numbers)</text><rect class="dg-panel" x="300" y="31" width="292" height="438"/><rect class="dg-min" x="318.3" y="43.2" width="261.6" height="413.7"/><rect class="dg-content" x="324.3" y="60.2" width="243.3" height="379.6"/><rect class="dg-trim" x="300" y="31" width="292" height="438"/><text class="dg-note" x="446" y="248" text-anchor="middle" font-size="13">Content area</text><text class="dg-dim-label" x="446" y="265" text-anchor="middle" font-size="13">5 × 7.8 in</text><line class="dg-dim" x1="300" y1="120.2" x2="324.3" y2="120.2"/><line class="dg-dim" x1="300" y1="116.2" x2="300" y2="124.2"/><line class="dg-dim" x1="324.3" y1="116.2" x2="324.3" y2="124.2"/><line class="dg-dim" x1="567.7" y1="120.2" x2="592" y2="120.2"/><line class="dg-dim" x1="567.7" y1="116.2" x2="567.7" y2="124.2"/><line class="dg-dim" x1="592" y1="116.2" x2="592" y2="124.2"/><text class="dg-dim-label" x="328.3" y="137.2" text-anchor="start" font-size="13">0.5 in</text><text class="dg-dim-label" x="563.7" y="137.2" text-anchor="end" font-size="13">0.5 in</text><line class="dg-dim" x1="499.5" y1="31" x2="499.5" y2="60.2"/><line class="dg-dim" x1="495.5" y1="31" x2="503.5" y2="31"/><line class="dg-dim" x1="495.5" y1="60.2" x2="503.5" y2="60.2"/><line class="dg-dim" x1="499.5" y1="439.8" x2="499.5" y2="469"/><line class="dg-dim" x1="495.5" y1="439.8" x2="503.5" y2="439.8"/><line class="dg-dim" x1="495.5" y1="469" x2="503.5" y2="469"/><text class="dg-dim-label" x="493.5" y="75.2" text-anchor="end" font-size="13">0.6 in</text><text class="dg-dim-label" x="493.5" y="433.8" text-anchor="end" font-size="13">0.6 in</text><text class="dg-note" x="446" y="490" text-anchor="middle" font-size="13">Right page (odd numbers)</text><line class="dg-fold" x1="300" y1="23" x2="300" y2="473"/><text class="dg-dim-label" x="300" y="19" text-anchor="middle" font-size="13">Spine</text></svg><!-- /static:spread --></div>
+            <figcaption class="calc-legend">
+              <ul>
+                <li><span class="calc-sw calc-sw-content" aria-hidden="true"></span>Content area, Gridbook margins</li>
+                <li><span class="calc-sw calc-sw-min" aria-hidden="true"></span>KDP minimum margins</li>
+                <li><span class="calc-sw calc-sw-trim" aria-hidden="true"></span>Trim line</li>
+                <li data-legend-bleed hidden><span class="calc-sw calc-sw-bleed" aria-hidden="true"></span>Bleed: trimmed off</li>
+                <li><span class="calc-sw calc-sw-fold" aria-hidden="true"></span>Spine fold</li>
+              </ul>
+            </figcaption>
+          </figure>
+          <div class="table-wrap" role="region" aria-labelledby="mc-margins-cap" tabindex="0">
+            <table class="data-table" id="mc-margins">
+              <caption id="mc-margins-cap" data-out="marginsCap">KDP’s minimum margins and the margins Gridbook uses, measured from the edge of the page. The page is the trim size.</caption>
+              <thead><tr><th scope="col">Edge</th><th scope="col" class="num">KDP minimum</th><th scope="col" class="num">Gridbook</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Inside (gutter)</th><td class="num">0.375 in<span class="calc-mm">9.6 mm</span></td><td class="num">0.5 in<span class="calc-mm">12.7 mm</span></td></tr>
+                <tr><th scope="row">Outside</th><td class="num">0.25 in<span class="calc-mm">6.4 mm</span></td><td class="num">0.5 in<span class="calc-mm">12.7 mm</span></td></tr>
+                <tr><th scope="row">Top</th><td class="num">0.25 in<span class="calc-mm">6.4 mm</span></td><td class="num">0.6 in<span class="calc-mm">15.2 mm</span></td></tr>
+                <tr><th scope="row">Bottom</th><td class="num">0.25 in<span class="calc-mm">6.4 mm</span></td><td class="num">0.6 in<span class="calc-mm">15.2 mm</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <noscript><p class="calc-note">The calculator needs JavaScript. The numbers shown are for a 6 × 9 in book of 120 pages without bleed.</p></noscript>
+        </div>
+      </div>
+
+      <div class="calc-soft-wrap" aria-labelledby="soft-h">
+        <div class="calc-soft-head">
+          <h2 id="soft-h">Settings for your layout app</h2>
+          <p data-out="softSub">Gridbook’s margins for a 6 × 9 in book, 120 pages, no bleed.</p>
+        </div>
+        <div class="calc-soft calc-soft-list">
+          <section class="calc-soft-card" data-soft="word" aria-labelledby="soft-word-h">
+            <h3 id="soft-word-h">Microsoft Word</h3>
+            <p class="calc-path">Layout › Size › More Paper Sizes, then Layout › Margins › Custom Margins</p>
+            <dl>
+              <dt>Paper width</dt><dd>6 in</dd>
+              <dt>Paper height</dt><dd>9 in</dd>
+              <dt>Multiple pages</dt><dd>Mirror margins</dd>
+              <dt>Top</dt><dd>0.6 in</dd>
+              <dt>Bottom</dt><dd>0.6 in</dd>
+              <dt>Inside</dt><dd>0.5 in</dd>
+              <dt>Outside</dt><dd>0.5 in</dd>
+              <dt>Gutter</dt><dd>0 in</dd>
+            </dl>
+            <p data-soft-note>Word measures from the edge of the paper and has no bleed setting, so with bleed the paper size includes it. Leave Gutter at 0: Word adds it on top of Inside. Save with File › Save As › PDF, optimized for Standard.</p>
+          </section>
+          <section class="calc-soft-card" data-soft="affinity" aria-labelledby="soft-aff-h">
+            <h3 id="soft-aff-h">Affinity Publisher</h3>
+            <p class="calc-path">File › New › Print, or Document › Document Setup</p>
+            <dl>
+              <dt>Page width</dt><dd>6 in</dd>
+              <dt>Page height</dt><dd>9 in</dd>
+              <dt>Facing pages</dt><dd>On, start on right</dd>
+              <dt>Top</dt><dd>0.6 in</dd>
+              <dt>Bottom</dt><dd>0.6 in</dd>
+              <dt>Inside</dt><dd>0.5 in</dd>
+              <dt>Outside</dt><dd>0.5 in</dd>
+              <dt>Bleed</dt><dd>None</dd>
+            </dl>
+            <p data-soft-note>Affinity sets the page at the trim size and adds bleed outside it, so these margins are measured from the trim. Export with File › Export › PDF and tick Include bleed when you use it.</p>
+          </section>
+          <section class="calc-soft-card" data-soft="indesign" aria-labelledby="soft-ind-h">
+            <h3 id="soft-ind-h">Adobe InDesign</h3>
+            <p class="calc-path">File › New › Document, Print</p>
+            <dl>
+              <dt>Width</dt><dd>6 in</dd>
+              <dt>Height</dt><dd>9 in</dd>
+              <dt>Facing Pages</dt><dd>On, Start # 1</dd>
+              <dt>Top</dt><dd>0.6 in</dd>
+              <dt>Bottom</dt><dd>0.6 in</dd>
+              <dt>Inside</dt><dd>0.5 in</dd>
+              <dt>Outside</dt><dd>0.5 in</dd>
+              <dt>Bleed</dt><dd>0 on every side</dd>
+            </dl>
+            <p data-soft-note>InDesign also measures margins from the trim. Export with File › Export › Adobe PDF (Print) and, under Marks and Bleeds, tick Use Document Bleed Settings.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-flush-top" aria-labelledby="why-h">
+  <div class="wrap help-layout">
+    <div class="prose" data-help>
+      <h2 id="why-h">Why the gutter grows with page count</h2>
+      <p>The inside margin, or gutter, is the margin on the edge of each page that goes into the binding. KDP paperbacks are glued at the spine, so they never open flat, and the thicker the book, the more of each page curves away into the fold. Text or a puzzle grid that runs too close to the spine is hard to read and hard to write in. So KDP sets the minimum inside margin by page count, and checks it when you upload your interior.</p>
+
+      <h2 id="tiers-h">The 151, 301, 501 and 701-page steps</h2>
+      <p>The minimum doesn’t grow smoothly. It jumps by 0.125 in (3.2 mm) at four page counts:</p>
+      <div class="table-wrap" role="region" aria-labelledby="tiers-cap" tabindex="0">
+        <table class="data-table calc-tiers" id="mc-tiers">
+          <caption id="tiers-cap">KDP’s minimum inside margin by page count, from KDP’s trim, bleed and margins help page, and the inside margin Gridbook uses (0.125 in more).</caption>
+          <thead><tr><th scope="col">Page count</th><th scope="col" class="num">Minimum inside margin</th><th scope="col" class="num">Gridbook uses</th></tr></thead>
+          <tbody>
+            <tr class="is-current" data-tier="0"><th scope="row">24 to 150 <span class="calc-you">Your book</span></th><td class="num">0.375 in<span class="calc-mm">9.6 mm</span></td><td class="num">0.5 in<span class="calc-mm">12.7 mm</span></td></tr>
+            <tr data-tier="1"><th scope="row">151 to 300 <span class="calc-you" hidden>Your book</span></th><td class="num">0.5 in<span class="calc-mm">12.7 mm</span></td><td class="num">0.625 in<span class="calc-mm">15.9 mm</span></td></tr>
+            <tr data-tier="2"><th scope="row">301 to 500 <span class="calc-you" hidden>Your book</span></th><td class="num">0.625 in<span class="calc-mm">15.9 mm</span></td><td class="num">0.75 in<span class="calc-mm">19.1 mm</span></td></tr>
+            <tr data-tier="3"><th scope="row">501 to 700 <span class="calc-you" hidden>Your book</span></th><td class="num">0.75 in<span class="calc-mm">19.1 mm</span></td><td class="num">0.875 in<span class="calc-mm">22.2 mm</span></td></tr>
+            <tr data-tier="4"><th scope="row">701 to 828 <span class="calc-you" hidden>Your book</span></th><td class="num">0.875 in<span class="calc-mm">22.3 mm</span></td><td class="num">1 in<span class="calc-mm">25.4 mm</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The count that matters is the final page count of the PDF you upload: title page, blank pages, notes pages and the answer key all count. That is how books most often fail the margin check. A puzzle book planned at 148 pages is fine with a 0.375 in gutter, then a four-page answer key takes it to 152, and every page needs 0.5 in.</p>
+      <p>There are two ways to stay safe. Set the inside margin for the step you expect to finish in, or reset the margins once the page count is final. <a href="../app/">Gridbook Studio</a> does the second for you: it lays out the book, checks which step the final page count falls in, and lays the book out again if the step changed.</p>
+
+      <h2>Outside, top and bottom margins, and bleed</h2>
+      <p>Without bleed, the top, bottom and outside margins must be at least 0.25 in (6.4 mm). With bleed, the PDF page is 0.125 in wider and 0.25 in taller than the trim: bleed goes on the outside, top and bottom edges, never on the inside. The minimum then becomes 0.375 in (9.6 mm), measured from the edge of that larger page, which is the same 0.25 in from the trim line. Choose bleed only if something should print right to the edge of the paper. Puzzle books rarely need it, and KDP’s help notes that if even one page bleeds, the whole file must be set up with bleed.</p>
+
+      <h2>The margins Gridbook uses, and why</h2>
+      <p>KDP’s numbers are a floor, not a target. A grid that runs to 0.25 in from the trim looks cramped, and trimming varies slightly from copy to copy. Gridbook uses 0.6 in at the top and bottom, 0.5 in on the outside, and KDP’s gutter plus 0.125 in on the inside, so grids stay clear of the fold. Page numbers and running headers sit in the space between those margins and KDP’s minimum.</p>
+
+      <h2>Typing the numbers into Word, Affinity or InDesign</h2>
+      <p>Word measures margins from the edge of the paper and has no bleed setting, so with bleed you make the paper bigger. Word also has a separate Gutter field that it adds on top of the inside margin. KDP’s help suggests entering the same value in both fields; in Word that doubles the inside margin, which is safe but wastes space, so the settings above put the whole inside margin in Inside and 0 in Gutter. Affinity Publisher and InDesign set the page at the trim size and add bleed outside it, so their margins are measured from the trim. The settings above already account for that, and the <a href="../kdp-spine-width-calculator/">spine width calculator</a> does the same job for your cover.</p>
+
+      <h2 id="steps-h">Check your margins in four steps</h2>
+      <ol class="steps-list" data-howto>
+        <li>Choose the trim size you will select in KDP.</li>
+        <li>Enter the final page count, including blank pages, notes pages and the answer key.</li>
+        <li>Choose Bleed only if something on your pages prints right to the edge.</li>
+        <li>Type the settings for your layout app, and check again if the page count crosses 151, 301, 501 or 701.</li>
+      </ol>
+      <p class="prose-meta">KDP’s rules: <a href="https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6" rel="noopener">Set trim size, bleed and margins</a> and <a href="https://kdp.amazon.com/en_US/help/topic/G201857950" rel="noopener">paperback submission guidelines</a> on KDP Help, read on November 9, 2026.</p>
+    </div>
+
+    <aside class="help-aside" aria-label="Next steps">
+      <div class="card calc-cta" data-studio-cta>
+        <h2>Skip the margin maths</h2>
+        <p>Gridbook Studio lays out puzzle books at this trim size and sets the gutter from the final page count, every time. Free to build and preview.</p>
+        <div class="field">
+          <label for="mc-type">Puzzle type</label>
+          <select class="select" id="mc-type">
+            <option value="wordsearch" selected>Word search</option>
+            <option value="sudoku">Sudoku</option>
+            <option value="maze">Mazes</option>
+            <option value="nonogram">Picture nonograms</option>
+          </select>
+        </div>
+        <a class="btn btn-primary" id="mc-studio" href="../app/?type=wordsearch&amp;trim=6x9">Start a 6 × 9 in book</a>
+      </div>
+      <div class="card">
+        <h2>Cover next</h2>
+        <p>Spine width and full cover size with bleed come from the same page count.</p>
+        <a class="btn" href="../kdp-spine-width-calculator/">Open the spine calculator</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section section-alt" aria-labelledby="more-h">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="more-h">More free tools</h2>
+    </div>
+    <ul class="tool-links">
+      <li><a href="../kdp-spine-width-calculator/"><strong>KDP spine width calculator</strong><span>Spine and full cover size from your page count</span></a></li>
+      <li><a href="../sudoku-book-generator/"><strong>Sudoku book generator</strong><span>Graded Easy to Expert, one solution each</span></a></li>
+      <li><a href="../large-print-word-search-maker/"><strong>Large print word search maker</strong><span>18 pt letters, your own words or 68 themes</span></a></li>
+      <li><a href="../book-bolt-alternative/"><strong>Puzzle book tools compared</strong><span>Prices and features, dated and sourced</span></a></li>
+    </ul>
+  </div>
+  <div class="wrap tool-cta">
+    <div class="cta-band">
+      <div>
+        <h2>Let the Studio handle the gutter</h2>
+        <p>Word search, sudoku, mazes and picture nonograms with answer keys. Margins follow KDP’s page-count steps automatically, and a preflight report checks every page.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-highlight btn-lg" href="../app/?type=wordsearch&amp;trim=6x9" data-studio-link>Open the Studio</a>
+        <a class="btn btn-lg" href="../pricing/">Pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="../app/">The Studio</a></li>
+        <li><a href="../nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="../large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="../sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="../kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="../kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="../book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="../pricing/">Pricing</a></li>
+        <li><a href="../samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="../legal/terms.html">Terms</a></li>
+        <li><a href="../legal/privacy.html">Privacy</a></li>
+        <li><a href="../legal/refunds.html">Refunds</a></li>
+        <li><a href="../legal/license.html">License</a></li>
+        <li><a href="../legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="../js/site/site.js"></script>
+<script type="module" src="../js/site/margin-calc.js"></script>
+</body>
+</html>

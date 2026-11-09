@@ -1,0 +1,47 @@
+# Cloudflare Pages response headers (SPEC 5.9). Deployed from the site/ folder; see SETUP.md.
+# Format: a path pattern, then indented "Name: value" lines. Lines starting with # are comments.
+# Don't set Cache-Control in the /* block: Cloudflare joins a header that matches two rules with a comma.
+# HTML pages and the root files (config.js, favicon.svg, site.webmanifest, robots.txt, sitemap.xml) keep Cloudflare's
+# default, which revalidates on every visit, so edits to config.js and the pages show up immediately.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Libraries carry their version in the file name, so they never change in place.
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The font files never change. If you ever replace them, give the new files new names.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Word lists, the picture library and the blocklist.
+/data/*
+  Cache-Control: public, max-age=86400
+
+# Code and styles are not fingerprinted, so keep this short: after a deploy, a returning visitor can run the previous
+# version of a cached file for up to an hour. Lower it to max-age=0 if you deploy code changes often.
+/css/*
+  Cache-Control: public, max-age=3600
+
+/js/*
+  Cache-Control: public, max-age=3600
+
+# Sample PDFs, social preview images, icons and gallery images. Re-generated rarely (see SETUP.md, step 6).
+/samples/*
+  Cache-Control: public, max-age=86400
+
+/og/*
+  Cache-Control: public, max-age=86400
+
+/img/*
+  Cache-Control: public, max-age=86400
+
+# Content-Security-Policy: deliberately NOT enabled. It is optional and must only be turned on after testing that
+# Gumroad's checkout overlay still works (SPEC 5.9). To try it, add the line below (without the leading "# ", on one
+# line) to the /* block above, deploy to a preview branch first, and test: the buy buttons and the checkout overlay,
+# license activation, PDF/PNG/ZIP export, the nonogram picture upload and Web Analytics. Remove it if anything breaks.
+# Gumroad's overlay loads https://gumroad.com/js/gumroad.js, which pulls scripts and styles from https://assets.gumroad.com.
+#   Content-Security-Policy: default-src 'self'; script-src 'self' https://gumroad.com https://assets.gumroad.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://assets.gumroad.com; img-src 'self' data: blob: https://assets.gumroad.com; font-src 'self' https://assets.gumroad.com; connect-src 'self' https://api.gumroad.com https://api.polar.sh https://cloudflareinsights.com; frame-src https://gumroad.com https://*.gumroad.com; worker-src 'self'; base-uri 'self'

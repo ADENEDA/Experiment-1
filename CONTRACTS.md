@@ -204,6 +204,7 @@ Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `c
 **§3 engines**
 - Word search `wordSource` (control kind `words`): `{mode:'themes', themes:'all'|string[]}` or `{mode:'custom', words:string[]|string, title?}`. Older forms (plain `string[]`, `{themeId}`) are still accepted. Word data is `site/data/wordlists.js` (`THEMES`, `CATEGORIES`, `THEME_BY_ID`) and `site/data/blocklist.js`; shapes are `MASK_LIST` in `puzzles/masks.js`. The word-list panel uses `validateWords`, `parseWordList`, `aiPrompt` from `puzzles/wordsearch.js`; issues carry `{word, problem, code, severity}` (codes include `blocked`, shown as info). Theme preview for puzzle *i* must call `themeForIndex(wordSource, i, section.opts)`.
 - Nonogram opts: `{size, source:'library'|'random'|'custom', library:{pictures:string[]|'all', category}, custom:{pictures:[{id,name,w,h,bits}]}, density, showGivens}`. The real grid is `data.w × data.h`. `title` is `''`, `answerTitle` is the picture name. Picture data: `site/data/pictures.js` (`PICTURES`, `PICTURE_CATEGORIES`, `PICTURE_SIZES`). Picture panel: `listPictures(opts)`, `CUSTOM_MAX` (40), `pictureName()`, and from `picture-raster.js` `imageToBits / thresholdCells / loadImage / pathToBits / bitsToDataURL`. Badge text comes from `puzzle.stats.notes`.
+  A seed ending in `#pic=<picture id>` makes a library or custom puzzle show that picture (when it is in the section's list) instead of picture *i*; other seeds keep the list order. Helpers: `seedPick(seed)`, `pictureChoices(opts)` (ids in order, `[]` for random shapes), `pictureIdAt(opts, seed, index)`.
 - Sudoku `size` values are numbers (9/6/4). The inspector must keep option values in their declared type, or cache keys will differ. Mazes: `fitPreset(presetId, boxW, boxH)`. Suggest `corners-sides` openings for 2 per page.
 - Engines may throw a plain `Error` with a readable message (for example, a custom word list where no word fits). generate.js passes it on as `{error}`.
 
@@ -276,6 +277,13 @@ createStore(initial, { history = 100, coalesceMs = 1000 } = {}) → {
 snaps `perPage`/`answers.perPage` to allowed values, keeps unknown fields), `parseProjectFile(text)` (→ project, or throws
 an Error with a human message), `serializeProject(p)` (pretty JSON), `projectFileName(p)` (ASCII,
 `<title-slug>.gridbook.json`), `pinSeed(section, index, bookSeed)` and `freshSeed()` helpers for regenerate/lock.
+Picture-list nonograms (library or custom pictures): a new seed alone brings the same picture back, so Regenerate uses
+`usesPictureList(section)` (number of pictures, 0 otherwise), `regeneratePicture(section, index, bookSeed, rand, avoid?)`
+and `regenerateSectionPictures(section, bookSeed, rand, avoid?)`, which write `<freshSeed>#pic=<id>` seeds choosing
+pictures no other puzzle shows (`rand` is passed in, so the module stays pure; `avoid` = `otherSectionPictures(project,
+sectionId)`, the pictures of the book's other picture sections). `sectionPictures(section, bookSeed)` lists the picture
+each puzzle shows. `app.actions.regenerate` / `regenerateSection` use them (a one-picture section gets an explanatory
+toast instead), and `addSection` / `duplicateSection` give a new picture section pictures the other sections don't show.
 
 ### 12.4 The `app` context (created by `js/ui/app.js`, passed to every mount function)
 ```js
@@ -343,6 +351,25 @@ Keys `gbs.projects.index`, `gbs.project.<id>`, `gbs.prefs`; autosave 800 ms afte
 section of that type. Optional with either: `trim=<trim id>`, `theme=<standard|large|kids>`, `count=<n>`. A new project never
 overwrites an existing one (it is added to the local project list). After handling, the query string is removed with
 `history.replaceState`. Unknown values are ignored.
+
+### 12.9 Studio as built (additions to §12.2–12.8; all backward compatible)
+- **store/bus:** `store.breakCoalesce()`, exported `deepEqual`; `bus.once()`, `bus.count()`.
+- **project.js** also exports `stampProject`, `normalizeSection`, `sectionName`, `isLocked`, `regeneratePuzzle`,
+  `regenerateSectionSeeds`, `toggleLock`, `duplicateSectionData`, `moveSectionIn`, `projectSummary` and constants. It never
+  reads the clock: `newProject()` leaves `createdAt/updatedAt/year` null and app.js stamps them when it loads a book.
+- **app.actions extras:** `undo()`, `redo()`, `pageOfItem(selection)`, `openMyBooks()`, `switchProject(id)`,
+  `deleteProject(id)`, `toggleOutline(open?)`, `closeOutline()`, `announce(msg)`. `newProject(templateId?, {sample})`;
+  `openProjectFile()` without a file opens a file picker. `window.gbsApp = app` (debugging and browser tests).
+- **app.ui extras:** `outlineOpen` (tablet drawer); `fitZoom` (number, set by the preview; +/− step from it, and − from a
+  fit below 50% keeps `'fit'`).
+- **Bus event** `'autosave'`: `{state:'saved'|'pending'|'unsaved'|'off'|'error', at, error?}`.
+- **Prefs** (inside `gbs.prefs`): `lastProjectId`, `view`, `zoom`, `inspectorTab`, `previewThumbs`, `printableSize`.
+- **Mounts:** `mountPreview` returns `{destroy, stats}` (also on `.pv`.gbsPreview); `openTemplatePicker(app, {firstRun:true})`
+  resolves a blank project when closed without a choice. Extra module exports: `templates.js` `TEMPLATE_IDS, SAMPLE_PAGES,
+  templateById, templateFacts`; `export-plan.js` (pure: checklist, kdpSettings, fileNames, readmeText, …);
+  `export-jobs.js` `runExport(kind, {project, puzzles, pro, printableSize, onProgress, signal})`.
+- **Shortcuts:** Delete/Backspace remove the selected section only when focus is not in the settings pane, top bar,
+  status bar, tab bar or a toast (a stray Backspace on a settings switch must not delete a section).
 
 ## 13. Marketing pages (`site/index.html`, tool pages, `pricing/`, `legal/`, `404.html`)
 

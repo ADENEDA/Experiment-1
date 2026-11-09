@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nonogram Generator: picture logic puzzles from any image · Gridbook Studio</title>
+<meta name="description" content="Turn a library picture or your own image into a nonogram that is solvable without guessing. Free printable PDF with answers, or a whole picture-logic book for KDP.">
+<link rel="canonical" href="https://gridbookstudio.com/nonogram-puzzle-book-maker/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="Nonogram generator: any picture, no guessing">
+<meta property="og:description" content="Pick a picture or use your own image. Every nonogram is checked to be solvable one line at a time. Free printable PDF with answers.">
+<meta property="og:image" content="https://gridbookstudio.com/og/nonogram.png">
+<meta property="og:url" content="https://gridbookstudio.com/nonogram-puzzle-book-maker/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/site.css">
+<link rel="stylesheet" href="../css/tools.css">
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Gridbook Studio nonogram generator",
+"url":"https://gridbookstudio.com/nonogram-puzzle-book-maker/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
+"description":"Turns a library picture or your own image into a nonogram (picture logic puzzle) that a line solver proves can be solved without guessing, and downloads a free printable PDF with the answer.",
+"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free printable"},
+"publisher":{"@type":"Organization","name":"Gridbook Studio","url":"https://gridbookstudio.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to make a printable nonogram from a picture","step":[{"@type":"HowToStep","position":1,"name":"Pick a picture","text":"Pick a picture from the library, or choose your own image. Simple, high-contrast shapes work best."},{"@type":"HowToStep","position":2,"name":"Choose a grid size","text":"Choose a grid size. 15×15 suits most adult solvers; 10×10 makes a good first puzzle."},{"@type":"HowToStep","position":3,"name":"Check the badge","text":"Check the badge under the preview: it says whether the puzzle is logic-solvable or needs a few givens. Press Show answer to see the picture."},{"@type":"HowToStep","position":4,"name":"Download the printable","text":"Choose US Letter or A4 and how many puzzles you want (up to 10), then download the free printable. The answers are on the last page."}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="../nonogram-puzzle-book-maker/" aria-current="page">Nonograms</a>
+      <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="../kdp-margin-calculator/">Margin calculator</a>
+      <a href="../pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="../app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-hero tool-hero" aria-labelledby="page-h">
+  <div class="wrap">
+    <p class="eyebrow">Free nonogram generator</p>
+    <h1 id="page-h">Nonogram puzzle book maker</h1>
+    <p class="lead">Turn a library picture or your own image into a picture logic puzzle that can be solved without guessing, then print it free with the answer.</p>
+  </div>
+</section>
+
+<section class="tool-section" aria-labelledby="tool-h">
+  <div class="wrap">
+    <div class="tool-panel">
+      <div class="tool-panel-head">
+        <h2 id="tool-h">Make a nonogram</h2>
+        <p class="tool-panel-sub">Runs in your browser. Nothing is uploaded.</p>
+      </div>
+      <div class="mg-root" id="nonogram-tool" data-mini-generator='{"type":"nonogram","title":"Picture Logic Puzzles","opts":{"size":15,"picture":"cat"},"cta":{"href":"../app/?template=picture-logic","label":"Make a whole book"},"pricing":"../pricing/"}'>
+        <div class="mg-fallback">
+          <div>
+            <p class="mg-loading">Loading the nonogram generator…</p>
+            <noscript><p>This generator runs in your browser and needs JavaScript. You can still <a href="../samples/picture-logic-32p.pdf">download the 32-page sample PDF</a> or read how nonograms work below.</p></noscript>
+          </div>
+          <div class="paper"><img src="../img/gallery/nonogram.svg" width="320" height="400" alt="A book page with a 15 by 15 picture nonogram: number clues above and beside an empty grid."></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-flush-top" aria-labelledby="how-h">
+  <div class="wrap help-layout">
+    <div class="prose" data-help>
+      <h2 id="how-h">How nonograms work</h2>
+      <p>A nonogram (also called a griddler, hanjie or paint-by-number logic puzzle) is a grid of empty squares with numbers beside each row and above each column. The numbers are the lengths of the runs of shaded squares in that line, in order. <strong>3 1</strong> means three shaded squares in a row, at least one blank square, then one more shaded square. A line marked <strong>0</strong> stays blank. Shade every square the clues call for and a picture appears.</p>
+      <p>You never need to see the whole picture to make progress. Take one line at a time and ask which squares are shaded wherever its runs go. In a row of 10 squares with the clue 7, the run can start on square 1 at the earliest and square 4 at the latest, but squares 4 to 7 are covered either way, so shade them. Squares that can never be part of a run get a small dot. Every square you settle is a new clue for the line that crosses it.</p>
+      <figure class="line-demo">
+        <svg viewBox="0 0 372 186" role="img" aria-label="A row of 10 squares with the clue 7. Placed as far left as it goes, the run covers squares 1 to 7; placed as far right as it goes, squares 4 to 10. Squares 4 to 7 are shaded in both, so they are shaded for sure.">
+          <text class="ld-label" x="40" y="14">As far left as it goes</text>
+          <text x="26" y="45" text-anchor="end">7</text>
+          <g transform="translate(40 22)">
+            <rect class="ld-run" x="0" y="0" width="224" height="32"/>
+            <rect class="ld-cell" x="0" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="32" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="64" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="96" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="128" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="160" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="192" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="224" y="0" width="32" height="32"/><rect class="ld-cell" x="256" y="0" width="32" height="32"/><rect class="ld-cell" x="288" y="0" width="32" height="32"/>
+          </g>
+          <text class="ld-label" x="40" y="76">As far right as it goes</text>
+          <text x="26" y="107" text-anchor="end">7</text>
+          <g transform="translate(40 84)">
+            <rect class="ld-run" x="96" y="0" width="224" height="32"/>
+            <rect class="ld-cell" x="0" y="0" width="32" height="32"/><rect class="ld-cell" x="32" y="0" width="32" height="32"/><rect class="ld-cell" x="64" y="0" width="32" height="32"/><rect class="ld-cell" x="96" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="128" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="160" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="192" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="224" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="256" y="0" width="32" height="32" fill-opacity="0"/><rect class="ld-cell" x="288" y="0" width="32" height="32" fill-opacity="0"/>
+          </g>
+          <text class="ld-label" x="40" y="138">Shaded either way: shade for sure</text>
+          <text x="26" y="169" text-anchor="end">7</text>
+          <g transform="translate(40 146)">
+            <rect class="ld-cell" x="0" y="0" width="32" height="32"/><rect class="ld-cell" x="32" y="0" width="32" height="32"/><rect class="ld-cell" x="64" y="0" width="32" height="32"/><rect class="ld-cell ld-sure" x="96" y="0" width="32" height="32"/><rect class="ld-cell ld-sure" x="128" y="0" width="32" height="32"/><rect class="ld-cell ld-sure" x="160" y="0" width="32" height="32"/><rect class="ld-cell ld-sure" x="192" y="0" width="32" height="32"/><rect class="ld-cell" x="224" y="0" width="32" height="32"/><rect class="ld-cell" x="256" y="0" width="32" height="32"/><rect class="ld-cell" x="288" y="0" width="32" height="32"/>
+          </g>
+          <path class="ld-guide" d="M136 18V60M136 82V122M136 144V182M264 18V60M264 82V122M264 144V182"/>
+        </svg>
+        <figcaption>The overlap rule: slide the run to both ends of the line; the squares it covers both times are shaded.</figcaption>
+      </figure>
+
+      <h2>Why no-guess matters</h2>
+      <p>A picture is not automatically a good puzzle. Some pictures have more than one answer: shade two squares on one diagonal of a 2×2 grid and every row and column gets the clue 1, which the other diagonal fits just as well. Others have one answer but can only be finished by guessing and rubbing out, which is no fun with a pencil.</p>
+      <p>Gridbook runs a line solver on every puzzle. It applies the one-line-at-a-time reasoning above, over and over, as a careful solver would. If that settles every square, the puzzle has exactly one solution and never needs a guess. When the solver gets stuck, Gridbook changes a few squares near the edges of the shape (up to 30, or 4% of a larger grid) and checks again. If that is not enough, it adds givens: a few squares printed already shaded in gray, or dotted as blank. The badge under the preview tells you which happened: <strong>Logic-solvable</strong>, with the number of squares adjusted, or <strong>Needs 3 givens</strong>. The 195 library pictures are already solvable at every size they are drawn for.</p>
+
+      <h2>Pictures that work best</h2>
+      <ul>
+        <li><strong>Bold, simple shapes:</strong> silhouettes, icons, clip art and line drawings. Photos of people or busy scenes rarely survive the trip to 15×15 squares.</li>
+        <li><strong>One subject on a plain background</strong>, filling most of the frame. Crop before you choose the image.</li>
+        <li><strong>A grid to match the detail:</strong> 10×10 or 15×15 for a heart or a house, 20×20 to 30×30 for animals with legs, ears and tails.</li>
+        <li><strong>The threshold slider</strong> sets how dark a square must be to count as shaded; <strong>Invert</strong> handles light shapes on dark backgrounds.</li>
+        <li><strong>Your rights:</strong> use only images you made or have permission to use. The image is read in your browser and never leaves your device.</li>
+      </ul>
+
+      <h2 id="steps-h">Make a printable in four steps</h2>
+      <ol class="steps-list" data-howto>
+        <li>Pick a picture from the library, or choose your own image. Simple, high-contrast shapes work best.</li>
+        <li>Choose a grid size. 15×15 suits most adult solvers; 10×10 makes a good first puzzle.</li>
+        <li>Check the badge under the preview: it says whether the puzzle is logic-solvable or needs a few givens. Press Show answer to see the picture.</li>
+        <li>Choose US Letter or A4 and how many puzzles you want (up to 10), then download the free printable. The answers are on the last page.</li>
+      </ol>
+
+      <h2>From a printable to a KDP book</h2>
+      <p>Free printables are for personal and classroom use and carry a small footer. To publish a book, open the Picture Logic template in the Studio: 60 library nonograms on 8.5×11 pages, an answer key that names each picture (“Puzzle 12: Cat”), and the KDP gutter and margins set from the final page count. You can build and preview the whole book free; Pro removes the proof watermark and adds a commercial licence: <span data-cfg-price="pass">$9</span> for 7 days, or <span data-cfg-price="lifetime">$29</span> once for Lifetime. The <a href="../samples/picture-logic-32p.pdf">32-page sample PDF</a> shows the finished pages.</p>
+    </div>
+
+    <aside class="help-aside" aria-label="Next steps">
+      <div class="card">
+        <h2>A whole book of these</h2>
+        <p>The Picture Logic template builds a 60-puzzle, 8.5×11 book with an answer key. Free to build and preview.</p>
+        <a class="btn btn-primary" href="../app/?template=picture-logic">Open the Picture Logic template</a>
+        <a class="btn" href="../samples/picture-logic-32p.pdf">Download the 32-page sample (PDF)</a>
+      </div>
+      <div class="card">
+        <h2>Free or Pro</h2>
+        <p>Free printables hold up to 10 puzzles and carry a small footer. Pro removes it and lets you sell what you make: <span data-cfg-price="pass">$9</span> for 7 days, or <span data-cfg-price="lifetime">$29</span> once.</p>
+        <a class="btn" href="../pricing/">See pricing</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section section-alt" aria-labelledby="season-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Seasonal ideas</p>
+      <h2 id="season-h">Picture puzzles for the season</h2>
+      <p class="lead">The reveal can match the date, which makes picture puzzles a natural fit for seasonal books and classroom handouts. If you are publishing on KDP, leave a few weeks before the date for KDP’s review, a printed proof copy and your own checks.</p>
+    </div>
+    <div class="grid-3">
+      <article class="feature season-card">
+        <span class="feature-icon"><svg viewBox="0 0 256 256" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm42.37,119.22,18.94-6.76a8,8,0,1,1,5.38,15.08l-15.48,5.52,4.52,16.87a8,8,0,0,1-5.66,9.8A8.23,8.23,0,0,1,176,184a8,8,0,0,1-7.73-5.93l-5.57-20.8L136,141.86v30.83l13.66,13.65a8,8,0,0,1-11.32,11.32L128,187.31l-10.34,10.35a8,8,0,0,1-11.32-11.32L120,172.69V141.86L93.3,157.27l-5.57,20.8A8,8,0,0,1,80,184a8.23,8.23,0,0,1-2.07-.27,8,8,0,0,1-5.66-9.8l4.52-16.87-15.48-5.52a8,8,0,0,1,5.38-15.08l18.94,6.76L112,128,85.63,112.78l-18.94,6.76A8.18,8.18,0,0,1,64,120a8,8,0,0,1-2.69-15.54l15.48-5.52L72.27,82.07a8,8,0,0,1,15.46-4.14l5.57,20.8L120,114.14V83.31L106.34,69.66a8,8,0,0,1,11.32-11.32L128,68.69l10.34-10.35a8,8,0,0,1,11.32,11.32L136,83.31v30.83l26.7-15.41,5.57-20.8a8,8,0,0,1,15.46,4.14l-4.52,16.87,15.48,5.52A8,8,0,0,1,192,120a8.18,8.18,0,0,1-2.69-.46l-18.94-6.76L144,128Z"/></svg></span>
+        <h3>January brain games</h3>
+        <p>For a New Year brain-games book, start small and finish big: a run of 10×10 warm-ups, then 15×15 and 20×20 pictures. Wintry subjects such as snowflakes, mountains and evergreen trees suit the month.</p>
+        <div class="btn-row"><button type="button" class="btn btn-sm" data-mg-for="nonogram-tool" data-mg-apply='{"picture":"snowflake","size":20}'>Try a 20×20 snowflake</button></div>
+      </article>
+      <article class="feature season-card">
+        <span class="feature-icon"><svg viewBox="0 0 256 256" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.07,62.07,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.07,62.07,0,0,1,240,102Z"/></svg></span>
+        <h3>Valentine’s Day</h3>
+        <p>Hearts, flowers, cupcakes, gifts and envelopes for love notes. A 15×15 heart makes a quick classroom handout, and the picture itself is the message.</p>
+        <div class="btn-row"><button type="button" class="btn btn-sm" data-mg-for="nonogram-tool" data-mg-apply='{"picture":"heart","size":15}'>Try a heart</button></div>
+      </article>
+      <article class="feature season-card">
+        <span class="feature-icon"><svg viewBox="0 0 256 256" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M199.28,149.8A71.58,71.58,0,0,0,193,129c19-37.94,30.45-88.28,17.34-110A22,22,0,0,0,190.94,8c-14.12,0-26,11.89-36.44,36.36-6.22,14.62-10.85,31.32-14,44.74a71.8,71.8,0,0,0-25,0c-3.13-13.42-7.76-30.12-14-44.74C91.1,19.89,79.18,8,65.06,8A22,22,0,0,0,45.64,19.08C32.53,40.76,44,91.1,63,129a71.58,71.58,0,0,0-6.26,20.76A52,52,0,1,0,128,225.52l-21.12-19.37a8,8,0,1,1,10.24-12.3L128,202.9l10.88-9.05a8,8,0,0,1,10.24,12.3L128,225.52a52,52,0,1,0,71.28-75.72Zm-126-36.53A218.45,218.45,0,0,1,58.4,67.08c-3.49-18.13-3.15-33,.93-39.72A6,6,0,0,1,65.06,24c6.61,0,14.52,9.7,21.72,26.62,5.93,13.94,10.35,30.12,13.33,43a71.72,71.72,0,0,0-26.88,19.64ZM100,176a12,12,0,1,1,12-12A12,12,0,0,1,100,176Zm56,0a12,12,0,1,1,12-12A12,12,0,0,1,156,176Zm20.55-69.17a71.89,71.89,0,0,0-20.66-13.2c3-12.89,7.4-29.07,13.33-43C176.42,33.7,184.33,24,190.94,24a6,6,0,0,1,5.73,3.36c4.08,6.74,4.42,21.59.93,39.72a218.45,218.45,0,0,1-14.83,46.19A72.6,72.6,0,0,0,176.55,106.83Z"/></svg></span>
+        <h3>Easter</h3>
+        <p>Rabbits, tulips, butterflies, cracked eggs and birds. Pictures with clear outlines read best; 15×15 keeps them recognisable for children and adults alike.</p>
+        <div class="btn-row"><button type="button" class="btn btn-sm" data-mg-for="nonogram-tool" data-mg-apply='{"picture":"rabbit","size":15}'>Try a rabbit</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="more-h">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="more-h">More free puzzle tools</h2>
+    </div>
+    <ul class="tool-links">
+      <li><a href="../large-print-word-search-maker/"><strong>Large print word search maker</strong><span>18 pt letters, your own words or 68 themes</span></a></li>
+      <li><a href="../sudoku-book-generator/"><strong>Sudoku book generator</strong><span>Easy to Expert, one solution each</span></a></li>
+      <li><a href="../kdp-spine-width-calculator/"><strong>KDP spine width calculator</strong><span>Spine and full cover size from your page count</span></a></li>
+      <li><a href="../kdp-margin-calculator/"><strong>KDP margin calculator</strong><span>Gutter and margins for any trim and page count</span></a></li>
+    </ul>
+  </div>
+  <div class="wrap tool-cta">
+    <div class="cta-band">
+      <div>
+        <h2>Ready for a whole book?</h2>
+        <p>Open the Studio with the Picture Logic template: 60 nonograms, an answer key and KDP-ready margins. Nothing to install, nothing uploaded.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-highlight btn-lg" href="../app/?template=picture-logic">Open the Studio</a>
+        <a class="btn btn-lg" href="../pricing/">Pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="../app/">The Studio</a></li>
+        <li><a href="../nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="../large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="../sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="../kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="../kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="../book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="../pricing/">Pricing</a></li>
+        <li><a href="../samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="../legal/terms.html">Terms</a></li>
+        <li><a href="../legal/privacy.html">Privacy</a></li>
+        <li><a href="../legal/refunds.html">Refunds</a></li>
+        <li><a href="../legal/license.html">License</a></li>
+        <li><a href="../legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="../js/site/site.js"></script>
+<script type="module" src="../js/site/mini-generator.js"></script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KDP Spine Width Calculator and Cover Size with Bleed · Gridbook Studio</title>
+<meta name="description" content="Free KDP spine width calculator for every paperback trim size: spine in inches and mm, full cover size with bleed, pixels at 300 DPI, and a cover guide PDF.">
+<link rel="canonical" href="https://gridbookstudio.com/kdp-spine-width-calculator/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="KDP spine width and cover size calculator">
+<meta property="og:description" content="Spine width, full cover size with bleed in inches, mm and pixels, and a free cover guide for any KDP paperback trim and page count.">
+<meta property="og:image" content="https://gridbookstudio.com/og/spine.png">
+<meta property="og:url" content="https://gridbookstudio.com/kdp-spine-width-calculator/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/site.css">
+<link rel="stylesheet" href="../css/tools.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"KDP spine width and cover size calculator",
+"url":"https://gridbookstudio.com/kdp-spine-width-calculator/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
+"description":"Works out the spine width and full cover size with bleed (inches, millimetres and pixels at 300 DPI) for any KDP paperback trim size, page count and paper, using KDP's published formulas, and downloads a free cover guide.",
+"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free calculator"},
+"publisher":{"@type":"Organization","name":"Gridbook Studio","url":"https://gridbookstudio.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to work out a KDP paperback cover size","step":[{"@type":"HowToStep","position":1,"name":"Choose the trim size","text":"Choose your trim size: the finished size of the book, the same one you pick in KDP."},{"@type":"HowToStep","position":2,"name":"Enter the page count","text":"Enter the final page count of your interior PDF, counting blank pages, notes pages and the answer key."},{"@type":"HowToStep","position":3,"name":"Choose the paper","text":"Choose the paper you will select in KDP: white or cream."},{"@type":"HowToStep","position":4,"name":"Use the cover size","text":"Set your cover canvas to the full size with bleed, or download the cover guide and design on top of it."}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../kdp-spine-width-calculator/" aria-current="page">Spine calculator</a>
+      <a href="../kdp-margin-calculator/">Margin calculator</a>
+      <a href="../pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="../app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-hero tool-hero" aria-labelledby="page-h">
+  <div class="wrap">
+    <p class="eyebrow">Free KDP tool</p>
+    <h1 id="page-h">KDP spine width and cover size calculator</h1>
+    <p class="lead">Enter your trim size, page count and paper. You get the spine width, the full cover size with bleed and a cover guide to design on, all from KDP’s published formulas.</p>
+  </div>
+</section>
+
+<section class="tool-section" aria-labelledby="tool-h">
+  <div class="wrap">
+    <div class="tool-panel calc" id="spine-calc" data-spine-calc>
+      <div class="tool-panel-head">
+        <h2 id="tool-h">Your paperback</h2>
+        <p class="tool-panel-sub">Updates as you type. Runs in your browser.</p>
+      </div>
+      <div class="calc-layout">
+        <div class="calc-main">
+          <form class="calc-form" id="sc-form" novalidate>
+            <div class="field">
+              <label for="sc-trim">Trim size</label>
+              <select class="select" id="sc-trim" name="trim">
+                <option value="5x8">5 × 8 in</option>
+                <option value="5.06x7.81">5.06 × 7.81 in</option>
+                <option value="5.25x8">5.25 × 8 in</option>
+                <option value="5.5x8.5">5.5 × 8.5 in</option>
+                <option value="6x9" selected>6 × 9 in</option>
+                <option value="6.14x9.21">6.14 × 9.21 in</option>
+                <option value="6.69x9.61">6.69 × 9.61 in</option>
+                <option value="7x10">7 × 10 in</option>
+                <option value="7.44x9.69">7.44 × 9.69 in</option>
+                <option value="7.5x9.25">7.5 × 9.25 in</option>
+                <option value="8x10">8 × 10 in</option>
+                <option value="8.25x6">8.25 × 6 in</option>
+                <option value="8.25x8.25">8.25 × 8.25 in</option>
+                <option value="8.5x8.5">8.5 × 8.5 in</option>
+                <option value="8.5x11">8.5 × 11 in</option>
+                <option value="8.27x11.69">8.27 × 11.69 in (A4)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sc-pages">Page count</label>
+              <input class="input" id="sc-pages" name="pages" type="number" inputmode="numeric" min="24" max="828" step="1" value="120" autocomplete="off" aria-describedby="sc-pages-hint sc-msg">
+              <span class="hint" id="sc-pages-hint">Every page of the interior PDF, blank pages included.</span>
+            </div>
+            <fieldset class="field calc-choices">
+              <legend class="label">Paper</legend>
+              <div class="calc-opts">
+                <label class="calc-opt"><input type="radio" name="paper" value="white" checked><span>White</span></label>
+                <label class="calc-opt"><input type="radio" name="paper" value="cream"><span>Cream</span></label>
+              </div>
+            </fieldset>
+          </form>
+          <p class="calc-msg" id="sc-msg" role="status" aria-live="polite"></p>
+
+          <div class="result-grid calc-results" id="sc-results">
+            <div class="result result-primary result-wide"><span class="result-label">Spine width</span><span class="result-value" data-out="spine">0.27 in</span><span class="result-sub" data-out="spineSub">6.86 mm · 120 pages on white paper</span></div>
+            <div class="result result-wide"><span class="result-label">Full cover with bleed</span><span class="result-value" data-out="cover">12.52 × 9.25 in</span><span class="result-sub" data-out="coverSub">318.0 × 235.0 mm</span></div>
+            <div class="result"><span class="result-label">Cover in pixels</span><span class="result-value" data-out="px">3756 × 2775</span><span class="result-sub" data-out="pxSub">At 300 DPI: the canvas for Canva, Affinity or Photoshop</span></div>
+            <div class="result"><span class="result-label">Front and back</span><span class="result-value" data-out="trim">6 × 9 in</span><span class="result-sub" data-out="trimSub">1800 × 2700 px each, plus bleed</span></div>
+            <div class="result"><span class="result-label">Spine text</span><span class="result-value" data-out="spineText">Allowed</span><span class="result-sub" data-out="spineTextSub">120 pages is more than 79</span></div>
+            <div class="result"><span class="result-label">Most pages, this trim</span><span class="result-value" data-out="max">828</span><span class="result-sub" data-out="maxSub">on white paper (776 on cream)</span></div>
+          </div>
+          <p class="visually-hidden" id="sc-live" role="status" aria-live="polite"></p>
+
+          <div class="calc-formula">
+            <h3 class="calc-h">The formula, with your numbers</h3>
+            <dl>
+              <div><dt>Spine</dt><dd><span class="calc-rule">page count × paper thickness per page</span><code data-out="fSpine">120 pages × 0.002252 in = 0.27024 in</code></dd></div>
+              <div><dt>Width</dt><dd><span class="calc-rule">bleed + back + spine + front + bleed</span><code data-out="fWidth">0.125 + 6 + 0.27024 + 6 + 0.125 = 12.52024 in</code></dd></div>
+              <div><dt>Height</dt><dd><span class="calc-rule">bleed + trim height + bleed</span><code data-out="fHeight">0.125 + 9 + 0.125 = 9.25 in</code></dd></div>
+            </dl>
+            <p class="calc-sources">
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/G201953020" rel="noopener">KDP Help: paperback cover and spine <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a>
+              <a class="source-link" href="https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6" rel="noopener">KDP Help: trim size, bleed and margins <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></svg></a>
+            </p>
+          </div>
+        </div>
+
+        <div class="calc-side">
+          <figure class="calc-figure">
+            <div class="calc-diagram" id="sc-diagram"><!-- static:cover --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 488" width="600" height="488" role="img" aria-labelledby="sc-diagram-title" focusable="false"><title id="sc-diagram-title">Cover layout for a 6 × 9 in book with 120 pages on white paper</title><desc>Back cover, spine and front cover side by side. Full size with bleed 12.52 by 9.25 inches; spine 0.27 inches; 0.125 inch bleed on every outside edge; safe zones 0.25 inches inside the trim.</desc><rect class="dg-bleed" x="31" y="35" width="563" height="415.9"/><rect class="dg-panel" x="36.6" y="40.6" width="269.8" height="404.7"/><rect class="dg-panel" x="318.6" y="40.6" width="269.8" height="404.7"/><rect class="dg-spine" x="306.4" y="35" width="12.2" height="415.9"/><rect class="dg-safe" x="47.9" y="51.9" width="247.3" height="382.2"/><rect class="dg-safe" x="329.8" y="51.9" width="247.3" height="382.2"/><rect class="dg-barcode" x="205.2" y="380.1" width="89.9" height="54"/><text class="dg-note" x="250.2" y="411.3" text-anchor="middle" font-size="12">Barcode</text><rect class="dg-trim" x="36.6" y="40.6" width="551.8" height="404.7"/><line class="dg-fold" x1="306.4" y1="29" x2="306.4" y2="456.9"/><line class="dg-fold" x1="318.6" y1="29" x2="318.6" y2="456.9"/><text class="dg-panel-name" x="171.5" y="210.6" text-anchor="middle" font-size="16">BACK</text><text class="dg-note" x="171.5" y="231.6" text-anchor="middle" font-size="13">6 × 9 in</text><text class="dg-panel-name" x="453.5" y="210.6" text-anchor="middle" font-size="16">FRONT</text><text class="dg-note" x="453.5" y="231.6" text-anchor="middle" font-size="13">6 × 9 in</text><line class="dg-dim" x1="31" y1="23" x2="594" y2="23"/><line class="dg-dim" x1="31" y1="18" x2="31" y2="28"/><line class="dg-dim" x1="594" y1="18" x2="594" y2="28"/><text class="dg-dim-label" x="312.5" y="16" text-anchor="middle" font-size="13">12.52 in wide, with bleed</text><line class="dg-dim" x1="19" y1="35" x2="19" y2="450.9"/><line class="dg-dim" x1="14" y1="35" x2="24" y2="35"/><line class="dg-dim" x1="14" y1="450.9" x2="24" y2="450.9"/><text class="dg-dim-label" x="13" y="243" text-anchor="middle" font-size="13" transform="rotate(-90 13 243)">9.25 in</text><line class="dg-dim" x1="306.4" y1="462.9" x2="318.6" y2="462.9"/><line class="dg-dim" x1="306.4" y1="458.9" x2="306.4" y2="466.9"/><line class="dg-dim" x1="318.6" y1="458.9" x2="318.6" y2="466.9"/><text class="dg-dim-label" x="312.5" y="481.9" text-anchor="middle" font-size="13">Spine 0.27 in</text></svg><!-- /static:cover --></div>
+            <figcaption class="calc-legend">
+              <ul>
+                <li><span class="calc-sw calc-sw-bleed" aria-hidden="true"></span>Bleed, 0.125 in: trimmed off</li>
+                <li><span class="calc-sw calc-sw-trim" aria-hidden="true"></span>Trim line</li>
+                <li><span class="calc-sw calc-sw-fold" aria-hidden="true"></span>Spine folds</li>
+                <li><span class="calc-sw calc-sw-safe" aria-hidden="true"></span>Safe zone for text</li>
+                <li><span class="calc-sw calc-sw-spine" aria-hidden="true"></span>Spine</li>
+                <li><span class="calc-sw calc-sw-barcode" aria-hidden="true"></span>Barcode area</li>
+              </ul>
+            </figcaption>
+          </figure>
+          <div class="calc-download">
+            <h3 class="calc-h">Cover guide for this book</h3>
+            <p>A full-size template of this exact cover with the bleed, trim, spine folds, safe zones and barcode area marked. Put it under your design, then hide it before you export.</p>
+            <div class="calc-buttons">
+              <button type="button" class="btn btn-primary" data-download="pdf" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>
+                <span>Download cover guide (PDF)</span>
+              </button>
+              <button type="button" class="btn" data-download="png" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4.5-4.5 3.5 3.5 2.5-2.5L20 18"/><circle cx="15.5" cy="9.5" r="1.5"/></svg>
+                <span>PNG, 300 DPI</span>
+              </button>
+            </div>
+            <p class="calc-dl-status" id="sc-dl-status" role="status" aria-live="polite"></p>
+            <noscript><p class="calc-fine">The calculator and the cover guide download need JavaScript. The numbers above are for a 6 × 9 in book of 120 pages on white paper.</p></noscript>
+            <p class="calc-fine">Free guides carry a small credit line in the bottom bleed, which is trimmed off when the book is printed.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-flush-top" aria-labelledby="how-h">
+  <div class="wrap help-layout">
+    <div class="prose" data-help>
+      <h2 id="how-h">How KDP works out spine width</h2>
+      <p>Spine width depends on two things: the number of pages and the paper. Trim size doesn’t change it. KDP publishes a thickness per page for each paper, and the spine is simply the page count times that figure:</p>
+      <ul>
+        <li><strong>White paper:</strong> 0.002252 in (0.0572 mm) per page.</li>
+        <li><strong>Cream paper:</strong> 0.0025 in (0.0635 mm) per page. Cream is a thicker sheet, so the same book has a wider spine.</li>
+      </ul>
+      <p>A 120-page book on white paper has a spine of 120 × 0.002252 = 0.27024 in, which rounds to 0.27 in (6.86 mm). On cream it is exactly 0.3 in. Count every page in the interior PDF you upload, including the title page, blank pages, notes pages and the answer key, because KDP measures the file, not the content.</p>
+
+      <h2>Full cover size, with bleed</h2>
+      <p>KDP wants one PDF for the whole cover: back, spine and front side by side, with 0.125 in (3.2 mm) of bleed on the top, bottom and outside edges. The bleed is trimmed off, so your background has to run into it, or you’ll get a thin white edge.</p>
+      <p>Width is bleed + back + spine + front + bleed, and height is bleed + trim height + bleed. For a 6 × 9 in book with 120 white pages, that’s 0.125 + 6 + 0.27024 + 6 + 0.125 = 12.52024 in wide by 9.25 in tall. At 300 DPI, KDP’s minimum resolution for cover images, the canvas is 3756 × 2775 pixels. Pixel sizes here are rounded to the nearest whole pixel.</p>
+
+      <h2>When you can put text on the spine</h2>
+      <p>KDP’s cover help says “We only print spine text on books with more than 79 pages”. The same page also says “at least 79 pages” in two places, and Cover Creator needs 80. This calculator uses the strict reading, 80 pages or more, which satisfies all three.</p>
+      <p>Spine text also needs at least 0.0625 in (1.6 mm) clear of each fold, because every book binds slightly differently. On a thin spine that leaves very little room. At 80 white pages the spine is 0.18 in, so the text area is under 0.06 in, about 4 pt. A line of 10 pt type needs roughly 0.27 in of spine: 118 white pages or 106 cream ones.</p>
+
+      <h2>Using the cover guide</h2>
+      <p>The cover guide is a PDF or a 300 DPI PNG at the exact size of your cover. The gray band is the bleed, the solid line is the trim, and the dashed black lines are the spine folds. The dashed gray boxes are safe zones 0.25 in inside the trim. KDP’s minimum for cover text is 0.125 in, and the guide adds room for the 0.125 in production variance that KDP allows for.</p>
+      <p>The barcode box on the back is 2 × 1.2 in, a size widely used for KDP covers. We didn’t find it on the KDP page we read, so check KDP’s barcode help before you put artwork near it. Place the guide on the bottom layer in Canva, Affinity or Photoshop, design on top, and hide it before you export your cover PDF.</p>
+      <p>If you build the interior in <a href="../app/">Gridbook Studio</a>, the export dialog makes the same guide from your book’s final page count, so the spine always matches the interior you upload. Pages also have to meet KDP’s margin rules: the <a href="../kdp-margin-calculator/">margin and gutter calculator</a> works those out.</p>
+
+      <h2 id="steps-h">Get your cover size in four steps</h2>
+      <ol class="steps-list" data-howto>
+        <li>Choose your trim size: the finished size of the book, the same one you pick in KDP.</li>
+        <li>Enter the final page count of your interior PDF, counting blank pages, notes pages and the answer key.</li>
+        <li>Choose the paper you will select in KDP: white or cream.</li>
+        <li>Set your cover canvas to the full size with bleed, or download the cover guide and design on top of it.</li>
+      </ol>
+    </div>
+
+    <aside class="help-aside" aria-label="Next steps">
+      <div class="card calc-cta" data-studio-cta>
+        <h2>Make the interior too</h2>
+        <p>Gridbook Studio builds puzzle-book interiors at this size, sets the gutter from the final page count and makes the matching cover guide. Free to build and preview.</p>
+        <div class="field">
+          <label for="sc-type">Puzzle type</label>
+          <select class="select" id="sc-type">
+            <option value="wordsearch" selected>Word search</option>
+            <option value="sudoku">Sudoku</option>
+            <option value="maze">Mazes</option>
+            <option value="nonogram">Picture nonograms</option>
+          </select>
+        </div>
+        <a class="btn btn-primary" id="sc-studio" href="../app/?type=wordsearch&amp;trim=6x9">Start a 6 × 9 in book</a>
+      </div>
+      <div class="card">
+        <h2>Margins next</h2>
+        <p>The inside margin grows at 151, 301, 501 and 701 pages. Check yours before you lay out the interior.</p>
+        <a class="btn" href="../kdp-margin-calculator/">Open the margin calculator</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section section-alt" aria-labelledby="more-h">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="more-h">More free tools</h2>
+    </div>
+    <ul class="tool-links">
+      <li><a href="../kdp-margin-calculator/"><strong>KDP margin calculator</strong><span>Gutter and margins for any trim and page count</span></a></li>
+      <li><a href="../nonogram-puzzle-book-maker/"><strong>Nonogram puzzle book maker</strong><span>Any picture into a no-guess picture puzzle</span></a></li>
+      <li><a href="../large-print-word-search-maker/"><strong>Large print word search maker</strong><span>18 pt letters, your own words or 68 themes</span></a></li>
+      <li><a href="../book-bolt-alternative/"><strong>Puzzle book tools compared</strong><span>Prices and features, dated and sourced</span></a></li>
+    </ul>
+  </div>
+  <div class="wrap tool-cta">
+    <div class="cta-band">
+      <div>
+        <h2>Build the book, not just the cover</h2>
+        <p>Word search, sudoku, mazes and picture nonograms with answer keys, KDP margins and a cover guide that matches the final page count. Nothing to install, nothing uploaded.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-highlight btn-lg" href="../app/?type=wordsearch&amp;trim=6x9" data-studio-link>Open the Studio</a>
+        <a class="btn btn-lg" href="../pricing/">Pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="../app/">The Studio</a></li>
+        <li><a href="../nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="../large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="../sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="../kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="../kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="../book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="../pricing/">Pricing</a></li>
+        <li><a href="../samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="../legal/terms.html">Terms</a></li>
+        <li><a href="../legal/privacy.html">Privacy</a></li>
+        <li><a href="../legal/refunds.html">Refunds</a></li>
+        <li><a href="../legal/license.html">License</a></li>
+        <li><a href="../legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="../js/site/site.js"></script>
+<script type="module" src="../js/site/spine-calc.js"></script>
+</body>
+</html>

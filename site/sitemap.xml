@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Update lastmod by hand when a page changes (SPEC 6.5). Legal pages are listed without ".html" because Cloudflare
+     Pages redirects /legal/terms.html to /legal/terms, and a sitemap should list the final URL. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://gridbookstudio.com/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/app/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/pricing/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/kdp-spine-width-calculator/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/kdp-margin-calculator/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/nonogram-puzzle-book-maker/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/large-print-word-search-maker/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/sudoku-book-generator/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/book-bolt-alternative/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/legal/terms</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/legal/privacy</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/legal/refunds</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/legal/license</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://gridbookstudio.com/legal/credits</loc><lastmod>2026-11-09</lastmod></url>
+</urlset>

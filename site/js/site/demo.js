@@ -79,6 +79,7 @@ function boot(root) {
   let lib = null;         // loaded modules
   let loading = null;
   let busy = false;
+  let again = false;      // a control changed while a puzzle was being made: make the latest choice next
 
   const load = () => {
     if (!loading) {
@@ -105,15 +106,14 @@ function boot(root) {
     return lib.engines[mode];
   };
 
-  const chipName = (mode, id) => {
-    const b = root.querySelector(`[data-demo-chips="${mode}"] [data-demo-choice="${id}"]`);
-    return b ? b.textContent.trim() : id;
-  };
+  /** What the current puzzle shows, from the puzzle itself (the controls may already point at the next one). */
+  const subject = (p) => (p.type === 'nonogram' ? p.answerTitle : p.title) || 'puzzle';
 
   function draw() {
     if (!lib || !state.puzzle) return;
+    const p = state.puzzle;
     const engine = lib.engines[state.engineId];
-    const page = demoPage(engine, state.puzzle, lib.themes.themeById('standard'), state.answer);
+    const page = demoPage(engine, p, lib.themes.themeById('standard'), state.answer);
     const width = Math.round(stage.clientWidth);
     if (!(width > 0)) return;
     lib.canvasBackend.renderPageToCanvas(canvas, page, { cssWidth: width });
@@ -123,13 +123,15 @@ function boot(root) {
       canvas.hidden = false;
       if (fallback) fallback.hidden = true;
     }
-    const name = chipName(state.mode, state.choice[state.mode]);
-    const { w, h } = state.mode === 'nonogram' ? state.puzzle.data : { w: state.puzzle.data.n, h: state.puzzle.data.n };
-    canvas.setAttribute('aria-label', state.mode === 'nonogram'
-      ? (state.answer ? `Solved ${w} by ${h} picture puzzle: a ${name.toLowerCase()}.`
-        : `${w} by ${h} picture puzzle with number clues above each column and beside each row.`)
-      : `${w} by ${h} word search on the theme ${name}, words to find: ${state.puzzle.data.words.join(', ')}.` +
-        (state.answer ? ' Answers circled.' : ''));
+    if (p.type === 'nonogram') {
+      const { w, h } = p.data;
+      canvas.setAttribute('aria-label', state.answer ? `Solved ${w} by ${h} picture puzzle: a ${subject(p).toLowerCase()}.`
+        : `${w} by ${h} picture puzzle with number clues above each column and beside each row.`);
+    } else {
+      const n = p.data.n;
+      canvas.setAttribute('aria-label', `${n} by ${n} word search on the theme ${subject(p)}, words to find: ` +
+        `${(p.data.words || []).join(', ')}.${state.answer ? ' Answers circled.' : ''}`);
+    }
   }
 
   function setStatus() {
@@ -137,10 +139,8 @@ function boot(root) {
     if (!p) return;
     const ok = lib.engines[state.engineId].verify(p).ok;
     const grade = p.stats && p.stats.grade ? p.stats.grade : '';
-    const check = state.mode === 'nonogram' ? 'Verified: one solution, no guessing' : 'Verified: every word appears once';
-    const reveal = state.mode === 'nonogram' && state.answer
-      ? `It’s a ${(p.answerTitle || chipName('nonogram', state.choice.nonogram)).toLowerCase()}. `
-      : '';
+    const check = p.type === 'nonogram' ? 'Verified: one solution, no guessing' : 'Verified: every word appears once';
+    const reveal = p.type === 'nonogram' && state.answer ? `It’s a ${subject(p).toLowerCase()}. ` : '';
     status.innerHTML = '';
     const a = document.createElement('span');
     a.className = ok ? 'demo-ok' : 'demo-warn';
@@ -153,16 +153,18 @@ function boot(root) {
   }
 
   async function make() {
-    if (busy) return;
+    if (busy) { again = true; return; }
     busy = true;
+    again = false;
     root.setAttribute('aria-busy', 'true');
     try {
       const engine = await engineFor(state.mode);
       const choice = state.choice[state.mode];
       const opts = state.mode === 'nonogram' ? nonogramOpts(choice) : wordsearchOpts(choice);
-      const seed = demoSeed(state.mode, choice, state.mode === 'wordsearch' ? state.n : 0);
+      // "New grid" moves to the next puzzle index, so the theme's next words are used, not just a reshuffle.
+      const n = state.mode === 'wordsearch' ? state.n : 0;
       const t0 = lib.common.now();
-      const puzzle = engine.generate(opts, lib.rng.makeRng(seed), { deadline: t0 + 4000, index: 0, count: 1 });
+      const puzzle = engine.generate(opts, lib.rng.makeRng(demoSeed(state.mode, choice, n)), { deadline: t0 + 4000, index: n, count: n + 1 });
       state.ms = lib.common.now() - t0;
       state.puzzle = puzzle;
       state.engineId = state.mode;
@@ -174,6 +176,7 @@ function boot(root) {
       busy = false;
       root.removeAttribute('aria-busy');
     }
+    if (again) make();
   }
 
   function syncControls() {

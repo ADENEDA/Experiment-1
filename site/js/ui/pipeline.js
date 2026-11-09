@@ -35,11 +35,11 @@ function optsKey(opts) {
 
 /**
  * @param {{store, ui, bus, toast?: Function, isPro?: () => boolean, onSelectPuzzle?: Function,
- *          debounceMs?: number, relayoutMs?: number, progressMs?: number}} deps
+ *          debounceMs?: number, maxWaitMs?: number, relayoutMs?: number, progressMs?: number}} deps
  */
 export function createPipeline({
   store, ui, bus, toast = () => {}, isPro = licenseIsPro, onSelectPuzzle,
-  debounceMs = 120, relayoutMs = 300, progressMs = 150,
+  debounceMs = 120, maxWaitMs = 400, relayoutMs = 300, progressMs = 150,
 }) {
   let book = null;
   let runId = 0;
@@ -50,6 +50,7 @@ export function createPipeline({
   let lastToastSig = '';
   let cacheSize = BASE_CACHE;
   let layoutFailedRun = -1;
+  let pendingSince = 0;     // when the first not-yet-laid-out change arrived
   const errorMemo = new Map(); // `${type}|${opts}|${seed}|${index}` -> error entry
 
   const memoKey = (sec, seed, i) => `${sec.type}\u0001${optsKey(sec.opts)}\u0001${seed}\u0001${i}`;
@@ -87,15 +88,34 @@ export function createPipeline({
     return { pages: laid.pages, meta: laid.meta, puzzles, preflight: pf, generating: { ...generating }, project };
   }
 
-  function publish(b) {
-    if (!b) return;
+  function publish(b, project, pro) {
+    if (!b) {
+      if (book || !project) return;
+      b = emptyBook(project, pro); // getBook() must never be null, even if the first layout failed
+    }
     book = b;
     bus.emit('book', b);
   }
 
+  /** A book without sections (or with no pages at all), used only when laying out the real one failed. */
+  function emptyBook(project, pro) {
+    const generating = { active: false, done: 0, total: 0 };
+    try {
+      const laid = layoutBook({ ...project, sections: [] }, {}, { pro });
+      return { pages: laid.pages, meta: laid.meta, puzzles: {}, preflight: null, generating, project };
+    } catch {
+      return { pages: [], meta: { target: 'kdp', pageCount: 0, warnings: [] }, puzzles: {}, preflight: null, generating, project };
+    }
+  }
+
+  /** Debounced run. Continuous edits (typing, dragging a slider) still relay out at least every maxWait ms. */
   function schedule(delay) {
     clearTimeout(debounceTimer);
-    const d = delay ?? Math.min(600, Math.max(debounceMs, layoutCost * 1.5));
+    const t = tnow();
+    if (!pendingSince) pendingSince = t;
+    let d = delay ?? Math.min(600, Math.max(debounceMs, layoutCost * 1.5));
+    const maxWait = Math.max(maxWaitMs, layoutCost * 3);
+    d = Math.min(d, Math.max(0, pendingSince + maxWait - t));
     debounceTimer = setTimeout(() => { debounceTimer = 0; run(); }, d);
   }
 
@@ -109,6 +129,7 @@ export function createPipeline({
 
   function run() {
     const id = ++runId;
+    pendingSince = 0;
     if (ctrl) ctrl.abort();
     ctrl = new AbortController();
     const { signal } = ctrl;
@@ -138,11 +159,11 @@ export function createPipeline({
 
     const gen = { active: gaps.length > 0, done, total };
     if (!gaps.length) {
-      publish(build(id, project, puzzles, pro, gen, true));
+      publish(build(id, project, puzzles, pro, gen, true), project, pro);
       setGenerating(gen);
       return Promise.resolve(book);
     }
-    publish(build(id, project, snapshot(puzzles), pro, gen, false));
+    publish(build(id, project, snapshot(puzzles), pro, gen, false), project, pro);
     setGenerating(gen);
 
     // ---- generation ----

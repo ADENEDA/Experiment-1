@@ -8,17 +8,17 @@ import { sectionName } from '../core/project.js';
 import { h, icon, attachMenu, announce, isPhone, isTablet } from './dom.js';
 
 const FRONT_ITEMS = [
-  { key: 'title', label: 'Title page', sub: 'Title, subtitle and author' },
-  { key: 'copyright', label: 'Copyright page', sub: 'Rights notice and year' },
-  { key: 'belongs', label: '“This book belongs to”', sub: 'A page to write a name on' },
-  { key: 'howto', label: 'How to solve', sub: 'One page for each puzzle type' },
-  { key: 'contents', label: 'Contents', sub: 'Sections and answers with page numbers' },
+  { key: 'title', label: 'Title page', sub: 'Title, subtitle, author' },
+  { key: 'copyright', label: 'Copyright page', sub: 'Rights notice' },
+  { key: 'belongs', label: '“This book belongs to”', sub: 'A line for a name' },
+  { key: 'howto', label: 'How to solve', sub: 'One per puzzle type' },
+  { key: 'contents', label: 'Contents', sub: 'With page numbers' },
 ];
 const BACK_ITEMS = [
-  { key: 'thanks', label: 'Thank-you page', sub: 'A short, plain review request' },
+  { key: 'thanks', label: 'Thank-you page', sub: 'Plain review request' },
   { key: 'notes', label: 'Notes pages', sub: 'Lined pages' },
 ];
-const ANSWER_POS = { end: 'At the end of the book', 'after-section': 'After each section', none: 'Off' };
+const ANSWER_POS = { end: 'At the end', 'after-section': 'After each section', none: 'Off' };
 
 const sameSel = (a, b) => a && b && a.kind === b.kind && (a.id ?? null) === (b.id ?? null);
 
@@ -94,7 +94,7 @@ export function mountOutline(el, app) {
     let sub = on ? it.sub : 'Not included';
     if (it.key === 'notes') {
       const n = typeof val === 'number' ? val : on ? 1 : 0;
-      sub = on ? `${n} lined page${n === 1 ? '' : 's'}, plus any needed to reach KDP’s page rules` : 'Only added to reach KDP’s page rules';
+      sub = on ? `${n} lined page${n === 1 ? '' : 's'}` : 'Only as padding';
     }
     return h('li', { class: 'ol-row' },
       mainButton({ fk: `back:${it.key}`, sel: { kind: 'back', id: it.key }, iconName: 'page', name: it.label, sub, off: !on }),
@@ -110,7 +110,7 @@ export function mountOutline(el, app) {
     const per = p.answers?.perPage || 6;
     return h('li', { class: 'ol-row' },
       mainButton({ fk: 'answers', sel: { kind: 'answers' }, iconName: 'answers', name: 'Answer key',
-        sub: on ? `${ANSWER_POS[pos] || ANSWER_POS.end} · ${per} per page` : 'Off: the book has no answers', off: !on }),
+        sub: on ? `${ANSWER_POS[pos] || ANSWER_POS.end} · ${per} per page` : 'Not included', off: !on }),
       toggle({ fk: 'answers-toggle', checked: on, label: 'Include the answer key',
         onChange: (v) => actions.updateProject((d) => { d.answers = { ...d.answers, position: v ? lastAnswerPos : 'none' }; },
           { label: v ? 'Turn on answer key' : 'Turn off answer key' }) }));
@@ -198,7 +198,10 @@ export function mountOutline(el, app) {
     const book = app.getBook();
     const secs = Array.isArray(p.sections) ? p.sections : [];
 
-    const addBtn = h('button', { type: 'button', class: 'btn btn-sm ol-add', 'data-fk': 'add' }, icon('plus', { size: 16 }), 'Add section');
+    // With no sections, wide screens show the preview's "Add your first section" card, so the outline keeps only
+    // this button there (app.css swaps it for the outline's own empty state on tablets and phones).
+    const addBtn = h('button', { type: 'button', class: `btn btn-sm ol-add${secs.length ? '' : ' ol-add-empty'}`, 'data-fk': 'add' },
+      icon('plus', { size: 16 }), 'Add section');
     attachMenu(addBtn, addMenuItems, { label: 'Add a section', className: 'ol-add-menu' });
 
     const sectionList = h('ul', { class: 'ol-list ol-sections', 'aria-label': 'Sections' },
@@ -216,14 +219,14 @@ export function mountOutline(el, app) {
           h('h2', { class: 'ol-heading', id: 'ol-h-sections', text: 'Sections' }),
           secs.length ? h('span', { class: 'ol-count', text: `${secs.reduce((n, s) => n + (s.count || 0), 0)} puzzles` }) : null),
         secs.length ? sectionList : emptyState(),
-        secs.length ? addBtn : null),
+        addBtn),
       group('Answer key', h('ul', { class: 'ol-list' }, answersRow(p))),
       group('Back matter', h('ul', { class: 'ol-list' }, BACK_ITEMS.map((it) => backRow(p, it)))));
 
     if (fk) {
       const again = root.querySelector(`[data-fk="${CSS.escape(fk)}"]`);
       if (again) again.focus({ preventScroll: false });
-      else (root.querySelector('.ol-sections .ol-main') || root.querySelector('.ol-add') || root.querySelector('.ol-type-btn'))?.focus({ preventScroll: true });
+      else [...root.querySelectorAll('.ol-sections .ol-main, .ol-add, .ol-type-btn')].find((b) => b.offsetParent)?.focus({ preventScroll: true });
     }
     bookSig = signature(book);
   }
@@ -352,7 +355,16 @@ export function mountOutline(el, app) {
   }
 
   // ------------------------------------------------------------------ wiring
-  store.subscribe(() => { if (!drag) render(); });
+  // Only what the outline shows: typing the book title, for example, doesn't rebuild it.
+  const projectSig = (p) => JSON.stringify([p.trim, p.theme, p.paper, p.front, p.back, p.answers,
+    (p.sections || []).map((s) => [s.id, s.type, s.title, s.count, s.perPage])]);
+  let lastProjectSig = projectSig(store.get());
+  store.subscribe((state) => {
+    const sig = projectSig(state);
+    if (sig === lastProjectSig) return;
+    lastProjectSig = sig;
+    if (!drag) render();
+  });
   let lastSel = JSON.stringify(ui.get().selection);
   ui.subscribe((state) => {
     const sel = JSON.stringify(state.selection);

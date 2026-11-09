@@ -1,0 +1,99 @@
+/* Template gallery (js/ui/templates.js). Builds on css/tokens.css and the shell's dialog rules in css/app.css.
+   Thumbnails are real pages drawn on white paper (--paper), which stays white in the dark theme too. */
+
+.tpl-dialog { width: min(1040px, calc(100vw - 32px)); }
+.tpl-dialog .dialog-head { padding-bottom: var(--s-2); }
+.tpl-dialog .dialog-body { overscroll-behavior: contain; }
+.tpl-dialog .dialog-foot { align-items: center; }
+.tpl-dialog.is-first-run .dialog-head h2 { font-size: var(--fs-2xl); }
+
+.tpl-lead { margin: 0 0 var(--s-1); font-size: var(--fs-md); color: var(--text); max-width: 68ch; }
+.tpl-sub { margin: 0; font-size: var(--fs-sm); color: var(--text-2); max-width: 68ch; }
+.tpl-lead + .tpl-grid, .tpl-sub + .tpl-grid { margin-top: var(--s-4); }
+
+.tpl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+
+.tpl-card {
+  position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; overflow: hidden;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease), transform .15s var(--ease);
+}
+.tpl-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: var(--shadow-2); }
+.tpl-card:active { transform: translateY(1px); }
+.tpl-card:focus-visible { border-color: var(--accent); box-shadow: var(--focus), var(--shadow-2); border-radius: var(--r-lg); }
+.tpl-card.is-hero { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+.tpl-thumb {
+  display: flex; align-items: center; justify-content: center; height: 188px; padding: var(--s-3) var(--s-3) var(--s-3);
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.tpl-card.is-hero .tpl-thumb { background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface-2)); }
+.tpl-paper {
+  --tpl-ink-faint: color-mix(in srgb, var(--paper) 86%, var(--text-3));
+  --tpl-ink-line: color-mix(in srgb, var(--paper) 78%, var(--text-3));
+  position: relative; display: block; height: 100%; max-width: 100%; overflow: hidden;
+  background: var(--paper); box-shadow: var(--paper-shadow); border-radius: 2px;
+}
+.tpl-canvas { display: block; width: 100%; height: auto; }
+.tpl-paper.is-drawn { animation: tpl-fade .25s var(--ease); }
+@keyframes tpl-fade { from { opacity: .4; } }
+
+/* Loading skeleton: a heading bar and a grid block, in the page's own colours (it sits on white paper). */
+.tpl-skeleton { position: absolute; inset: 12% 14%; display: grid; grid-template-rows: 6% 4% 1fr 10%; gap: 6%; }
+.tpl-skeleton i { display: block; border-radius: 2px; background: var(--tpl-ink-faint); animation: tpl-pulse 1.2s ease-in-out infinite alternate; }
+.tpl-skeleton i:nth-child(1) { width: 60%; justify-self: center; }
+.tpl-skeleton i:nth-child(2) { width: 36%; justify-self: center; }
+.tpl-skeleton i:nth-child(3) { background: repeating-linear-gradient(0deg, var(--tpl-ink-faint) 0 1px, transparent 1px 10%), repeating-linear-gradient(90deg, var(--tpl-ink-faint) 0 1px, transparent 1px 10%); border: 1px solid var(--tpl-ink-line); }
+@keyframes tpl-pulse { to { opacity: .55; } }
+.tpl-fallback { position: absolute; inset: 18%; border: 1.5px dashed var(--tpl-ink-line); border-radius: 3px; }
+
+.tpl-paper.is-blank { background: var(--surface); box-shadow: none; border: 1.5px dashed var(--border-strong); display: grid; place-items: center; }
+.tpl-blank-mark { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+
+.tpl-body { display: grid; gap: var(--s-1); align-content: start; padding: var(--s-3) var(--s-4) var(--s-4); flex: 1 1 auto; }
+.tpl-tag {
+  justify-self: start; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 700; letter-spacing: .02em; background: var(--surface-2); color: var(--text-2);
+}
+.tpl-card.is-hero .tpl-tag { background: var(--accent-soft); color: var(--accent); }
+.tpl-name { font-size: var(--fs-md); font-weight: 700; line-height: 1.25; }
+.tpl-blurb { font-size: var(--fs-xs); color: var(--text-2); line-height: 1.45; }
+.tpl-facts { display: grid; gap: 1px; margin-top: var(--s-1); font-size: var(--fs-xs); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.tpl-sample { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin-top: var(--s-4); padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); border: 1px dashed var(--border-strong); }
+.tpl-sample-btn { flex: none; }
+.tpl-sample-note { flex: 1 1 280px; margin: 0; font-size: var(--fs-xs); color: var(--text-2); line-height: 1.45; }
+.tpl-foot-note { margin: 0; font-size: var(--fs-xs); color: var(--text-2); }
+
+@media (max-width: 899.98px) {
+  .tpl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Phones: full-screen sheet, cards as rows (thumbnail beside the text). */
+@media (max-width: 767.98px) {
+  .tpl-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  .tpl-dialog .dialog-head { padding: var(--s-3) var(--s-4) var(--s-2); }
+  .tpl-dialog.is-first-run .dialog-head h2 { font-size: var(--fs-xl); }
+  .tpl-dialog .dialog-body { padding: 0 var(--s-4) var(--s-4); }
+  .tpl-dialog .dialog-foot { border-radius: 0; padding: var(--s-2) var(--s-4) calc(var(--s-2) + env(safe-area-inset-bottom, 0px)); }
+  .tpl-lead { font-size: var(--fs-sm); }
+  .tpl-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+  .tpl-card { flex-direction: row; align-items: stretch; }
+  .tpl-thumb { flex: none; width: 104px; height: auto; min-height: 132px; padding: var(--s-2); border-bottom: 0; border-right: 1px solid var(--border); }
+  .tpl-paper { height: auto; width: 100%; }
+  .tpl-body { padding: var(--s-3); }
+  .tpl-name { font-size: var(--fs-sm); }
+  .tpl-foot-note { display: none; }
+  .tpl-sample { padding: var(--s-3); }
+  .tpl-sample-btn { width: 100%; }
+}
+
+@media (pointer: coarse) {
+  .tpl-card { min-height: 44px; }
+  .tpl-sample-btn { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tpl-skeleton i { animation: none; }
+}

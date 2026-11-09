@@ -6,11 +6,16 @@ import { h, openDialog, isTextEntry, isKeyConsumer, modKey, closeMenus } from '.
 
 export const ZOOM_STEPS = [0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 
-/** Next zoom step from the current zoom ('fit' uses ui.fitZoom when the preview provides it). */
+/**
+ * Next zoom step from the current zoom ('fit' uses ui.fitZoom when the preview provides it). A step never goes the
+ * wrong way: zooming out from a fit that is already below the smallest step keeps 'fit' (50% would be larger).
+ */
 export function stepZoom(zoom, dir, fitZoom = 1) {
   const cur = zoom === 'fit' || !Number.isFinite(zoom) ? (Number.isFinite(fitZoom) ? fitZoom : 1) : zoom;
   if (dir > 0) return ZOOM_STEPS.find((z) => z > cur + 0.001) ?? ZOOM_STEPS[ZOOM_STEPS.length - 1];
-  return [...ZOOM_STEPS].reverse().find((z) => z < cur - 0.001) ?? ZOOM_STEPS[0];
+  const next = [...ZOOM_STEPS].reverse().find((z) => z < cur - 0.001);
+  if (next != null) return next;
+  return zoom === 'fit' && cur < ZOOM_STEPS[0] ? 'fit' : ZOOM_STEPS[0];
 }
 
 /** First page index of the spread holding page `p` (page 0 is a lone recto; then 1–2, 3–4, …). */
@@ -69,7 +74,7 @@ export function openShortcutHelp() {
           ci ? h('span', { class: 'shortcuts-or', text: ' ' }) : null,
           h('span', { class: 'shortcuts-combo' }, combo.map((k, ki) => [ki ? h('span', { class: 'shortcuts-plus', text: '+', 'aria-hidden': 'true' }) : null, h('kbd', { text: k })])),
         ])),
-        h('td', { text: what }))))))));
+        h('td', { text: what })))))));
   const done = h('button', { type: 'button', class: 'btn btn-primary', text: 'Done' });
   const dlg = openDialog({
     title: 'Keyboard shortcuts',
@@ -188,7 +193,9 @@ export function installShortcuts(app) {
     }
     if (key === 'Delete' || key === 'Backspace') {
       const s = selectedSection();
-      if (!s) return;
+      // Only from the outline, the preview or the page itself: a stray Backspace on a settings switch or button
+      // must not delete a whole section.
+      if (!s || target?.closest?.('#inspector, #topbar, #statusbar, #mobile-tabs, .toasts')) return;
       e.preventDefault();
       actions.removeSection(s.id);
     }

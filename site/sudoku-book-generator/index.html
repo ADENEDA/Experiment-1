@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku Book Generator: graded, one solution each · Gridbook Studio</title>
+<meta name="description" content="Generate 9×9, 6×6 and 4×4 sudoku graded Easy to Expert by a logical solver, each checked for exactly one solution. Free printable PDF, or a full sudoku book for KDP.">
+<link rel="canonical" href="https://gridbookstudio.com/sudoku-book-generator/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="Sudoku book generator: graded by logic, one solution each">
+<meta property="og:description" content="Easy to Expert in 9×9, 6×6 and 4×4. Every puzzle checked for exactly one solution and graded by the techniques it needs. Free printable PDF.">
+<meta property="og:image" content="https://gridbookstudio.com/og/sudoku.png">
+<meta property="og:url" content="https://gridbookstudio.com/sudoku-book-generator/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/site.css">
+<link rel="stylesheet" href="../css/tools.css">
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Gridbook Studio sudoku book generator",
+"url":"https://gridbookstudio.com/sudoku-book-generator/","applicationCategory":"DesignApplication","operatingSystem":"Any (web browser)",
+"description":"Generates 9×9, 6×6 and 4×4 sudoku graded Easy to Expert by a logical solver, checks each for exactly one solution, and downloads a free printable PDF with answers.",
+"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free printable"},
+"publisher":{"@type":"Organization","name":"Gridbook Studio","url":"https://gridbookstudio.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to make a printable sudoku","step":[{"@type":"HowToStep","position":1,"name":"Choose a grid size","text":"Choose a grid size: 9×9 for adults, 6×6 or 4×4 for children and beginners."},{"@type":"HowToStep","position":2,"name":"Choose a difficulty","text":"Choose a difficulty from Easy to Expert, and Large Print if your solvers need bigger digits."},{"@type":"HowToStep","position":3,"name":"Check the puzzle","text":"Press New puzzle until you like the one on screen; Show answer reveals its solution."},{"@type":"HowToStep","position":4,"name":"Download the printable","text":"Pick US Letter or A4 and how many puzzles you want (up to 10), then download the free printable. The answers are on the last page."}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="../kdp-margin-calculator/">Margin calculator</a>
+      <a href="../pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="../app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-hero tool-hero" aria-labelledby="page-h">
+  <div class="wrap">
+    <p class="eyebrow">Free sudoku generator</p>
+    <h1 id="page-h">Sudoku book generator</h1>
+    <p class="lead">Graded sudoku from Easy to Expert, each checked for exactly one solution. Print a few free, or build a whole book for KDP.</p>
+  </div>
+</section>
+
+<section class="tool-section" aria-labelledby="tool-h">
+  <div class="wrap">
+    <div class="tool-panel">
+      <div class="tool-panel-head">
+        <h2 id="tool-h">Make a sudoku</h2>
+        <p class="tool-panel-sub">Runs in your browser. Nothing is uploaded.</p>
+      </div>
+      <div class="mg-root" id="sudoku-tool" data-mini-generator='{"type":"sudoku","theme":"standard","presets":[{"id":"standard","label":"Standard","theme":"standard"},{"id":"large","label":"Large Print","theme":"large","hint":"Digits 22 pt or larger, with heavier grid lines."}],"opts":{"size":9,"difficulty":"medium","symmetry":"rotational"},"cta":{"href":"../app/?template=sudoku-easy-expert","byPreset":{"large":"../app/?type=sudoku&amp;theme=large"},"label":"Make a whole book"},"pricing":"../pricing/"}'>
+        <div class="mg-fallback">
+          <div>
+            <p class="mg-loading">Loading the sudoku generator…</p>
+            <noscript><p>This generator runs in your browser and needs JavaScript. You can still <a href="../samples/sudoku-sampler-24p.pdf">download the 24-page sudoku sampler</a> or read how the puzzles are checked below.</p></noscript>
+          </div>
+          <div class="paper"><img src="../img/gallery/sudoku.svg" width="320" height="400" alt="A book page with a 9 by 9 sudoku of medium difficulty."></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-flush-top" aria-labelledby="unique-h">
+  <div class="wrap help-layout">
+    <div class="prose" data-help>
+      <h2 id="unique-h">How the uniqueness check works</h2>
+      <p>A proper sudoku has exactly one answer. If it has two, a solver can do everything right and still disagree with your answer key, and the last few squares come down to a coin toss. Every puzzle here is made in three steps:</p>
+      <ol>
+        <li><strong>Fill a complete grid</strong> at random, following the rules: every row, column and box holds each digit once.</li>
+        <li><strong>Remove digits</strong>, usually two at a time from opposite sides of the centre, which gives the classic symmetric look. After each removal a solver counts the solutions, stopping as soon as it finds a second one. If there is a second solution, the digits go back.</li>
+        <li><strong>Stop</strong> when the puzzle reaches its target grade or no digit can come out without allowing a second answer.</li>
+      </ol>
+      <p>Before a puzzle reaches the page it is checked once more: the given digits agree with the solution, and the solution count is exactly one. That is what the <strong>Exactly one solution</strong> badge under the preview means.</p>
+
+      <h2>How puzzles are graded</h2>
+      <p>Counting the given digits is a poor guide to difficulty: two puzzles with 26 givens can be worlds apart. Gridbook solves each puzzle the way a person does, always using the simplest technique that makes progress, and grades it by the hardest technique it needed. The status line names that step.</p>
+      <div class="table-wrap">
+        <table class="data-table" data-grade-table>
+          <caption>Grades for 9×9 puzzles. Givens are the digits printed in the grid.</caption>
+          <thead><tr><th scope="col">Grade</th><th scope="col">What it takes</th><th scope="col" class="num">Givens</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Easy</th><td>Singles only: a square where just one digit fits (naked single), or a digit that fits in just one square of a row, column or box (hidden single).</td><td class="num" data-givens="easy">36 or more</td></tr>
+            <tr><th scope="row">Medium</th><td>Singles only, but with fewer digits to start from, so they are harder to spot.</td><td class="num" data-givens="medium">30 to 35</td></tr>
+            <tr><th scope="row">Hard</th><td>Pencil marks, plus locked candidates (pointing and claiming) or naked and hidden pairs.</td><td class="num">Any</td></tr>
+            <tr><th scope="row">Expert</th><td>Triples and quads, X-Wing, Swordfish, XY-Wing or XYZ-Wing. A few need chains or trial and error, and the status line says so.</td><td class="num">Any</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>If the generator cannot hit the exact grade within its time limit, which is rare, it keeps the closest puzzle it found and tells you.</p>
+
+      <h2>6×6 and 4×4 for children and beginners</h2>
+      <p>A 6×6 grid uses the digits 1 to 6 in boxes of 2 rows by 3 columns and runs from Easy to Expert. A 4×4 grid uses 1 to 4 in 2×2 boxes. It never needs more than the two single techniques (a check of 50,000 minimal 4×4 puzzles, ones where no digit can be removed, found none that did), so Medium is its top grade. Both make good first puzzles, and 4×4 works well for young children.</p>
+
+      <h2>Planning a sudoku book</h2>
+      <ul>
+        <li><strong>Climb in difficulty.</strong> The Studio’s Sudoku Easy to Expert template makes a 6×9 book of 200 puzzles in four sections, two per page, with the answer key at the back.</li>
+        <li><strong>Large print:</strong> one puzzle per page on 8.5×11 with the Large Print theme, which keeps digits at 22 pt or more.</li>
+        <li><strong>Sell the guarantee.</strong> “Every puzzle has one solution” is a promise you can make in your listing, because every puzzle was checked.</li>
+      </ul>
+      <p>The <a href="../samples/sudoku-sampler-24p.pdf">24-page sudoku sampler</a> shows printed pages at each grade. Free printables are for personal and classroom use and carry a small footer; <a href="../pricing/">Pro</a> removes it and adds a commercial licence for books you sell.</p>
+
+      <h2 id="steps-h">Make a printable in four steps</h2>
+      <ol class="steps-list" data-howto>
+        <li>Choose a grid size: 9×9 for adults, 6×6 or 4×4 for children and beginners.</li>
+        <li>Choose a difficulty from Easy to Expert, and Large Print if your solvers need bigger digits.</li>
+        <li>Press New puzzle until you like the one on screen; Show answer reveals its solution.</li>
+        <li>Pick US Letter or A4 and how many puzzles you want (up to 10), then download the free printable. The answers are on the last page.</li>
+      </ol>
+    </div>
+
+    <aside class="help-aside" aria-label="Next steps">
+      <div class="card">
+        <h2>A whole sudoku book</h2>
+        <p>The Sudoku Easy to Expert template builds a 200-puzzle, 6×9 book in four graded sections. Free to build and preview.</p>
+        <a class="btn btn-primary" href="../app/?template=sudoku-easy-expert">Open the sudoku template</a>
+        <a class="btn" href="../samples/sudoku-sampler-24p.pdf">Download the 24-page sampler (PDF)</a>
+      </div>
+      <div class="card">
+        <h2>Free or Pro</h2>
+        <p>Free printables hold up to 10 puzzles and carry a small footer. Pro removes it and lets you sell what you make: <span data-cfg-price="pass">$9</span> for 7 days, or <span data-cfg-price="lifetime">$29</span> once.</p>
+        <a class="btn" href="../pricing/">See pricing</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section section-alt" aria-labelledby="more-h">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="more-h">More free puzzle tools</h2>
+    </div>
+    <ul class="tool-links">
+      <li><a href="../nonogram-puzzle-book-maker/"><strong>Nonogram puzzle book maker</strong><span>Any picture into a no-guess picture puzzle</span></a></li>
+      <li><a href="../large-print-word-search-maker/"><strong>Large print word search maker</strong><span>18 pt letters, your own words or 68 themes</span></a></li>
+      <li><a href="../kdp-spine-width-calculator/"><strong>KDP spine width calculator</strong><span>Spine and full cover size from your page count</span></a></li>
+      <li><a href="../kdp-margin-calculator/"><strong>KDP margin calculator</strong><span>Gutter and margins for any trim and page count</span></a></li>
+    </ul>
+  </div>
+  <div class="wrap tool-cta">
+    <div class="cta-band">
+      <div>
+        <h2>Ready for a whole book?</h2>
+        <p>Open the Studio with the Sudoku Easy to Expert template: 200 graded puzzles, an answer key and KDP-ready margins. Nothing to install, nothing uploaded.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-highlight btn-lg" href="../app/?template=sudoku-easy-expert">Open the Studio</a>
+        <a class="btn btn-lg" href="../pricing/">Pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="../app/">The Studio</a></li>
+        <li><a href="../nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="../large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="../sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="../kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="../kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="../book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="../pricing/">Pricing</a></li>
+        <li><a href="../samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="../legal/terms.html">Terms</a></li>
+        <li><a href="../legal/privacy.html">Privacy</a></li>
+        <li><a href="../legal/refunds.html">Refunds</a></li>
+        <li><a href="../legal/license.html">License</a></li>
+        <li><a href="../legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="../js/site/site.js"></script>
+<script type="module" src="../js/site/mini-generator.js"></script>
+</body>
+</html>

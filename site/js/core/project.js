@@ -8,11 +8,14 @@
 //   serializeProject(p), projectFileName(p)
 //   freshSeed(), pinSeed(section, index, bookSeed)    seed helpers for Regenerate / Lock
 //   regeneratePuzzle / regenerateSectionSeeds / toggleLock / duplicateSectionData / moveSectionIn   (pure mutators)
+//   usesPictureList / sectionPictures / otherSectionPictures / regeneratePicture / regenerateSectionPictures
+//                                         (Regenerate, Add and Duplicate for picture-list nonograms)
 //
 // Dates: functions here never read the clock. The app stamps createdAt/updatedAt/year (stampProject).
 import { TYPES as REGISTRY_TYPES } from '../puzzles/registry.js';
 import { TRIMS } from '../kdp/specs.js';
 import { newId, puzzleSeed } from './rng.js';
+import { pictureChoices, pictureIdAt } from '../puzzles/nonogram.js';
 
 export const PROJECT_VERSION = 1;
 export const DEFAULT_TITLE = 'Untitled puzzle book';
@@ -380,6 +383,101 @@ export function toggleLock(section, index, bookSeed) {
   pinSeed(section, index, bookSeed);
   section.locked[index] = true;
   return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Regenerate for nonograms that take turns through a picture list (library or custom pictures)
+//
+// Their puzzle is the picture, and a new seed alone would bring the same picture back. So Regenerate gives the
+// puzzle a seed that also names another picture ("<fresh seed>#pic=<id>", read by nonogram.js): one that no other
+// puzzle in the section shows, when the list has one. Locking pins that seed like any other. `rand` is a
+// () => [0, 1) function supplied by the caller (the Studio passes Math.random), so this module stays pure.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Picture ids a picture-list nonogram section takes turns through; [] for other sections. */
+function sectionChoices(section) {
+  if (!section || section.type !== 'nonogram') return [];
+  return pictureChoices(isObj(section.opts) ? section.opts : {}).filter((id) => typeof id === 'string' && id);
+}
+
+/** Number of pictures Regenerate can choose from, or 0 when the section's puzzles are not picked from a list. */
+export function usesPictureList(section) {
+  return sectionChoices(section).length;
+}
+
+/** The picture id each puzzle of a picture-list section shows, by puzzle index. */
+export function sectionPictures(section, bookSeed) {
+  const opts = isObj(section?.opts) ? section.opts : {};
+  const out = [];
+  for (let i = 0; i < clampCount(section?.count, 0); i++) out.push(pictureIdAt(opts, puzzleSeed(bookSeed, section, i), i));
+  return out;
+}
+
+const pickFrom = (list, rand) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
+
+/**
+ * Pictures shown by the book's other picture-list nonogram sections (pass as `avoid`, so two sections don't print the
+ * same puzzles).
+ */
+export function otherSectionPictures(project, sectionId) {
+  const out = new Set();
+  for (const s of Array.isArray(project?.sections) ? project.sections : []) {
+    if (s && s.id !== sectionId && sectionChoices(s).length) for (const id of sectionPictures(s, project.seed)) if (id) out.add(id);
+  }
+  return out;
+}
+
+/**
+ * "Regenerate this puzzle" for a picture-list section: a picture no puzzle in the section (nor in `avoid`) shows,
+ * else one the section doesn't show, else any other one. False (nothing changed) if locked or there is no other.
+ */
+export function regeneratePicture(section, index, bookSeed, rand, avoid = new Set()) {
+  if (isLocked(section, index)) return false;
+  const choices = sectionChoices(section);
+  const shown = sectionPictures(section, bookSeed);
+  const cur = shown[index];
+  let pool = choices.filter((id) => !shown.includes(id) && !avoid.has(id));
+  if (!pool.length) pool = choices.filter((id) => !shown.includes(id));
+  if (!pool.length) pool = choices.filter((id) => id !== cur);
+  if (!pool.length) return false;
+  if (!isObj(section.seeds)) section.seeds = {};
+  section.seeds[index] = `${freshSeed()}#pic=${pickFrom(pool, rand)}`;
+  return true;
+}
+
+/**
+ * "Regenerate all unlocked" for a picture-list section: regenerateSectionSeeds(), then a different picture for every
+ * unlocked puzzle: pictures nobody shows first (not this section, nor `avoid`), and never one a locked puzzle shows
+ * (while the list has enough). Returns the number of puzzles that changed picture.
+ */
+export function regenerateSectionPictures(section, bookSeed, rand, avoid = new Set()) {
+  const choices = sectionChoices(section);
+  const before = sectionPictures(section, bookSeed);
+  regenerateSectionSeeds(section, bookSeed);
+  const n = before.length;
+  const taken = new Set();
+  for (let i = 0; i < n; i++) if (isLocked(section, i)) taken.add(before[i]);
+  const unused = choices.filter((id) => !before.includes(id) && !avoid.has(id));
+  for (let i = unused.length - 1; i > 0; i--) { // shuffle
+    const j = Math.floor(rand() * (i + 1));
+    [unused[i], unused[j]] = [unused[j], unused[i]];
+  }
+  let changed = 0;
+  for (let i = 0; i < n; i++) {
+    if (isLocked(section, i)) continue;
+    let id = unused.find((x) => !taken.has(x));
+    if (id == null) {
+      const free = choices.filter((x) => x !== before[i] && !taken.has(x) && !avoid.has(x));
+      if (!free.length) free.push(...choices.filter((x) => x !== before[i] && !taken.has(x)));
+      const other = free.length ? free : choices.filter((x) => x !== before[i]);
+      id = other.length ? pickFrom(other, rand) : null;
+    }
+    if (id == null) continue; // a one-picture section: this puzzle cannot change
+    taken.add(id);
+    section.seeds[i] = `${freshSeed()}#pic=${id}`;
+    changed++;
+  }
+  return changed;
 }
 
 /** Copy of a section for "Duplicate": new id, same settings and title, new puzzles (no seeds, locks or salt). */

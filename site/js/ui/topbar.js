@@ -38,10 +38,12 @@ export function renderPill(btn, book) {
   const s = preflightSummary(book);
   const tone = s.tone === 'busy' || s.tone === 'idle' ? 'busy' : s.tone;
   btn.className = `pill gbs-pill pill-${tone}${btn.dataset.extraClass ? ` ${btn.dataset.extraClass}` : ''}`;
-  btn.replaceChildren(
+  btn.replaceChildren(...[
     tone === 'busy' ? spinner('pill-spinner') : null,
     h('span', { class: 'pill-text', text: s.text }),
-  );
+    s.short && s.short !== s.text ? h('span', { class: 'pill-short', text: s.short, 'aria-hidden': 'true' }) : null,
+  ].filter(Boolean));
+  btn.classList.toggle('has-short', !!(s.short && s.short !== s.text));
   btn.title = s.title;
   btn.setAttribute('aria-label', `Print check: ${s.text}. ${s.title}`);
   return s;
@@ -120,7 +122,7 @@ export function mountTopbar(el, app) {
     const s = saveState;
     saved.classList.toggle('is-off', s.state === 'off' || s.state === 'error');
     saved.classList.toggle('is-pending', s.state === 'pending');
-    let text, tip;
+    let text, tip, extra = '';
     if (s.state === 'pending') { text = 'Saving…'; tip = 'Your changes are saved in this browser automatically.'; }
     else if (s.state === 'off') { text = 'Autosave off'; tip = `This browser blocks storage. Use Save project file (${mod}+S) to keep your work.`; }
     else if (s.state === 'error') {
@@ -129,13 +131,14 @@ export function mountTopbar(el, app) {
     } else if (s.state === 'unsaved' || !s.at) { text = 'Autosave on'; tip = 'Changes are saved in this browser automatically.'; }
     else {
       const age = Date.now() - s.at;
-      text = `Saved locally · ${fmtAgo(age)}`;
+      text = 'Saved';
+      extra = `locally · ${fmtAgo(age)}`;
       tip = `Saved in this browser at ${new Date(s.at).toLocaleTimeString()}. Save a project file (${mod}+S) to back it up.`;
       savedTimer = setTimeout(renderSaved, age < 60_000 ? 1000 : 15_000);
     }
     saved.replaceChildren(
       s.state === 'off' || s.state === 'error' ? icon('warn', { size: 14 }) : s.state === 'pending' ? spinner('saved-spinner') : icon('check', { size: 14 }),
-      h('span', { text }));
+      h('span', { text }), extra ? h('span', { class: 'saved-extra', text: extra }) : '');
     saved.title = tip;
   };
   bus.on('autosave', (s) => { saveState = s || saveState; renderSaved(); });
@@ -149,7 +152,7 @@ export function mountTopbar(el, app) {
     const lic = getLicense();
     const checking = lic.status === 'checking';
     badge.className = `badge tb-badge${lic.pro ? ' badge-pro' : ''}${checking ? ' is-checking' : ''}`;
-    badge.replaceChildren(checking ? spinner('badge-spinner') : null, h('span', { text: lic.badge || (lic.pro ? 'Pro' : 'Free') }));
+    badge.replaceChildren(...[checking ? spinner('badge-spinner') : null, h('span', { text: lic.badge || (lic.pro ? 'Pro' : 'Free') })].filter(Boolean));
     const label = lic.pro ? `License: ${lic.badge || 'Pro'}. Manage your license` : `License: ${lic.badge || 'Free'}. Unlock Pro`;
     badge.setAttribute('aria-label', label);
     badge.title = lic.message || label;

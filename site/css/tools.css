@@ -1,0 +1,404 @@
+/* Gridbook Studio: SEO generator pages (nonogram-puzzle-book-maker/, large-print-word-search-maker/,
+   sudoku-book-generator/) and the mini generator widget they share (js/site/mini-generator.js). Owner: tool pages.
+   Load after tokens.css and site.css. Colours, spacing, radii and type sizes come from tokens.css; puzzle previews
+   and diagrams sit on white paper (var(--paper)) in both themes, with var(--highlight-ink) as the ink.
+
+   Widget (built by mini-generator.js inside [data-mini-generator]):
+     .mg-root          the mount element (inside a site.css .tool-panel); its static children are the no-JS fallback
+     .mg               grid: .mg-controls (left), .mg-view (preview, right, sticky), .mg-print (left, under controls);
+                       one column under 860px: controls, preview, printable
+     .mg-stage         the page canvas (aspect ratio of the printable page), on .paper
+     .mg-status        verification badge (.mg-badge-ok|warn|err) and stats lines (.mg-meta, .mg-note, .mg-reveal)
+     .mg-print         free printable box: paper, puzzle count, download button, CTA into the Studio
+
+   Page parts:
+     .tool-hero        tighter .page-hero so the tool starts above the fold
+     .mg-fallback      static stand-in shown until (or without) JavaScript
+     .line-demo        nonogram line-solving diagram (inline SVG on paper)
+     .tool-links       cards linking to the other free tools
+     .season-card      seasonal suggestion card (uses site.css .feature)
+*/
+
+/* ---------- Page top ---------- */
+.page-hero.tool-hero { padding-block: clamp(28px, 4vw, 48px) clamp(16px, 2.2vw, 24px); }
+.tool-hero h1 { margin-bottom: var(--s-3); }
+.tool-hero .lead { margin-bottom: 0; }
+.tool-section { padding-bottom: clamp(48px, 6vw, 80px); }
+.tool-panel .tool-panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-4); }
+.tool-panel-head .tool-panel-sub { margin: 0; }
+
+/* ---------- Static fallback (before JavaScript runs, or without it) ---------- */
+.mg-fallback { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: var(--s-5) clamp(24px, 4vw, 48px); align-items: start; }
+.mg-fallback .paper { max-width: 360px; width: 100%; justify-self: end; }
+.mg-fallback p { color: var(--text-2); }
+@media (max-width: 859.98px) {
+  .mg-fallback { grid-template-columns: minmax(0, 1fr); }
+  .mg-fallback .paper { justify-self: center; }
+}
+
+/* ---------- Widget layout ---------- */
+.mg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  grid-template-areas: "controls view" "print view"; gap: var(--s-5) clamp(24px, 4vw, 56px); align-items: start; }
+.mg-controls { grid-area: controls; display: grid; gap: 20px; align-content: start; min-width: 0; }
+.mg-view { grid-area: view; display: grid; gap: var(--s-3); position: sticky; top: calc(var(--header-h) + 16px); min-width: 0; }
+.mg-print { grid-area: print; min-width: 0; }
+@media (max-width: 859.98px) {
+  .mg { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "view" "print"; }
+  .mg-view { position: static; width: 100%; max-width: 460px; justify-self: center; }
+}
+
+.mg-stack { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.mg-group { display: grid; gap: var(--s-3); min-width: 0; }
+.mg-group > .label { margin: 0; }
+.mg-field { margin-bottom: 0; min-width: 0; }
+.mg-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: var(--s-4); align-items: start; }
+.mg-hint { margin: 0; color: var(--text-2); font-size: var(--fs-xs); line-height: 1.45; }
+.mg-hint[hidden] { display: none; }
+
+/* Segmented controls wrap instead of overflowing on narrow screens. */
+.mg-seg { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; }
+.mg-seg > button { flex: 1 1 auto; min-height: 36px; font-size: var(--fs-sm); }
+.mg-seg > button[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.mg-seg > button:focus-visible { box-shadow: var(--focus); }
+
+/* Picture chips (site.css .chip). Small phones: one row that scrolls sideways inside its own box. */
+.mg-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.mg-chips .chip { min-height: 40px; }
+@media (max-width: 559.98px) {
+  .mg-chips { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+    margin-inline: -4px; padding: 4px 4px 8px; scroll-padding-inline: 4px; scroll-snap-type: x proximity; }
+  .mg-chips .chip { flex: none; scroll-snap-align: start; }
+}
+
+/* ---------- Upload ---------- */
+.mg-upload { gap: var(--s-4); }
+.mg-drop { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-4); border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-lg); background: var(--surface-2); transition: border-color .15s var(--ease), background .15s var(--ease); }
+.mg-drop.is-over { border-color: var(--accent); background: var(--accent-soft); }
+.mg-drop:focus-within .btn { box-shadow: var(--focus); }
+.mg-drop .btn { cursor: pointer; }
+.mg-error { margin: 0; color: var(--err); font-size: var(--fs-sm); font-weight: 700; }
+.mg-error[hidden] { display: none; }
+.mg-custom { display: grid; gap: var(--s-4); justify-items: stretch; }
+.mg-custom[hidden] { display: none; }
+.mg-custom > .btn { justify-self: start; }
+.mg-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 132px)); gap: var(--s-4); margin: 0; }
+.mg-compare figure { margin: 0; display: grid; gap: 6px; }
+.mg-compare figcaption { font-size: var(--fs-xs); color: var(--text-2); font-weight: 700; }
+.mg-thumb { aspect-ratio: 1 / 1; display: grid; place-items: center; padding: 6px; border-radius: var(--r-md); background: var(--paper);
+  border: 1px solid var(--border); overflow: hidden; }
+.mg-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.mg-thumb-grid img { image-rendering: pixelated; }
+.mg-range-head { display: flex; align-items: center; gap: var(--s-2); }
+.mg-range-head label { font-size: var(--fs-xs); font-weight: 700; color: var(--text-2); letter-spacing: .02em; }
+.mg-range-head .btn { margin-left: auto; }
+.mg-range-head .btn[hidden] { display: none; }
+.mg-out { min-width: 3ch; padding: 1px 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--border);
+  font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; color: var(--text); }
+.mg-check { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); cursor: pointer; justify-self: start; }
+.mg-check input { width: 18px; height: 18px; flex: none; }
+
+/* ---------- Word list ---------- */
+.mg-summary { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.mg-issues { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; font-size: var(--fs-xs); color: var(--text-2); }
+.mg-issues[hidden] { display: none; }
+.mg-issues strong { color: var(--text); }
+.mg-issues .is-err, .mg-issues .is-err strong { color: var(--err); }
+.mg-stack[hidden] { display: none; }
+
+/* ---------- Preview ---------- */
+.mg-paper { position: relative; }
+.mg-stage { position: relative; aspect-ratio: 612 / 792; width: 100%; background: var(--paper); }
+.mg-stage canvas { display: block; width: 100%; height: auto; transition: opacity .15s var(--ease); }
+.mg-stage canvas[hidden] { display: none; }
+.mg-stage.is-stale canvas { opacity: .3; }
+.mg-root[aria-busy="true"] .mg-stage::after { content: ''; position: absolute; top: 12px; right: 12px; width: 18px; height: 18px;
+  border-radius: 50%; border: 2px solid color-mix(in srgb, var(--highlight-ink) 25%, var(--paper)); border-top-color: var(--accent);
+  animation: mg-spin .7s linear infinite; }
+@keyframes mg-spin { to { transform: rotate(360deg); } }
+
+.mg-status { display: grid; gap: 4px; min-height: 4.6em; align-content: start; font-size: var(--fs-sm); line-height: 1.45; }
+.mg-line { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
+.mg-line.mg-ok, .mg-line.mg-warn, .mg-line.mg-err { color: var(--text); }
+.mg-line.mg-reveal { color: var(--text); font-weight: 700; }
+.mg-line.mg-note { font-size: var(--fs-xs); }
+.mg-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 7px; border-radius: var(--r-pill); font-weight: 700;
+  font-size: var(--fs-sm); vertical-align: 1px; }
+.mg-badge svg { flex: none; }
+.mg-badge-ok { background: var(--ok-soft); color: var(--ok); }
+.mg-badge-warn { background: var(--warn-soft); color: var(--warn); }
+.mg-badge-err { background: var(--err-soft); color: var(--err); }
+.mg-buttons { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.mg-buttons .btn { flex: 1 1 140px; min-height: 44px; }
+.mg-buttons .btn[aria-pressed="true"] { --btn-bg: var(--accent-soft); --btn-bd: var(--accent); }
+.mg-buttons .btn[aria-pressed="true"]:hover { --btn-bg: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)); }
+
+/* ---------- Free printable box ---------- */
+.mg-print { display: grid; gap: var(--s-4); padding: clamp(16px, 2vw, 24px); border-radius: var(--r-lg); background: var(--surface-2);
+  border: 1px solid var(--border); }
+.mg-h { margin: 0; font-size: var(--fs-lg); letter-spacing: 0; }
+.mg-print .select:disabled { opacity: .6; cursor: not-allowed; }
+.mg-download { width: 100%; white-space: normal; text-align: center; line-height: 1.25; padding-block: 10px; }
+.mg-download[aria-busy="true"] { cursor: progress; }
+.mg-dl-status { margin: -4px 0 0; min-height: 1.45em; font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.mg-dl-status:empty { display: none; }
+.mg-dl-status.is-ok { color: var(--ok); font-weight: 700; }
+.mg-dl-status.is-err { color: var(--err); font-weight: 700; }
+.mg-fine { margin: 0; font-size: var(--fs-xs); color: var(--text-2); line-height: 1.5; }
+.mg-cta { width: 100%; white-space: normal; text-align: center; line-height: 1.25; padding-block: 10px; }
+.mg-cta svg:last-child { margin-left: auto; }
+.mg-cta span { flex: 0 1 auto; }
+
+@media (pointer: coarse) {
+  .mg-seg > button, .mg-chips .chip, .mg .select, .mg .input { min-height: 44px; }
+  .mg input[type="range"] { min-height: 44px; }
+  .mg-check { min-height: 44px; }
+  .mg-range-head .btn { min-height: 44px; }
+}
+
+/* ---------- Help content ---------- */
+.help-layout { display: grid; grid-template-columns: minmax(0, 72ch) minmax(0, 300px); gap: clamp(32px, 5vw, 72px); align-items: start; }
+.help-aside { position: sticky; top: calc(var(--header-h) + 24px); display: grid; gap: var(--s-4); }
+.help-aside .card { padding: var(--s-5); }
+.help-aside h2 { font-size: var(--fs-lg); margin-bottom: var(--s-2); }
+.help-aside p { font-size: var(--fs-sm); color: var(--text-2); margin-bottom: var(--s-3); }
+.help-aside .btn { width: 100%; white-space: normal; text-align: center; line-height: 1.25; padding-block: 10px; }
+.help-aside .btn + .btn { margin-top: var(--s-2); }
+@media (max-width: 1023.98px) {
+  .help-layout { grid-template-columns: minmax(0, 1fr); }
+  .help-aside { position: static; max-width: 72ch; }
+}
+.prose .steps-list { padding-left: 1.4em; }
+.prose .steps-list li { padding-left: 4px; }
+
+/* Nonogram line diagram (always on paper, printed-ink colours). */
+.line-demo { margin: 0 0 1.2em; padding: var(--s-4); border-radius: var(--r-md); background: var(--paper); box-shadow: var(--paper-shadow);
+  color: var(--highlight-ink); }
+.line-demo svg { width: 100%; height: auto; max-width: 520px; }
+.line-demo .ld-cell { fill: var(--paper); stroke: var(--highlight-ink); stroke-width: 1.5; }
+.line-demo .ld-run { fill: color-mix(in srgb, var(--highlight-ink) 22%, var(--paper)); }
+.line-demo .ld-sure { fill: var(--highlight-ink); }
+.line-demo .ld-guide { fill: none; stroke: var(--highlight-ink); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.line-demo text { fill: var(--highlight-ink); font-family: var(--font); font-size: 15px; font-weight: 700; }
+.line-demo .ld-label { font-weight: 400; font-size: 14px; }
+.line-demo figcaption { margin-top: var(--s-3); color: color-mix(in srgb, var(--highlight-ink) 75%, var(--paper)); font-size: var(--fs-sm); }
+
+/* Seasonal suggestions (site.css .feature cards) */
+.season-card { display: flex; flex-direction: column; }
+.season-card .feature-icon svg { width: 24px; height: 24px; }
+.season-card p { flex: 1; }
+.season-card .btn-row { margin-top: var(--s-4); }
+.section-alt .season-card { background: var(--bg); }
+
+/* Links to the other free tools */
+.tool-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+.tool-links a { display: flex; flex-direction: column; gap: 2px; height: 100%; padding: var(--s-4); border-radius: var(--r-md); background: var(--surface);
+  border: 1px solid var(--border); text-decoration: none; color: var(--text); transition: border-color .15s var(--ease); }
+.tool-links a:hover { border-color: var(--accent); color: var(--text); }
+.tool-links strong { font-size: var(--fs-md); }
+.tool-links span { font-size: var(--fs-sm); color: var(--text-2); }
+.section-alt .tool-links a { background: var(--bg); }
+
+@media print {
+  .mg-print, .mg-buttons, .mg-controls { display: none !important; }
+}
+
+.tool-cta { margin-top: var(--s-7); }
+.mg-loading { margin: 0; }
+@media (scripting: none) { .mg-loading { display: none; } }
+
+/* =====================================================================================================================
+   KDP calculators and the comparison page. Owner: calculators.
+   Pages: kdp-spine-width-calculator/, kdp-margin-calculator/ (js/site/spine-calc.js, margin-calc.js, calc-core.js)
+   and book-bolt-alternative/. Everything below uses the calc-, dg- (diagram SVG) and cmp- prefixes only.
+
+     .calc                 modifier on site.css .tool-panel
+     .calc-layout          two columns: .calc-main (form, results, formula) and .calc-side (diagram, downloads/settings);
+                           one column under 1000px
+     .calc-form            responsive row of fields; .calc-choices/.calc-opts/.calc-opt = radio buttons styled as a
+                           segmented control (native radios: arrow keys work)
+     .calc-msg             validation message (.is-err)
+     .calc-results         site.css .result-grid; .calc-stale dims results (and diagram) while the input is invalid
+     .calc-formula         the formula with live numbers (dl); .calc-rule = the words, code = the numbers
+     .calc-figure          white paper card holding the diagram (.calc-diagram) and its legend (.calc-legend, .calc-sw-*)
+     .calc-download        cover-guide box; .calc-buttons, .calc-dl-status (.is-ok/.is-err), .calc-fine
+     .calc-soft            Word / Affinity / InDesign settings cards (.calc-soft-card)
+     .calc-tiers           gutter tier table; row .is-current = the reader's page count
+     .calc-cta             aside card with the puzzle-type select and the Studio link
+     dg-*                  SVG classes from calc-core.js coverDiagramSvg / spreadDiagramSvg (ink on white paper)
+     .cmp-*                comparison page: .cmp-meta (dated note), .cmp-cost (12-month table), .cmp-choices (cards),
+                           .cmp-sources (source list), .cmp-src (small source links inside table cells)
+   ===================================================================================================================== */
+
+.calc-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: var(--s-6) clamp(24px, 3.5vw, 48px); align-items: start; }
+.calc-main, .calc-side { display: grid; gap: var(--s-5); min-width: 0; align-content: start; }
+/* One column: form and results, then the diagram and downloads, then the formula (.calc-main dissolves into the grid). */
+@media (max-width: 999.98px) {
+  .calc-layout { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-5); }
+  .calc-main { display: contents; }
+  .calc-side { order: 1; }
+  .calc-main > .calc-formula { order: 2; }
+}
+
+/* Form */
+.calc-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: var(--s-4); align-items: start; }
+.calc-form .field { margin-bottom: 0; min-width: 0; }
+.calc-form .input[aria-invalid="true"] { border-color: var(--err); }
+.calc-form .input[type="number"] { font-variant-numeric: tabular-nums; }
+.calc-choices { border: 0; margin: 0; padding: 0; min-width: 0; }
+.calc-choices > legend { padding: 0; margin-bottom: 6px; }
+@media (max-width: 559.98px) { .calc-form .calc-choices { grid-column: 1 / -1; } }
+.calc-opts { display: flex; flex-wrap: nowrap; gap: 2px; padding: 3px; width: fit-content; max-width: 100%; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--border); }
+.calc-opt { position: relative; display: inline-flex; cursor: pointer; }
+.calc-opt input { position: absolute; inset: 0; opacity: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; }
+.calc-opt span { display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--s-3); border-radius: 7px; color: var(--text-2);
+  font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; transition: background .15s var(--ease), color .15s var(--ease); }
+.calc-opt:hover span { color: var(--text); }
+.calc-opt input:checked + span { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+.calc-opt input:focus-visible + span { box-shadow: var(--focus); }
+
+.calc-msg { margin: calc(-1 * var(--s-2)) 0 0; min-height: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--err); }
+.calc-msg:empty { display: none; }
+.calc-note { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.calc-note:empty { display: none; }
+
+/* Results */
+.calc-results { margin: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.calc-results .result-value { font-size: clamp(20px, 2vw, 26px); }
+.calc-results .result-primary .result-value { font-size: clamp(26px, 2.6vw, 34px); }
+.calc-result-no .result-value { color: var(--warn); }
+.calc-results-lead > .result:first-child { grid-column: 1 / -1; }
+@media (max-width: 559.98px) {
+  .calc-results { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+  .calc-results .result { padding: var(--s-3); }
+  .calc-results .result-wide { grid-column: 1 / -1; }
+  .calc-results .result-value { font-size: 19px; }
+  .calc-results .result-primary .result-value { font-size: 28px; }
+  .calc-results .result-sub { font-size: var(--fs-xs); }
+}
+.calc-results, .calc-formula, .calc-diagram, .calc-soft { transition: opacity .15s var(--ease); }
+.calc-stale { opacity: .45; }
+
+/* Formula */
+.calc-h { margin: 0 0 var(--s-3); font-size: var(--fs-lg); letter-spacing: 0; }
+.calc-formula { padding: var(--s-4) var(--s-5); border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.calc-formula dl { display: grid; gap: var(--s-3); margin: 0; }
+.calc-formula dl > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--s-3); align-items: baseline; }
+.calc-formula dt { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); }
+.calc-formula dd { margin: 0; display: grid; gap: 2px; min-width: 0; }
+.calc-rule { font-size: var(--fs-sm); color: var(--text-2); }
+.calc-formula code { font-family: var(--mono); font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.calc-sources { display: flex; flex-wrap: wrap; gap: 0 var(--s-4); margin: var(--s-3) 0 0; }
+@media (max-width: 419.98px) { .calc-formula dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* Diagram on paper (white in both themes; ink is var(--highlight-ink)) */
+.calc-figure { margin: 0; padding: var(--s-4); border-radius: var(--r-lg); background: var(--paper); box-shadow: var(--paper-shadow);
+  color: var(--highlight-ink); }
+.calc-diagram { min-height: 120px; }
+.calc-diagram svg { display: block; width: 100%; height: auto; overflow: visible; }
+.calc-legend { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid color-mix(in srgb, var(--highlight-ink) 12%, var(--paper)); }
+.calc-legend ul { display: flex; flex-wrap: wrap; gap: 6px var(--s-4); margin: 0; padding: 0; list-style: none;
+  font-size: var(--fs-xs); color: color-mix(in srgb, var(--highlight-ink) 80%, var(--paper)); }
+.calc-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.calc-legend li[hidden] { display: none; }
+.calc-sw { flex: none; width: 22px; height: 12px; border-radius: 2px; }
+.calc-sw-bleed { background: color-mix(in srgb, var(--highlight-ink) 18%, var(--paper)); }
+.calc-sw-trim { height: 0; border-top: 2px solid var(--highlight-ink); border-radius: 0; }
+.calc-sw-fold { height: 0; border-top: 2px dashed var(--highlight-ink); border-radius: 0; }
+.calc-sw-safe, .calc-sw-min { border: 1.5px dashed color-mix(in srgb, var(--highlight-ink) 60%, var(--paper)); }
+.calc-sw-spine { background: color-mix(in srgb, var(--highlight) 60%, var(--paper)); }
+.calc-sw-barcode { background: var(--paper); border: 1.5px solid var(--highlight-ink); }
+.calc-sw-content { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); border: 1.5px solid color-mix(in srgb, var(--highlight-ink) 70%, var(--paper)); }
+
+.dg-bleed { fill: color-mix(in srgb, var(--highlight-ink) 18%, var(--paper)); }
+.dg-panel { fill: var(--paper); }
+.dg-spine { fill: color-mix(in srgb, var(--highlight) 60%, var(--paper)); }
+.dg-safe, .dg-min { fill: none; stroke: color-mix(in srgb, var(--highlight-ink) 60%, var(--paper)); stroke-width: 1.25; stroke-dasharray: 4 3; }
+.dg-barcode { fill: var(--paper); stroke: var(--highlight-ink); stroke-width: 1.25; }
+.dg-trim { fill: none; stroke: var(--highlight-ink); stroke-width: 1.5; }
+.dg-fold { stroke: var(--highlight-ink); stroke-width: 1.25; stroke-dasharray: 7 4; }
+.dg-content { fill: color-mix(in srgb, var(--accent) 16%, var(--paper)); stroke: color-mix(in srgb, var(--highlight-ink) 70%, var(--paper)); stroke-width: 1.25; }
+.dg-dim { stroke: color-mix(in srgb, var(--highlight-ink) 75%, var(--paper)); stroke-width: 1; }
+.calc-figure text { font-family: var(--font); fill: var(--highlight-ink); }
+.dg-panel-name { font-weight: 700; letter-spacing: .08em; }
+.dg-dim-label { font-weight: 700; }
+.dg-note { fill: color-mix(in srgb, var(--highlight-ink) 72%, var(--paper)); }
+
+/* Cover-guide download box */
+.calc-download { display: grid; gap: var(--s-3); padding: clamp(16px, 2vw, 24px); border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.calc-download .calc-h { margin: 0; }
+.calc-download p { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.calc-buttons { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.calc-buttons .btn { min-height: 44px; white-space: normal; text-align: center; line-height: 1.25; }
+.calc-buttons .btn-primary { flex: 1 1 240px; }
+.calc-buttons .btn:not(.btn-primary) { flex: 0 1 auto; }
+.calc-buttons .btn[aria-busy="true"] { cursor: progress; }
+@media (max-width: 479.98px) { .calc-buttons .btn:not(.btn-primary) { flex: 1 1 100%; } }
+.calc-download .calc-dl-status { min-height: 1.45em; font-weight: 700; overflow-wrap: anywhere; }
+.calc-download .calc-dl-status:empty { display: none; }
+.calc-download .calc-dl-status.is-ok { color: var(--ok); }
+.calc-download .calc-dl-status.is-err { color: var(--err); }
+.calc-download .calc-fine { font-size: var(--fs-xs); }
+
+/* Studio CTA card (help aside) */
+.calc-cta .field { margin-bottom: var(--s-3); }
+.calc-cta .select { width: 100%; }
+
+/* Software settings (margin calculator) */
+.calc-soft { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--s-4); }
+.calc-soft-card { display: grid; gap: var(--s-3); align-content: start; padding: var(--s-5); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+.calc-soft-card h3 { margin: 0; font-size: var(--fs-lg); letter-spacing: 0; }
+.calc-soft-card .calc-path { margin: 0; font-size: var(--fs-xs); color: var(--text-2); }
+.calc-soft-card dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px var(--s-3); margin: 0; font-size: var(--fs-sm); }
+.calc-soft-card dt { color: var(--text-2); }
+.calc-soft-card dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.calc-soft-card p { margin: 0; font-size: var(--fs-xs); color: var(--text-2); line-height: 1.5; }
+.calc-soft-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-4); margin-bottom: var(--s-4); }
+.calc-soft-head h2 { margin: 0; font-size: var(--fs-xl); }
+.calc-soft-head p { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.calc-soft-wrap { margin-top: var(--s-6); padding-top: var(--s-6); border-top: 1px solid var(--border); }
+
+/* Gutter tier table */
+.calc .data-table td.num, .calc-tiers td.num { white-space: nowrap; }
+.calc-mm { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--text-2); }
+.calc-tiers tbody tr.is-current > * { background: color-mix(in srgb, var(--highlight) 30%, var(--surface)); }
+.calc-tiers .calc-you { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: var(--r-pill); background: var(--highlight);
+  color: var(--highlight-ink); font-size: var(--fs-xs); font-weight: 700; vertical-align: 1px; }
+.calc-tiers .calc-you[hidden] { display: none; }
+
+/* Comparison page */
+.cmp-meta { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); align-items: center; margin: var(--s-4) 0 0; font-size: var(--fs-sm); color: var(--text-2); }
+.cmp-section + .cmp-section { padding-top: 0; }
+.cmp-table td { min-width: 150px; }
+.cmp-src { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; font-size: var(--fs-xs); font-weight: 700; }
+.cmp-src svg { width: 12px; height: 12px; flex: none; }
+.cmp-cost td.num, .cmp-cost th.num { text-align: right; }
+.cmp-cost tbody tr[data-cost] > * { border-bottom: 0; padding-bottom: 4px; }
+.cmp-cost .cmp-how-row td { padding-top: 0; font-size: var(--fs-xs); color: var(--text-2); }
+.cmp-cost td.num, .cmp-cost th.num { white-space: normal; }
+.cmp-cost .cmp-amount { font-size: var(--fs-md); font-weight: 700; color: var(--text); }
+.cmp-cost .cmp-src + .cmp-src { margin-left: var(--s-3); }
+.cmp-cost .cmp-how { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--text-2); white-space: normal; }
+.cmp-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--s-4); margin: 0; padding: 0; list-style: none; }
+.cmp-choice { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-5); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
+.section-alt .cmp-choice { background: var(--bg); }
+.cmp-choice h3 { margin: 0; font-size: var(--fs-lg); }
+.cmp-choice .cmp-kicker { margin: 0; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); }
+.cmp-choice ul { margin: 0; padding-left: 1.2em; font-size: var(--fs-sm); color: var(--text-2); display: grid; gap: 4px; }
+.cmp-choice ul strong { color: var(--text); }
+.cmp-choice .cmp-src { margin-top: auto; padding-top: var(--s-2); }
+.cmp-us { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.cmp-sources { margin: 0; padding-left: 1.4em; display: grid; gap: var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
+.cmp-sources a { font-weight: 700; overflow-wrap: anywhere; }
+.cmp-sources .nv { font-style: normal; }
+
+@media (pointer: coarse) {
+  .calc-opt span { min-height: 44px; }
+  .calc .input, .calc .select, .calc-cta .select { min-height: 44px; }
+  .cmp-src { min-height: 44px; }
+}
+@media print {
+  .calc-download, .calc-cta { display: none !important; }
+}
+/* ===== end of KDP calculators and comparison page ===== */

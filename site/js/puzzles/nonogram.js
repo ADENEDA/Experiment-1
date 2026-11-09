@@ -4,7 +4,8 @@
 //   'library' — curated silhouettes (data/pictures.js, already line-solvable at every stored size);
 //   'random'  — 50% noise, 3 cellular-automaton smoothing steps, density pulled to 45–60%;
 //   'custom'  — bitmaps the user uploaded or drew (the picture panel rasterizes them with picture-raster.js).
-// Puzzle i of a section (ctx.index) uses picture i of the selected list, cycling.
+// Puzzle i of a section (ctx.index) uses picture i of the selected list, cycling, unless its seed ends in
+// "#pic=<id>" (written by the Studio's Regenerate): then it shows that picture, if it is in the list.
 //
 // Guarantee: every puzzle is line-solvable (nonogram-solver.js): solvable one row or column at a time without
 // guessing, which also proves the solution is unique. Pictures that are not get repaired: undetermined cells nearest
@@ -140,11 +141,37 @@ export function resampleBits(bits, w, h, W, H) {
   return out;
 }
 
-function libraryPicture(opts, index) {
+/** The picture id a seed picks ("…#pic=<id>"; see the header), or null. */
+export function seedPick(seed) {
+  const m = /#pic=([A-Za-z0-9_-]{1,64})$/.exec(String(seed ?? ''));
+  return m ? m[1] : null;
+}
+
+/** Position in `ids` of the picture puzzle `index` shows: the seed's pick when listed, else index (cycling). */
+function slotFor(ids, index, pickId) {
+  const j = pickId ? ids.indexOf(pickId) : -1;
+  return j >= 0 ? j : index % ids.length;
+}
+
+/** Ids of the pictures a library or custom section takes turns through, in order ([] for random shapes). */
+export function pictureChoices(opts = {}) {
+  const source = ['library', 'random', 'custom'].includes(opts.source) ? opts.source : 'library';
+  if (source === 'library') return listPictures(opts).map((p) => p.id);
+  if (source === 'custom') return validCustom(opts).map((p) => p.id || null);
+  return [];
+}
+
+/** Id of the picture puzzle `index` with this seed shows (null for random shapes or a custom picture without id). */
+export function pictureIdAt(opts, seed, index) {
+  const ids = pictureChoices(opts);
+  return ids.length ? ids[slotFor(ids, Math.max(0, index | 0), seedPick(seed))] : null;
+}
+
+function libraryPicture(opts, index, pickId = null) {
   const want = normSize(opts.size);
   const n = librarySize(want);
   const list = listPictures(opts);
-  const pick = BY_ID.get(list[index % list.length].id);
+  const pick = BY_ID.get(list[slotFor(list.map((p) => p.id), index, pickId)].id);
   const notes = want < n ? [`Library pictures start at ${n}×${n}`] : [];
   let bits;
   if (pick.bits[n]) bits = b64ToBits(pick.bits[n], n * n);
@@ -184,10 +211,14 @@ export function decodePicture(p) {
   return { bits, w, h };
 }
 
-function customPicture(opts, index) {
-  const list = ((opts.custom && opts.custom.pictures) || []).filter((p) => decodePicture(p));
+function validCustom(opts) {
+  return ((opts.custom && opts.custom.pictures) || []).filter((p) => decodePicture(p));
+}
+
+function customPicture(opts, index, pickId = null) {
+  const list = validCustom(opts);
   if (!list.length) throw new Error('No pictures yet: upload an image or draw one in the picture panel.');
-  const p = list[index % list.length];
+  const p = list[slotFor(list.map((q) => q.id || null), index, pickId)];
   const d = decodePicture(p);
   return { ...d, id: p.id || null, name: pictureName(p.name), notes: [] };
 }
@@ -280,9 +311,10 @@ export function generate(opts = {}, rng, ctx = {}) {
   const tick = deadlineChecker(ctx.deadline);
   const index = Math.max(0, ctx.index | 0);
   const source = ['library', 'random', 'custom'].includes(opts.source) ? opts.source : 'library';
+  const pickId = seedPick(rng && rng.seed);
   let pic;
-  if (source === 'custom') pic = customPicture(opts, index);
-  else if (source === 'library') pic = libraryPicture(opts, index);
+  if (source === 'custom') pic = customPicture(opts, index, pickId);
+  else if (source === 'library') pic = libraryPicture(opts, index, pickId);
   else {
     const n = normSize(opts.size);
     pic = { bits: randomShape(n, opts.density ?? 0.5, rng.fork('shape')), w: n, h: n, id: null, name: '', notes: [] };

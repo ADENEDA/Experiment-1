@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits and open-source licenses · Gridbook Studio</title>
+<meta name="description" content="Gridbook Studio is built on open-source work: Atkinson Hyperlegible (SIL OFL 1.1), jsPDF, fflate and Phosphor Icons (MIT). Full notices here.">
+<link rel="canonical" href="https://gridbookstudio.com/legal/credits">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gridbook Studio">
+<meta property="og:title" content="Gridbook Studio credits and open-source licenses">
+<meta property="og:description" content="Gridbook Studio is built on open-source work: Atkinson Hyperlegible (SIL OFL 1.1), jsPDF, fflate and Phosphor Icons (MIT). Full notices here.">
+<meta property="og:image" content="https://gridbookstudio.com/og/home.png">
+<meta property="og:url" content="https://gridbookstudio.com/legal/credits">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="../nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="../large-print-word-search-maker/">Word search</a>
+      <a href="../kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="../kdp-margin-calculator/">Margin calculator</a>
+      <a href="../pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="../app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="page-hero" aria-labelledby="credits-h">
+  <div class="wrap wrap-text">
+    <p class="eyebrow">Legal</p>
+    <h1 id="credits-h">Credits and open-source licenses</h1>
+    <p class="lead">Gridbook Studio is built on generous open-source work. Here is each project it uses, what it does in Gridbook Studio, and its license notice.</p>
+    <p class="prose-meta">Last updated November 9, 2026</p>
+    <nav class="btn-row" aria-label="Legal documents">
+      <a class="btn btn-sm" href="terms.html">Terms</a>
+      <a class="btn btn-sm" href="privacy.html">Privacy</a>
+      <a class="btn btn-sm" href="refunds.html">Refunds</a>
+      <a class="btn btn-sm" href="license.html">License</a>
+      <a class="btn btn-sm btn-primary" href="credits.html" aria-current="page">Credits</a>
+    </nav>
+  </div>
+</section>
+
+<section class="section section-flush-top" aria-label="Credits">
+  <div class="wrap wrap-text">
+    <div class="prose">
+      <div class="callout callout-warn" role="note">
+        <p class="callout-title">Site owner: review this page before you sell</p>
+        <p>The notices below are copied from the files shipped with the site. Fill in the highlighted <mark>[OWNER: …]</mark> blank at the end, keep this page up to date if you add a library, then delete this box.</p>
+      </div>
+
+      <div class="table-wrap" tabindex="0" role="region" aria-labelledby="credits-cap">
+        <table class="data-table">
+          <caption id="credits-cap">Third-party components shipped with Gridbook Studio. All are served from this site; nothing is loaded from their servers.</caption>
+          <thead>
+            <tr><th scope="col">Component</th><th scope="col">Used for</th><th scope="col">License</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row"><a href="#atkinson">Atkinson Hyperlegible</a></th><td>The typeface of the site, the Studio and every exported PDF</td><td>SIL Open Font License 1.1</td></tr>
+            <tr><th scope="row"><a href="#jspdf">jsPDF 4.2.1</a></th><td>Writing the PDF files, in your browser</td><td>MIT</td></tr>
+            <tr><th scope="row"><a href="#fflate">fflate 0.8.2</a></th><td>Packing the Pro ZIP downloads</td><td>MIT</td></tr>
+            <tr><th scope="row"><a href="#phosphor">Phosphor Icons</a></th><td>The shapes behind the nonogram picture library</td><td>MIT</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="atkinson">Atkinson Hyperlegible</h2>
+      <p>Atkinson Hyperlegible was created for the Braille Institute of America to make letters easy to tell apart, which is why Gridbook Studio uses it for large-print puzzles. The Regular and Bold files are in <code>fonts/</code>, and the Studio embeds them in every PDF it exports.</p>
+      <p>Copyright 2020 Braille Institute of America, Inc. Licensed under the SIL Open Font License, Version 1.1. <a href="../fonts/OFL.txt">Read the full license text (OFL.txt)</a>.</p>
+      <p>The license lets the font be bundled and embedded, and states that “the requirement for fonts to remain under this license does not apply to any document created using the fonts or their derivatives.” Your books are not affected by the font license.</p>
+
+      <h2 id="jspdf">jsPDF</h2>
+      <p>jsPDF 4.2.1 turns the Studio’s pages into PDF files on your device. Copyright (c) 2010-2025 James Hall and (c) 2015-2025 yWorks GmbH, with many contributors listed in the file. MIT License. <a href="../vendor/jspdf-LICENSE.txt">Read the license text (jspdf-LICENSE.txt)</a>.</p>
+      <p>The jsPDF file also bundles small components under their own permissive licenses, among them pako 2.1.0 (MIT and Zlib), omggif (MIT) and a JPEG encoder (Copyright 2008 Adobe Systems Incorporated, BSD license). Their notices are kept inside the shipped file, <code>vendor/jspdf-4.2.1.umd.min.js</code>.</p>
+
+      <h2 id="fflate">fflate</h2>
+      <p>fflate 0.8.2 packs the ZIP files that Pro exports on your device: the book bundle (interior, cover guide, answer key, project file and a README with the KDP upload settings) and the per-page PNG images.</p>
+      <blockquote>
+        <p>MIT License</p>
+        <p>Copyright (c) 2023 Arjun Barrett</p>
+        <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+        <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+        <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+      </blockquote>
+
+      <h2 id="phosphor">Phosphor Icons</h2>
+      <p>The pictures in the nonogram library (the cat, the dog, the heart and the rest) are silhouettes from the “fill” style of <a href="https://phosphoricons.com">Phosphor Icons</a>. Each one was converted into puzzle grids at several sizes and checked to be solvable without guessing. The same shapes appear as small previews in the Studio and on this site.</p>
+      <blockquote>
+        <p>MIT License</p>
+        <p>Copyright (c) 2023 Phosphor Icons</p>
+        <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+        <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+        <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+      </blockquote>
+      <div class="callout callout-note">
+        <p class="callout-title">For book makers</p>
+        <p>A printed nonogram is a coarse grid of squares derived from one of these shapes. We include the notice above, and you don’t need to credit anyone in your book. If you would like to be extra careful, add a line such as “Some puzzle pictures are based on Phosphor Icons (MIT License)” to your copyright page.</p>
+      </div>
+
+      <h2 id="everything-else">Everything else</h2>
+      <p>The Studio, the puzzle generators and solvers, the word lists, the page layouts, the site design and its icons were made for Gridbook Studio. Copyright © 2026 <mark>[OWNER: your full legal name or business name]</mark>. All rights reserved, except as described on the <a href="license.html">License page</a> and in the <a href="terms.html">Terms of use</a>.</p>
+      <p>Spotted a missing credit? Please email <a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a>.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="../app/">The Studio</a></li>
+        <li><a href="../nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="../large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="../sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="../kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="../kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="../book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="../pricing/">Pricing</a></li>
+        <li><a href="../samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="../legal/terms.html">Terms</a></li>
+        <li><a href="../legal/privacy.html">Privacy</a></li>
+        <li><a href="../legal/refunds.html">Refunds</a></li>
+        <li><a href="../legal/license.html">License</a></li>
+        <li><a href="../legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="../js/site/site.js"></script>
+</body>
+</html>

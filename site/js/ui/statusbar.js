@@ -51,7 +51,7 @@ export function mountStatusbar(el, app) {
     size.replaceChildren('Page ', h('strong', { text: `${fmtIn(ps.w, 3)} × ${fmtIn(ps.h, 3)}` }), m.bleed ? ' with bleed' : '');
     size.title = m.bleed ? `Interior page size including 0.125" bleed (trim ${m.trimLabel})` : `Interior page size (trim ${m.trimLabel})`;
 
-    spine.replaceChildren('Spine ', h('strong', { text: fmtIn(m.spineIn, 3) }), ` · ${m.paper || 'white'}`);
+    spine.replaceChildren('Spine ', h('strong', { text: fmtIn(m.spineIn, 3) }), h('span', { class: 'st-paper', text: ` · ${m.paper || 'white'}` }));
     spine.title = `Spine width for ${n} pages on ${m.paper || 'white'} paper. Use it for your cover.`;
 
     const over = Number.isFinite(m.maxPages) && n > m.maxPages;
