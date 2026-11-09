@@ -239,3 +239,119 @@ Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `c
 - Possible reasons include `reconnect` (offline grace ended; show `getLicense().message` in the export dialog) and `test-ended`.
 - `openUnlockDialog({reason})` returns `Promise<{pro, license}>`, with reason `'badge'|'export'|'printable'|'png'|'zip'|'credit'`. `renderBuyButtons(el, {compact})`. `closeUnlockDialog()`.
 - Extra localStorage key: `gbs.license.counted`. If a CSP is ever added, it must allow `https://assets.gumroad.com` (script and style).
+
+## 12. Studio UI (`site/app/`, `site/js/ui/`)
+
+Plain DOM + ES modules, no framework. UI code may use `document`, `localStorage` (wrapped) and `Math.random` (for new seeds/ids).
+Every interactive element: real `<button>`/`<input>`/`<select>`, visible focus ring, `aria-*` where needed, ≥ 44px targets on
+`(pointer: coarse)`. All colours from `tokens.css`. Each UI module owns one CSS file, linked from `site/app/index.html`.
+
+### 12.1 Files and owners
+| Owner | Files |
+|---|---|
+| shell | `site/app/index.html`, `site/css/app.css`, `js/core/{store.js, bus.js, project.js}`, `js/ui/{app.js, dom.js, persist.js, pipeline.js, topbar.js, outline.js, statusbar.js, toasts.js, shortcuts.js}` |
+| preview | `js/ui/preview.js` (+ helpers `js/ui/preview-*.js`), `site/css/preview.css` |
+| inspector | `js/ui/{inspector.js, controls.js, wordlist-panel.js, picture-panel.js, pixel-editor.js}`, `site/css/inspector.css` |
+| export | `js/ui/export-dialog.js` (+ `js/ui/export-*.js`), `site/css/export.css` |
+| templates | `js/ui/templates.js`, `site/css/templates.css`, `site/img/templates/*` (optional) |
+| license (done) | `js/ui/{unlock-dialog.js, buy-buttons.js}`, `site/css/license.css` |
+
+### 12.2 `js/core/store.js` (pure)
+```js
+createStore(initial, { history = 100, coalesceMs = 1000 } = {}) → {
+  get(),                                  // current state — treat as read-only
+  update(mutator, { label, coalesce }),   // mutator(draft): mutate a structuredClone; one undo step.
+                                          // Same `coalesce` key within coalesceMs merges into the previous step (sliders, typing).
+  set(next, { label }),                   // replace whole state as one undo step
+  reset(state),                           // replace and clear history (open project / template)
+  undo(), redo(), canUndo(), canRedo(), undoLabel(), redoLabel(),
+  subscribe(fn) → unsubscribe,            // fn(state, prev, { source:'update'|'set'|'undo'|'redo'|'reset', label })
+}
+```
+`history: 0` gives a plain observable store (used for UI state).
+
+### 12.3 `js/core/project.js` (pure; `newId` from rng.js is the only randomness)
+`newProject(overrides)`, `newSection(type, themeId, overrides)` (opts from `getType(type).defaults(themeId)`, perPage =
+`meta.defaultPerPage`, title = `meta.plural`), `normalizeProject(raw)` (fills every §4 default, clamps `count` to 1..500,
+snaps `perPage`/`answers.perPage` to allowed values, keeps unknown fields), `parseProjectFile(text)` (→ project, or throws
+an Error with a human message), `serializeProject(p)` (pretty JSON), `projectFileName(p)` (ASCII,
+`<title-slug>.gridbook.json`), `pinSeed(section, index, bookSeed)` and `freshSeed()` helpers for regenerate/lock.
+
+### 12.4 The `app` context (created by `js/ui/app.js`, passed to every mount function)
+```js
+app = {
+  config,                 // CONFIG
+  store,                  // undoable project store (project model §4)
+  ui,                     // UI-state store, history 0 — shape below
+  bus,                    // js/core/bus.js: on(evt, fn) → off, off(evt, fn), emit(evt, payload)
+  getBook(),              // latest pipeline result (below); never null after boot
+  actions: {
+    addSection(type) → id, removeSection(id), duplicateSection(id), moveSection(id, delta),
+    updateSection(id, mutator, { label, coalesce }),   // store.update scoped to one section
+    updateProject(mutator, { label, coalesce }),
+    select(selection),                                 // sets ui.selection (+ inspectorTab)
+    selectPuzzle(sectionId, index),                    // selection + inspectorTab 'puzzle' + goToPage(page of that puzzle)
+    goToPage(pageIndex), pageOfPuzzle(sectionId, index) → pageIndex | -1,
+    regenerate(sectionId, index),                      // new seed in section.seeds[index] unless locked
+    regenerateSection(sectionId),                      // pin locked seeds, bump salt
+    toggleLock(sectionId, index),                      // lock pins the current seed into seeds[index]
+    openExport(), openUnlock(reason), openTemplates({ firstRun }), openShortcutHelp(),
+    saveProjectFile(), openProjectFile(file), newProject(templateId?),
+    toast(message, { kind:'info'|'ok'|'warn'|'err', action:{ label, run }, timeout }),
+  },
+};
+```
+UI state (`app.ui.get()`):
+```js
+{ selection: { kind:'book'|'front'|'section'|'answers'|'back', id?, index? },  // id = section id or front/back item key
+  page: 0,                        // 0-based index of the current page (left page of a spread is derived by preview)
+  view: 'spread'|'single', zoom: 'fit' | 0.5..4,
+  overlays: { margins:false, answers:false },
+  inspectorTab: 'section'|'puzzle'|'book', mobileTab: 'book'|'preview'|'settings'|'export',
+  generating: { active:false, done:0, total:0 } }
+```
+Book (`app.getBook()`, also emitted as bus event `'book'` after every relayout):
+```js
+{ pages, meta,                    // layoutBook(project, puzzles, { pro: isPro() }) — preview shows exactly what exports
+  puzzles,                        // { [sectionId]: Array<puzzle | null | {error, seed, index, timeout?}> }
+  preflight,                      // preflight(...) result, or null while generating
+  generating: { active, done, total }, project }   // the project snapshot this book was laid out from
+```
+Other bus events: `'license'` (license, info), `'flash'` ({ page }) to briefly highlight a page, `'gen-error'` ({sectionId, index, error}).
+
+### 12.5 Mount functions (each module default-exports nothing; named exports only)
+- `mountOutline(el, app)`, `mountTopbar(el, app)`, `mountStatusbar(el, app)` (shell)
+- `mountPreview(el, app) → { destroy }` (preview). Keyboard handling for pages/zoom lives in `shortcuts.js`, which calls `app.ui.update` / `app.actions`; preview only reacts to `app.ui` and `'book'`.
+- `mountInspector(el, app) → { destroy }` (inspector)
+- `openExportDialog(app) → Promise<void>` (export)
+- `TEMPLATES` (array of `{ id, name, blurb, build(opts) → project }`), `buildFromTemplate(id, { sample=false }) → project`,
+  `openTemplatePicker(app, { firstRun }) → Promise<project|null>` (templates)
+
+### 12.6 Pipeline (`js/ui/pipeline.js`, shell)
+On project change (debounced ~120 ms) or license change: lay out at once from `cachedSection()` (placeholders for missing
+puzzles), emit `'book'`, then `generateSection()` for sections with gaps (one AbortController per run; a new change aborts
+the old run — the cache keeps finished puzzles), re-laying out at most every ~300 ms on progress. When every section is
+complete: run `preflight()` and emit the final `'book'`. Preview never generates puzzles itself.
+
+### 12.7 Persistence (`js/ui/persist.js`, shell) — SPEC 5.8
+Keys `gbs.projects.index`, `gbs.project.<id>`, `gbs.prefs`; autosave 800 ms after the last change; everything in try/catch;
+`storageAvailable()` false → toast "Autosave is off in this browser. Use Save project (Ctrl+S) to keep your work."
+
+### 12.8 Deep links into the Studio (used by landing/tool-page CTAs)
+`app/?template=<id>[&sample=1]` → new project from a template (template ids: `large-print-wordsearch`, `sudoku-easy-expert`,
+`picture-logic`, `brain-games-mix`, `kids-activity`, `blank`). `app/?type=<wordsearch|sudoku|maze|nonogram>` → new book with one
+section of that type. Optional with either: `trim=<trim id>`, `theme=<standard|large|kids>`, `count=<n>`. A new project never
+overwrites an existing one (it is added to the local project list). After handling, the query string is removed with
+`history.replaceState`. Unknown values are ignored.
+
+## 13. Marketing pages (`site/index.html`, tool pages, `pricing/`, `legal/`, `404.html`)
+
+- One stylesheet: `site/css/site.css` (owner: landing). Pages link `tokens.css` then `site.css` with relative paths.
+- Shared chrome (head links, header, footer, site.js script) is static HTML, copied **verbatim** from
+  `docs/site-chrome.html` into every page, with `{R}` replaced by the relative path to the site root (`./` for
+  `index.html`, `../` for `pricing/`, tool pages and `legal/*.html`). `404.html` is served at arbitrary paths, so it
+  uses `<base href="/">` with `{R}` = `` (the one page that assumes root hosting).
+- `js/site/site.js` (owner: landing) fills `[data-cfg="supportEmail"]` (text + mailto), `[data-cfg-price="lifetime|lifetimeRegular|pass"]`,
+  `[data-cfg-link="lifetime|pass"]` (Gumroad URLs) from `config.js`, and marks the current nav link. Static HTML carries
+  the default values so pages read correctly without JS.
+- Canonical/OG URLs use `https://gridbookstudio.com/…` (SETUP.md explains the one-line domain replace).

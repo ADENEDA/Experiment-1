@@ -1,0 +1,92 @@
+<!--
+  Shared chrome for every marketing page (CONTRACTS.md §13). Copy VERBATIM; replace {R} with the relative
+  path to the site root: "./" for site/index.html, "../" for pricing/, tool pages and legal/*.html.
+  404.html uses <base href="/"> and {R} = "" (it is served at arbitrary paths).
+  Mark the current page's nav link with aria-current="page" in the static HTML (site.js also does it at runtime).
+-->
+
+<!-- ======== HEAD (after <meta charset> / viewport / title / description / canonical / og tags) ======== -->
+<link rel="icon" href="{R}favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{R}img/apple-touch-icon.png">
+<link rel="manifest" href="{R}site.webmanifest">
+<meta name="theme-color" content="#0e7c66">
+<link rel="stylesheet" href="{R}css/tokens.css">
+<link rel="stylesheet" href="{R}css/site.css">
+
+<!-- ======== BODY START ======== -->
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{R}" aria-label="Gridbook Studio home">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+        <rect x="5" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="10" y="10" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="5" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="5" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+        <rect x="15" y="15" width="4" height="4" rx="1" fill="var(--bg, #fff)"/>
+      </svg>
+      <span>Gridbook Studio</span>
+    </a>
+    <button class="nav-toggle btn btn-ghost btn-icon" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="{R}nonogram-puzzle-book-maker/">Nonograms</a>
+      <a href="{R}large-print-word-search-maker/">Word search</a>
+      <a href="{R}kdp-spine-width-calculator/">Spine calculator</a>
+      <a href="{R}kdp-margin-calculator/">Margin calculator</a>
+      <a href="{R}pricing/">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="{R}app/">Open the Studio</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- page content -->
+</main>
+
+<!-- ======== BODY END ======== -->
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h2 class="footer-h">Make</h2>
+      <ul>
+        <li><a href="{R}app/">The Studio</a></li>
+        <li><a href="{R}nonogram-puzzle-book-maker/">Nonogram book maker</a></li>
+        <li><a href="{R}large-print-word-search-maker/">Large print word search</a></li>
+        <li><a href="{R}sudoku-book-generator/">Sudoku book generator</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">KDP tools</h2>
+      <ul>
+        <li><a href="{R}kdp-spine-width-calculator/">Spine width calculator</a></li>
+        <li><a href="{R}kdp-margin-calculator/">Margin &amp; gutter calculator</a></li>
+        <li><a href="{R}book-bolt-alternative/">Book Bolt alternative</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Gridbook</h2>
+      <ul>
+        <li><a href="{R}pricing/">Pricing</a></li>
+        <li><a href="{R}samples/picture-logic-32p.pdf">Free sample PDF</a></li>
+        <li><a data-cfg="supportEmail" href="mailto:hello@gridbookstudio.com">hello@gridbookstudio.com</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="footer-h">Legal</h2>
+      <ul>
+        <li><a href="{R}legal/terms.html">Terms</a></li>
+        <li><a href="{R}legal/privacy.html">Privacy</a></li>
+        <li><a href="{R}legal/refunds.html">Refunds</a></li>
+        <li><a href="{R}legal/license.html">License</a></li>
+        <li><a href="{R}legal/credits.html">Credits</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap fineprint">
+    <p>Built by a solo maker. Gridbook Studio is not affiliated with Amazon, Kindle Direct Publishing or any tool named on this site.</p>
+  </div>
+</footer>
+<script type="module" src="{R}js/site/site.js"></script>
