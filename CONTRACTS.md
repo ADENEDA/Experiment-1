@@ -67,7 +67,9 @@ export const controls = [ { key:'size', label:'Grid size', kind:'select', option
 
 export function defaults(themeId /* 'standard'|'large'|'kids' */) { return { /* section opts */ }; }
 
-// Pure + deterministic for a given (opts, rng.seed). `ctx.deadline` is an absolute now() ms; throw GenTimeout past it.
+// Pure + deterministic for a given (opts, rng.seed, ctx.index). ctx = { deadline, index, count }:
+//   deadline = absolute now() ms (throw GenTimeout past it); index = 0-based puzzle number within the section
+//   (used to rotate word-search themes / nonogram pictures); count = section size.
 export function generate(opts, rng, ctx = {}) {
   return {
     type: 'sudoku', v: 1,
