@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Render check (dev)</title>
+<!-- Dev-only page (not deployed). Serve the REPO ROOT: node tools/serve.mjs 8106 . then open
+     http://localhost:8106/tools/dev/render-check.html . Used by tools/test/browser-render.test.mjs. -->
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #eee; color: #222; }
+  .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  canvas { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  button { margin: 0 6px 6px 0; }
+  pre { background: #fff; padding: 8px; max-width: 640px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Render check</h1>
+<p>
+  <button id="b-render">Render synthetic page</button>
+  <button id="b-real">Render real puzzles</button>
+  <button id="b-worker">PDF (worker)</button>
+  <button id="b-main">PDF (main thread)</button>
+  <button id="b-png">PNG 300 DPI</button>
+</p>
+<div class="row">
+  <canvas id="page"></canvas>
+  <canvas id="thumb"></canvas>
+  <pre id="log"></pre>
+</div>
+<script type="module">
+import { ensureFonts, FONT_FAMILY } from '../../site/js/render/fonts.js';
+import { renderPageToCanvas, drawPageThumb } from '../../site/js/render/canvas-backend.js';
+import { exportPdf, exportPng, downloadBlob, safeFilename, lastPdfExportPath, disposePdfWorker } from '../../site/js/render/export-pdf.js';
+import { generateSection, generateOne, generationInfo, terminateWorkers } from '../../site/js/puzzles/generate.js';
+import { measure } from '../../site/js/core/fontmetrics.js';
+import { TYPE_ORDER, getType } from '../../site/js/puzzles/registry.js';
+import { themeById } from '../../site/js/layout/themes.js';
+
+const log = (...a) => { document.getElementById('log').textContent += a.join(' ') + '\n'; };
+
+/** Same synthetic page as tools/test/render.test.mjs: every op type, with known solid areas. */
+function everyOpPage() {
+  return {
+    w: 612, h: 792,
+    ops: [
+      { t: 'rect', x: 72, y: 72, w: 144, h: 72, fill: 0 },
+      { t: 'rect', x: 288, y: 72, w: 144, h: 72, fill: 0.5 },
+      { t: 'rect', x: 72, y: 180, w: 144, h: 72, r: 12, fill: 0.82, stroke: { w: 2, gray: 0 } },
+      { t: 'rect', x: 288, y: 180, w: 144, h: 72, stroke: { w: 1, gray: 0.3, dash: [4, 2] } },
+      { t: 'line', x1: 72, y1: 290, x2: 540, y2: 290, w: 0.75, gray: 0, cap: 'butt' },
+      { t: 'line', x1: 72, y1: 300, x2: 540, y2: 300, w: 4, gray: 0.3, cap: 'round' },
+      { t: 'line', x1: 72, y1: 312, x2: 540, y2: 312, w: 4, gray: 0, cap: 'butt', dash: [6, 3] },
+      { t: 'poly', pts: [72, 420, 216, 420, 144, 340], closed: true, fill: 0 },
+      { t: 'poly', pts: [288, 420, 340, 350, 390, 420, 432, 350], closed: false, stroke: { w: 3, gray: 0, cap: 'round', join: 'round' } },
+      { t: 'poly', pts: [460, 340, 540, 340, 540, 420], closed: false, fill: 0.6, stroke: { w: 1, gray: 0 } },
+      { t: 'circle', cx: 144, cy: 500, r: 40, fill: 0 },
+      { t: 'circle', cx: 306, cy: 500, r: 40, stroke: { w: 2, gray: 0 } },
+      { t: 'circle', cx: 468, cy: 500, r: 40, fill: 0.75, stroke: { w: 1.5, gray: 0.2 } },
+      { t: 'text', x: 72, y: 600, s: 'Regular left “quotes” – é…', size: 18, weight: 'regular', align: 'left', gray: 0 },
+      { t: 'text', x: 306, y: 640, s: 'Bold centered ×·•', size: 18, weight: 'bold', align: 'center', gray: 0 },
+      { t: 'text', x: 540, y: 680, s: 'Right aligned', size: 18, weight: 'regular', align: 'right', gray: 0.3 },
+      { t: 'text', x: 72, y: 720, s: 'Arrow → becomes ?', size: 12, weight: 'regular', align: 'left', gray: 0 },
+    ],
+  };
+}
+
+/** Many busy pages (word-search-like) for export timing / cancellation. */
+function busyPages(n, opsPerPage = 400) {
+  return Array.from({ length: n }, (_, p) => {
+    const ops = [];
+    for (let i = 0; i <= 15; i++) {
+      ops.push({ t: 'line', x1: 72, y1: 100 + i * 30, x2: 522, y2: 100 + i * 30, w: 0.75, gray: 0, cap: 'butt' });
+      ops.push({ t: 'line', x1: 72 + i * 30, y1: 100, x2: 72 + i * 30, y2: 550, w: 0.75, gray: 0, cap: 'butt' });
+    }
+    for (let i = 0; ops.length < opsPerPage; i++) {
+      ops.push({ t: 'text', x: 87 + (i % 15) * 30, y: 121 + Math.floor(i / 15) * 30, s: String.fromCharCode(65 + ((i + p) % 26)),
+        size: 16, weight: 'bold', align: 'center', gray: 0 });
+    }
+    return { w: 612, h: 792, ops };
+  });
+}
+
+const pageCanvas = document.getElementById('page');
+const thumbCanvas = document.getElementById('thumb');
+
+function pixel(canvas, x, y) {
+  const d = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
+  return [d[0], d[1], d[2]];
+}
+
+async function blobInfo(blob) {
+  const head = new Uint8Array(await blob.slice(0, 64).arrayBuffer());
+  return { size: blob.size, type: blob.type, head: String.fromCharCode(...head.slice(0, 5)), bytes: Array.from(head) };
+}
+
+const check = {
+  async renderCanvas() {
+    await ensureFonts();
+    const r = renderPageToCanvas(pageCanvas, everyOpPage(), { cssWidth: 612, dpr: 1 });
+    drawPageThumb(thumbCanvas, everyOpPage(), { cssWidth: 120, dpr: 1 });
+    // Ink inside a text line, and none in the margin beside the centered line.
+    const ctx = pageCanvas.getContext('2d');
+    const ink = (x, y, w, h) => {
+      const d = ctx.getImageData(x, y, w, h).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] < 128) n++;
+      return n;
+    };
+    return {
+      scale: r.scale, width: r.width, height: r.height,
+      black: pixel(pageCanvas, 144, 108), gray50: pixel(pageCanvas, 360, 108), gray82: pixel(pageCanvas, 144, 216),
+      corner: pixel(pageCanvas, 73, 181), ringCenter: pixel(pageCanvas, 306, 500), disc: pixel(pageCanvas, 144, 500),
+      triangle: pixel(pageCanvas, 144, 400), margin: pixel(pageCanvas, 30, 30),
+      textInk: ink(72, 585, 228, 17), boldInk: ink(220, 625, 180, 17), besideCentered: ink(5, 625, 55, 20),
+      thumb: { width: thumbCanvas.width, height: thumbCanvas.height, black: pixel(thumbCanvas, 28, 17) },
+    };
+  },
+
+  /** Canvas advance widths (FontFace + kerning off) vs fontmetrics: the basis of preview == print. */
+  async widthParity() {
+    await ensureFonts();
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.fontKerning = 'none';
+    let maxDiff = 0;
+    const samples = ['RightAligned', 'Hello World', 'WAVE AVATAR Typography', '“Quotes” – … × é', 'iiiiMMMM 1234567890'];
+    for (const weight of ['regular', 'bold']) {
+      ctx.font = `${weight === 'bold' ? 700 : 400} 40px "${FONT_FAMILY}"`;
+      for (const s of samples) maxDiff = Math.max(maxDiff, Math.abs(ctx.measureText(s).width - measure(s, 40, weight)));
+    }
+    return { maxDiff, fontsLoaded: document.fonts.check(`40px "${FONT_FAMILY}"`) };
+  },
+
+  async exportWorker(n = 1) {
+    const pages = n === 1 ? [everyOpPage()] : busyPages(n);
+    let progress = 0;
+    const t0 = performance.now();
+    const blob = await exportPdf(pages, { title: 'Render check', author: 'Dev', onProgress: (d) => { progress = d; } });
+    return { ...(await blobInfo(blob)), path: lastPdfExportPath(), progress, ms: Math.round(performance.now() - t0) };
+  },
+
+  async exportFallback() {
+    let progress = 0;
+    const blob = await exportPdf([everyOpPage(), ...busyPages(3)], { title: 'Fallback', useWorker: false, onProgress: (d) => { progress = d; } });
+    return { ...(await blobInfo(blob)), path: lastPdfExportPath(), progress };
+  },
+
+  /** Worker construction fails -> exportPdf falls back to the main thread on its own. */
+  async exportWorkerBroken() {
+    disposePdfWorker();
+    const RealWorker = window.Worker;
+    window.Worker = function BrokenWorker() { throw new Error('Workers disabled for this check'); };
+    try {
+      const blob = await exportPdf([everyOpPage()], { title: 'No worker' });
+      return { ...(await blobInfo(blob)), path: lastPdfExportPath() };
+    } finally {
+      window.Worker = RealWorker;
+    }
+  },
+
+  async exportCancel(useWorker = true) {
+    const ac = new AbortController();
+    let progress = 0;
+    try {
+      await exportPdf(busyPages(400), { useWorker, signal: ac.signal, onProgress: (d) => { progress = d; if (d === 3) ac.abort(); } });
+      return { cancelled: false, progress };
+    } catch (e) {
+      return { cancelled: e.name === 'AbortError', name: e.name, progress };
+    }
+  },
+
+  async exportPng(dpi = 150) {
+    const blob = await exportPng(everyOpPage(), { dpi });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const dv = new DataView(bytes.buffer);
+    const bitmap = await createImageBitmap(blob);
+    return {
+      type: blob.type, size: blob.size, width: bitmap.width, height: bitmap.height,
+      chunk: String.fromCharCode(...bytes.slice(37, 41)), ppm: dv.getUint32(41),
+      name: safeFilename('Render Check', 'page', '1', '.png'),
+    };
+  },
+
+  /** Generation through the module-worker pool with the real registry. */
+  async generate() {
+    terminateWorkers();
+    const project = { seed: 'browser-check', theme: 'standard' };
+    const out = {};
+    for (const type of TYPE_ORDER) {
+      let opts = {};
+      try { opts = getType(type).defaults('standard'); } catch { /* placeholder engine */ }
+      const list = await generateSection(project, { id: `s-${type}`, type, count: 4, opts, salt: 0 }, { deadlineMs: 5000 });
+      out[type] = list.map((p) => (p.error !== undefined ? { error: p.error } : { ok: getType(type).verify(p).ok, type: p.type, seed: p.seed }));
+    }
+    const bad = await generateSection(project, { id: 'bad', type: 'no-such-type', count: 2, opts: {} });
+    return { info: generationInfo(), out, bad };
+  },
+
+  /** Draw one real puzzle of each type (if its engine works) onto a page and render it. */
+  async renderReal() {
+    await ensureFonts();
+    const style = themeById('standard');
+    const ops = [];
+    const notes = [];
+    const boxes = [{ x: 36, y: 36, w: 264, h: 340 }, { x: 312, y: 36, w: 264, h: 340 }, { x: 36, y: 416, w: 264, h: 340 }, { x: 312, y: 416, w: 264, h: 340 }];
+    for (const [i, type] of TYPE_ORDER.entries()) {
+      try {
+        const engine = getType(type);
+        const p = await generateOne(type, engine.defaults('standard'), `real-${type}`);
+        const r = engine.draw(p, boxes[i], style, 'puzzle');
+        ops.push(...r.ops);
+        notes.push(`${type}: ${r.ops.length} ops${r.warnings?.length ? ' — ' + r.warnings.join('; ') : ''}`);
+      } catch (e) {
+        notes.push(`${type}: ${e.message}`);
+      }
+    }
+    const page = { w: 612, h: 792, ops };
+    renderPageToCanvas(pageCanvas, page, { cssWidth: 612 });
+    return { notes, page };
+  },
+
+  // ---- preview == print checks (the test rasterizes the PDF with pdftoppm and diffs it against these pixels)
+
+  /** Canvas pixels (gray, 1 byte each) of every page at `scale` px/pt, plus the same pages as a PDF from the worker. */
+  async parity({ pages, scale = 1 }) {
+    await ensureFonts();
+    const c = document.createElement('canvas');
+    const canvases = pages.map((p) => {
+      renderPageToCanvas(c, p, { cssWidth: p.w * scale, dpr: 1 });
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const g = new Uint8Array(c.width * c.height);
+      for (let i = 0; i < g.length; i++) g[i] = d[i * 4];
+      return { w: c.width, h: c.height, gray: toBase64(g) };
+    });
+    const blob = await exportPdf(pages, { title: 'Parity' });
+    return { canvases, pdf: toBase64(new Uint8Array(await blob.arrayBuffer())), path: lastPdfExportPath() };
+  },
+
+  /** A small but complete book (front matter, every puzzle type, answers, notes) from the real layout + engines. */
+  async realBookPages({ theme = 'standard', trim = '8.5x11' } = {}) {
+    try {
+      const { layoutBook } = await import('../../site/js/layout/book.js');
+      const sections = TYPE_ORDER.map((type, i) => {
+        const eng = getType(type);
+        return { id: `s${i}`, type, title: eng.meta.plural, count: 2, perPage: eng.meta.defaultPerPage, divider: i === 0,
+          opts: eng.defaults(theme), salt: 0, seeds: {}, locked: {} };
+      });
+      const project = { v: 1, id: 'b_parity', seed: 'parity', title: 'Parity Puzzle Book', subtitle: 'Preview equals print',
+        author: 'Zoë Tester', year: 2026, trim, paper: 'white', bleed: false, theme,
+        front: { title: true, copyright: true, belongs: true, howto: true, contents: true }, sections,
+        answers: { perPage: 6, position: 'end' }, back: { thanks: true, notes: true }, pageNumbers: true, header: 'Header',
+        credit: true, copyrightText: null };
+      const puzzles = {};
+      for (const s of sections) puzzles[s.id] = await generateSection(project, s, { deadlineMs: 5000 });
+      const book = layoutBook(project, puzzles, { pro: false });
+      return { pages: book.pages.map((p) => ({ w: p.w, h: p.h, ops: p.ops, kind: p.kind })) };
+    } catch (e) {
+      return { error: String(e?.stack || e) };
+    }
+  },
+
+  /** The worker is created but its scripts fail to load (e.g. a 404 on the vendored jsPDF): fall back, no hang. */
+  async exportWorkerLoadFails() {
+    disposePdfWorker();
+    const RealWorker = window.Worker;
+    const url = URL.createObjectURL(new Blob(['throw new Error("importScripts failed (simulated)");'], { type: 'text/javascript' }));
+    window.Worker = function FailingWorker(_u, opts) { return new RealWorker(url, opts); };
+    try {
+      const t0 = performance.now();
+      const blob = await exportPdf([everyOpPage()], { title: 'Load fails' });
+      return { ...(await blobInfo(blob)), path: lastPdfExportPath(), ms: Math.round(performance.now() - t0) };
+    } finally {
+      window.Worker = RealWorker;
+      URL.revokeObjectURL(url);
+    }
+  },
+
+  /** Two exports at once through the same worker. */
+  async concurrentExports() {
+    const prog = { a: 0, b: 0 };
+    const [a, b] = await Promise.all([
+      exportPdf(busyPages(5), { title: 'A', onProgress: (d, n) => { prog.a = `${d}/${n}`; } }),
+      exportPdf(busyPages(9), { title: 'B', onProgress: (d, n) => { prog.b = `${d}/${n}`; } }),
+    ]);
+    const text = async (blob) => new TextDecoder('latin1').decode(await blob.arrayBuffer());
+    const count = async (blob) => ((await text(blob)).match(/\/Type \/Page\b/g) || []).length;
+    return { prog, pagesA: await count(a), pagesB: await count(b), path: lastPdfExportPath() };
+  },
+
+  /** An already-aborted signal rejects at once and never starts a build. */
+  async preAborted() {
+    const ac = new AbortController();
+    ac.abort();
+    let progress = 0;
+    try {
+      await exportPdf(busyPages(3), { signal: ac.signal, onProgress: () => { progress++; } });
+      return { rejected: false };
+    } catch (e) {
+      return { rejected: true, name: e.name, progress };
+    }
+  },
+
+  /** Options wrapped in a Proxy (as a reactive store would hand out) cannot be posted as-is to module workers. */
+  async generateProxyOpts() {
+    terminateWorkers();
+    const eng = getType('sudoku');
+    const opts = new Proxy({ ...eng.defaults('standard') }, {});
+    const list = await generateSection({ seed: 'proxy' }, { id: 'px', type: 'sudoku', count: 3, opts, salt: 0 }, { deadlineMs: 5000 });
+    return { info: generationInfo(), out: list.map((p) => (p.error !== undefined ? { error: p.error } : { ok: eng.verify(p).ok })) };
+  },
+};
+
+function toBase64(u8) {
+  let bin = '';
+  for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+window.renderCheck = check;
+window.renderCheckReady = ensureFonts().then(() => true);
+
+document.getElementById('b-render').onclick = async () => log(JSON.stringify(await check.renderCanvas()));
+document.getElementById('b-real').onclick = async () => log((await check.renderReal()).notes.join('\n'));
+document.getElementById('b-worker').onclick = async () => {
+  const { page } = await check.renderReal();
+  const blob = await exportPdf([page, everyOpPage()], { title: 'Render check' });
+  log('worker PDF', blob.size, lastPdfExportPath());
+  downloadBlob(blob, safeFilename('Render Check', 'worker', '.pdf'));
+};
+document.getElementById('b-main').onclick = async () => {
+  const blob = await exportPdf([everyOpPage()], { title: 'Render check', useWorker: false });
+  log('main-thread PDF', blob.size, lastPdfExportPath());
+  downloadBlob(blob, safeFilename('Render Check', 'main', '.pdf'));
+};
+document.getElementById('b-png').onclick = async () => {
+  const blob = await exportPng(everyOpPage(), { dpi: 300 });
+  downloadBlob(blob, safeFilename('Render Check', '300dpi', '.png'));
+};
+</script>
+</body>
+</html>

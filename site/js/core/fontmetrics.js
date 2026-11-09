@@ -25,6 +25,7 @@ export function sanitize(s, weight = 'regular') {
     const cp = ch.codePointAt(0);
     if (cp === 0x09) { out += ' '; continue; }
     if (cp === 0x0a) { out += '\n'; continue; }
+    if (cp === 0xad) continue; // soft hyphen: invisible on canvas, a visible glyph in PDF -> drop it everywhere
     out += w[cp] !== undefined ? ch : String.fromCodePoint(FALLBACK_CHAR);
   }
   return out;
@@ -36,6 +37,7 @@ export function measure(s, size, weight = 'regular') {
   let u = 0;
   for (const ch of String(s ?? '')) {
     const cp = ch.codePointAt(0);
+    if (cp === 0xad) continue; // dropped by sanitize() and both backends
     u += f.widths[cp] ?? f.widths[FALLBACK_CHAR] ?? f.notdef;
   }
   return (u / f.unitsPerEm) * size;

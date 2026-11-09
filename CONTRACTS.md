@@ -198,3 +198,44 @@ Gating happens **once, at export time** (`isPro()` passed to `layoutBook({ pro }
 `.badge-pro`, `.pill-ok/warn/err`, `kbd`, `dialog.gbs-dialog` with `.dialog-head/body/foot`, `.toasts/.toast`).
 Light + dark themes via `prefers-color-scheme` and `:root[data-theme]`. Page previews are always white paper.
 Use these tokens; don't hard-code colors elsewhere. Icons: inline SVG (stroke `currentColor`, 1.75px, 24 viewBox).
+
+## 11. Phase-1 amendments (as built; these override the sections above where they differ)
+
+**§3 engines**
+- Word search `wordSource` (control kind `words`): `{mode:'themes', themes:'all'|string[]}` or `{mode:'custom', words:string[]|string, title?}`. Older forms (plain `string[]`, `{themeId}`) are still accepted. Word data is `site/data/wordlists.js` (`THEMES`, `CATEGORIES`, `THEME_BY_ID`) and `site/data/blocklist.js`; shapes are `MASK_LIST` in `puzzles/masks.js`. The word-list panel uses `validateWords`, `parseWordList`, `aiPrompt` from `puzzles/wordsearch.js`; issues carry `{word, problem, code, severity}` (codes include `blocked`, shown as info). Theme preview for puzzle *i* must call `themeForIndex(wordSource, i, section.opts)`.
+- Nonogram opts: `{size, source:'library'|'random'|'custom', library:{pictures:string[]|'all', category}, custom:{pictures:[{id,name,w,h,bits}]}, density, showGivens}`. The real grid is `data.w × data.h`. `title` is `''`, `answerTitle` is the picture name. Picture data: `site/data/pictures.js` (`PICTURES`, `PICTURE_CATEGORIES`, `PICTURE_SIZES`). Picture panel: `listPictures(opts)`, `CUSTOM_MAX` (40), `pictureName()`, and from `picture-raster.js` `imageToBits / thresholdCells / loadImage / pathToBits / bitsToDataURL`. Badge text comes from `puzzle.stats.notes`.
+- Sudoku `size` values are numbers (9/6/4). The inspector must keep option values in their declared type, or cache keys will differ. Mazes: `fitPreset(presetId, boxW, boxH)`. Suggest `corners-sides` openings for 2 per page.
+- Engines may throw a plain `Error` with a readable message (for example, a custom word list where no word fits). generate.js passes it on as `{error}`.
+
+**§5 generate.js**
+- The cache key is type + sorted-key JSON opts + seed + index (ctx.count is excluded). Each job gets its own copy of opts.
+- `generateOne(type, opts, seed, {index, count, deadlineMs, signal})` rejects on failure (with a `GenTimeout` when it times out). `generateSection` rejects only on abort. Failures come back as error entries `{error, seed, index, timeout?}`, and progress as `onProgress(done, total, index?, entry?)`.
+- Other exports: `cachedSection(project, section)` (a synchronous cache peek, for instant previews), `configureGeneration`, `generationInfo`, `terminateWorkers`, `runJob`.
+- Deadlines are computed inside the worker, so performance.now() origins never mix. Treat cached puzzles as read-only.
+
+**§6 layoutBook**
+- Options: `types` (for test injection), `answersOnly`, `limit`. A null, undefined or '' limit means no limit. Free printables are also capped at `CONFIG.free.printableMaxPuzzles`.
+- `meta.warnings` entries are objects `{code, msg, page?, pages?, sectionId?}`. pageW and pageH are in pt; margins are in inches from the page edge and include the bleed.
+- Extra meta fields: `trimLabel, pageSizeIn, bleed, safe, theme, paper, answersOnly, paddedPages, puzzleCount, totalPuzzles, sections[]`.
+- Extra page fields: `safeBox, trimBox, sectionId`. Each `refs[]` entry has `num`, the book-wide puzzle number. Answer refs use mode `'mini'`.
+- Project fields read: `pageNumbers` (true|'outside'|'center'|false|'none'), `back.notes` (true or a page count), `thanksText`, `spineText`. `year` falls back to `createdAt`.
+- Other exports: `watermarkText()` and `isWatermarkOp()`; from text.js, `normalizeText()` and `unprintableChars()`.
+- Paper is `white` or `cream` only: the UI must not offer groundwood.
+
+**§7 preflight / cover**
+- preflight takes extra options `types` and `fileName`, and returns extra fields `info` and `stats`. `safeArea()` is exported.
+- Large Print: text inside a puzzle box may go down to `themes.large.min.clue` (14pt). Text elsewhere needs 16pt. Answer pages get a single info note.
+
+**§8 render**
+- `fontBase64()` is async. Other exports: `fontBytes()`, `fontsReady()`, `FONT_FAMILY`. Await `ensureFonts()` before the first canvas render.
+- `renderPageToCanvas` returns `{scale, width, height}`. Also exported: `drawPageThumb(canvas, page, {cssWidth=120, dpr, greekBelowPx=3})` and `renderPageAtDpi(page, dpi)`.
+- `buildPdf` opts accept `metrics` (FONT_DATA) or `measure`, plus `subject` and `keywords`. jsPDF needs an explicit `orientation`. A single-number jsPDF colour means gray×255. Unknown op types throw in the PDF backend; the canvas backend skips them. Pages over 14400pt are rejected. Soft hyphens are dropped everywhere.
+- `exportPdf` opts: `subject, keywords, useWorker` (default true). Also exported: `lastPdfExportPath()`, `disposePdfWorker()`, `setPngDpi()`. `safeFilename(base, '.pdf')`.
+
+**§9 license**
+- `getLicense()` also returns `pro, badge, provider, graceEndsAt, validatedAt, reason`. Gate on `isPro()` or `license.pro` only, never on status or badge strings: status is `'checking'` while a cached Pro license is being re-verified.
+- `activate()` and `activateOfflineCode()` resolve `{ok, status, reason, message, license}`. `reason:'kept-current'` means a longer Pro license is already active.
+- `onLicenseChange(cb)` calls `cb(license, {cause, prev, notice})`. Show `notice` as a toast when it is set.
+- Possible reasons include `reconnect` (offline grace ended; show `getLicense().message` in the export dialog) and `test-ended`.
+- `openUnlockDialog({reason})` returns `Promise<{pro, license}>`, with reason `'badge'|'export'|'printable'|'png'|'zip'|'credit'`. `renderBuyButtons(el, {compact})`. `closeUnlockDialog()`.
+- Extra localStorage key: `gbs.license.counted`. If a CSP is ever added, it must allow `https://assets.gumroad.com` (script and style).
